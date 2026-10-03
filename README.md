@@ -1,4 +1,4 @@
-# Jarvis_cBrain
+# ULTRON_cBrain
 
 A personal AI assistant with Claude as its brain. It runs on your own Mac, for one user,
 in a browser page with a chat on the left, a canvas in the middle and status panels on
