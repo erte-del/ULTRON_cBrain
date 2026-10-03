@@ -1,4 +1,4 @@
-"""Draw the Ultron icon (the glowing blue orb from the page header) as a macOS iconset.
+"""Draw the Ultron icon (the glowing purple orb from the page header) as a macOS iconset.
 
     python scripts/make_icon.py <folder.iconset>
 
@@ -11,8 +11,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter
 
-BACKGROUND = (11, 14, 20)
-ORB_LIGHT, ORB_MID, ORB_DARK = (189, 244, 255), (76, 201, 240), (13, 94, 120)
+BACKGROUND = (8, 5, 15)
+ORB_LIGHT, ORB_MID, ORB_DARK = (233, 213, 255), (168, 85, 247), (59, 20, 110)
 
 
 def mix(a, b, t):

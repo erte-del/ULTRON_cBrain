@@ -33,7 +33,7 @@ cat >"$APP/Contents/Info.plist" <<'EOF'
 EOF
 plutil -insert UltronRoot -string "$ROOT" "$APP/Contents/Info.plist"
 
-# Its icon in Finder: the blue orb.
+# Its icon in Finder: the purple orb.
 "$ROOT/backend/.venv/bin/python" "$ROOT/scripts/make_icon.py" "$TMP/Ultron.iconset"
 iconutil -c icns "$TMP/Ultron.iconset" -o "$APP/Contents/Resources/Ultron.icns"
 

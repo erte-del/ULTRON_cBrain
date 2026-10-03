@@ -436,7 +436,7 @@ export default function TopBar({
         <span className="hud-logo" aria-hidden="true" />
         <div>
           <div className="hud-name">ULTRON</div>
-          <div className="hud-motto">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+          <div className="hud-motto">I was designed to save the world...</div>
         </div>
       </div>
 
