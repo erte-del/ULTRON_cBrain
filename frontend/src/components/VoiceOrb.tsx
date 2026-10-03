@@ -13,9 +13,9 @@ const CORE_TEXT: Record<VoiceState, [string, string]> = {
 }
 
 // The orb: a sphere of glowing points joined by faint lines, drawn on a canvas.
-// It turns slowly when idle, faster while thinking, and pulses while speaking.
+// It turns slowly when idle, faster while thinking, and pulses and loosens while speaking.
 const N = 650
-const LINK = 0.26 // points closer than this (unit sphere) get a line
+const LINK = 0.26 // points closer than this (unit sphere) may get a line
 const SPEED: Record<VoiceState, number> = { idle: 0.12, listening: 0.2, thinking: 0.9, speaking: 0.25 }
 
 // Seeded random, so the orb looks the same every load.
@@ -23,7 +23,7 @@ let seed = 7
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
 
 // Points on a unit sphere (Fibonacci spiral), then broken up: a few patches are torn
-// out, the rest are pushed in or out of the surface, and some shards drift loose.
+// out, the rest sit in a thick shell, and some shards drift loose.
 const GAPS = Array.from({ length: 4 }, () => {
   const z = rnd() * 2 - 1
   const a = rnd() * Math.PI * 2
@@ -42,8 +42,9 @@ for (let i = 0; i < N; i++) {
   POINTS.push([x * k, y * k, z * k])
 }
 for (let i = 0; i < 25; i++) POINTS.push([(rnd() - 0.5) * 1.3, (rnd() - 0.5) * 1.3, (rnd() - 0.5) * 1.3]) // sparse inside
-// Every point wanders on its own slow loop, and points in the same clump drift together,
-// so clumps pull together and apart. Links are made and broken by the distance between them.
+
+// Every point wanders a little on its own loop, and points in the same clump drift
+// together. Links are made and broken by the distance between points.
 const CLUMPS = Array.from({ length: 6 }, () => ({
   c: [rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1],
   f: [0.1 + rnd() * 0.25, 0.1 + rnd() * 0.25, 0.1 + rnd() * 0.25],
@@ -98,8 +99,9 @@ export default function VoiceOrb({ state, level = 0, onClick, label }: VoiceOrbP
       speed += (SPEED[st] - speed) * Math.min(dt * 2, 1) // ease between speeds
       if (!still) angle += speed * dt
       loose += ((st === 'speaking' && !still ? 1 : 0) - loose) * Math.min(dt * 3, 1)
-      const beat = 0.5 + 0.5 * Math.sin(now / 240) // 0..1 pulse, nodes go out and come back
-      const spread = loose * beat * (0.3 + 0.4 * lv)
+      const beat = 0.5 + 0.5 * Math.sin(now / 360) // nodes go out and come back
+      const slow = 0.5 + 0.5 * Math.sin(now / 800) // the whole orb swells slower and less
+      const spread = loose * beat * (0.22 + 0.3 * lv)
 
       const size = el.clientWidth
       const dpr = window.devicePixelRatio || 1
@@ -107,14 +109,13 @@ export default function VoiceOrb({ state, level = 0, onClick, label }: VoiceOrbP
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, size, size)
 
-      const slow = 0.5 + 0.5 * Math.sin(now / 480) // the whole orb swells slower and less than the nodes fly out
-      const pulse = 1 + loose * (0.025 * slow + 0.04 * lv)
+      const pulse = 1 + loose * (0.012 * slow + 0.02 * lv)
       const breathe = 1 + 0.015 * Math.sin(now / 1500)
       const R = size * 0.3 * pulse * breathe
       const cx = size / 2
       const tilt = 0.35
       const [ca, sa, ct, stl] = [Math.cos(angle), Math.sin(angle), Math.cos(tilt), Math.sin(tilt)]
-      const t = now / 1000 * (0.4 + speed) // drift quickens when thinking
+      const t = (now / 1000) * (0.4 + speed) // drift quickens when thinking
       const pts = POINTS.map(([px, py, pz], i) => {
         const m = MOTION[i]
         const k = CLUMPS[m.clump]
