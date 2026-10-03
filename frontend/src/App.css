@@ -562,102 +562,24 @@
   outline-offset: 6px;
   border-radius: 50%;
 }
-.reactor svg {
+.reactor {
+  position: relative;
+}
+.reactor canvas {
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
 }
-
-.r-dash {
-  fill: none;
-  stroke: var(--accent-2);
-  stroke-width: 2.5;
-  stroke-dasharray: 10 8;
-  opacity: 0.75;
-}
-.r-line {
-  fill: none;
-  stroke: var(--accent-2);
-  stroke-width: 1.6;
-  opacity: 0.65;
-}
-.r-faint { opacity: 0.4; }
-.r-spokes line {
-  stroke: var(--accent-2);
-  stroke-width: 1;
-  opacity: 0.3;
-}
-.r-arcs path {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 7;
-  filter: drop-shadow(0 0 6px var(--glow));
-}
-.r-core {
-  fill: rgba(168, 85, 247, 0.06);
-  stroke: var(--accent);
-  stroke-width: 2.5;
-  filter: drop-shadow(0 0 10px var(--glow));
-  transform: scale(calc(1 + 0.12 * var(--level)));
-  transition: fill 0.3s;
-}
-.reactor:hover .r-core { fill: rgba(168, 85, 247, 0.13); }
-.r-ripples circle {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.5;
-  opacity: 0;
-}
-.r-cell {
-  fill: none;
-  stroke: var(--accent-2);
-  stroke-width: 1.5;
-}
-.r-cell-on { fill: var(--accent); }
-.r-text {
-  fill: var(--accent);
-  font: 700 17px var(--mono);
-  letter-spacing: 0.06em;
-  text-anchor: middle;
-  paint-order: stroke;
-  stroke: #08050f;
-  stroke-width: 4px;
-}
-
-/* SVG parts rotate and scale around the centre (0, 0) of the viewBox. */
-.r-outer { animation: r-spin 90s linear infinite; }
-.r-arcs { animation: r-spin 24s linear infinite; }
-.reactor-idle .r-core { animation: r-breathe 5s ease-in-out infinite; }
-
-.reactor-listening .r-outer { animation-duration: 30s; }
-.reactor-listening .r-arcs { animation-duration: 8s; }
-.reactor-listening .r-ripples circle { animation: r-ripple 2.4s ease-out infinite; }
-.reactor-listening .r-ripples circle:nth-child(2) { animation-delay: 0.8s; }
-.reactor-listening .r-ripples circle:nth-child(3) { animation-delay: 1.6s; }
-
-.reactor-thinking .r-outer { animation-duration: 14s; animation-direction: reverse; }
-.reactor-thinking .r-arcs { animation-duration: 2.2s; }
-.reactor-thinking .r-cell { animation: r-cell 1s steps(1) infinite; }
-
-.reactor-speaking .r-core { animation: r-talk 1.3s ease-in-out infinite; }
-.reactor-speaking .r-arcs { animation-duration: 12s; }
-.reactor-speaking .r-ripples circle:first-child { animation: r-ripple 1.3s ease-out infinite; }
-
-@keyframes r-spin { to { transform: rotate(360deg); } }
-@keyframes r-breathe { 50% { transform: scale(1.04); } }
-@keyframes r-ripple {
-  from { opacity: 0.7; transform: scale(1); }
-  to { opacity: 0; transform: scale(2.7); }
-}
-@keyframes r-cell { 50% { fill: var(--accent); } }
-@keyframes r-talk {
-  0%, 100% { transform: scale(1); }
-  15% { transform: scale(1.1); }
-  30% { transform: scale(0.97); }
-  45% { transform: scale(1.13); }
-  60% { transform: scale(1.01); }
-  78% { transform: scale(1.08); }
+.r-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4%;
+  font: 700 12px var(--mono);
+  letter-spacing: 0.2em;
+  text-align: center;
+  color: var(--accent);
+  opacity: 0.8;
 }
 
 .waveform {
@@ -1920,7 +1842,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reactor *, .waveform span { animation: none !important; }
+  .waveform span { animation: none !important; }
   .hud-grid > * { transition: none !important; }
 }
 
