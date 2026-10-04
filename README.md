@@ -34,7 +34,7 @@ only look things up.
 - **Remember you.** Ultron keeps short notes about you between chats: preferences, who
   people are ("Sarah" = Sarah K. from work), projects, decisions. You see or delete them all with the memory button in the top bar. Passwords, card
   numbers and keys are always refused.
-- **Use your Obsidian notes.** Set `JARVIS_VAULT` to your vault folder and Ultron
+- **Use your Obsidian notes.** Set `ULTRON_VAULT` to your vault folder and Ultron
   searches and reads your notes when you ask about something you wrote down, before
   searching the web. It saves research, plans and lists as new notes (in a `Ultron`
   folder unless you say otherwise) or adds to an existing one. Tell Ultron a note or folder is important and it asks
@@ -45,7 +45,7 @@ only look things up.
   and sets the clipboard, knows where the Mac is (after `scripts/setup_location.sh`, for
   weather and "near me"), and reads the battery, volume, dark mode and Wi-Fi (it can
   set volume, mute and dark mode). It finds, moves, renames and trashes files in one
-  folder only (`JARVIS_FILES_DIR`, default `~/Jarvis Files`), never overwrites, and
+  folder only (`ULTRON_FILES_DIR`, default `~/ULTRON Files`), never overwrites, and
   runs Python for data work in a macOS sandbox: no internet, no other programs, reads
   only that folder, writes only to its `Output` subfolder.
 - **Maps and travel.** Places near you ("coffee near me"), travel times by car (with
@@ -73,7 +73,7 @@ only look things up.
   Chrome on this Mac, where you're already signed in (no password is stored). It can
   add to or remove from your cart, or add to your wish list. It
   can't place an order: you check out in Chrome yourself. Uses the same Chrome setting
-  as homework; set `JARVIS_AMAZON_URL` if you don't shop on amazon.ae.
+  as homework; set `ULTRON_AMAZON_URL` if you don't shop on amazon.ae.
 - **Find flights.** It searches Google Flights in Chrome on this Mac and lists the
   options with price, airline, stops and times, plus the link to book. It can't buy a
   ticket: you pick one from the link and pay yourself. Uses the same Chrome setting as homework.
@@ -160,7 +160,7 @@ A router picks the model for each message:
 Switching models means sending the whole conversation to the new model again, so once a
 conversation is big, the router won't move it to a cheaper model by itself. A big
 conversation left alone for an hour starts over fresh, because Claude's cached copy of
-it has expired (`JARVIS_NEW_CHAT_AFTER_IDLE_MIN`).
+it has expired (`ULTRON_NEW_CHAT_AFTER_IDLE_MIN`).
 
 Ultron is an assistant, not a coding agent: Claude Code's file, shell and sub-agent tools
 are switched off. Ultron only gets web search, tool search (so connector tools load on
@@ -175,7 +175,7 @@ running (on 127.0.0.1 only). Connect at least one provider in its dashboard
 (http://localhost:20128 → Providers). Its keyless free providers mostly refuse
 requests from outside their own apps.
 
-The models you can switch between are set in `JARVIS_GATEWAY_MODELS` and appear as
+The models you can switch between are set in `ULTRON_GATEWAY_MODELS` and appear as
 buttons in the usage panel. In OmniRoute mode:
 - the claude.ai connectors are off, so your emails never go to other providers' models
 - web search and `ask_expert` are off (web page reading still works)
@@ -198,7 +198,7 @@ Frontend:
 
 Copy `.env.example` to `.env` and fill in what you need. Every setting is explained
 there: the Pexels key for images, Spotify, the Blender path, how hard Claude thinks
-(`JARVIS_EFFORT`), which connectors to load (`JARVIS_CONNECTORS`) and the OmniRoute
+(`ULTRON_EFFORT`), which connectors to load (`ULTTRON_CONNECTORS`) and the OmniRoute
 settings. Never add an `ANTHROPIC_API_KEY`.
 
 ## Run
@@ -223,7 +223,7 @@ never asked.
 **On your phone (optional).** Ultron has no password, so it never listens on your Wi-Fi.
 Instead, [Tailscale](https://tailscale.com) connects your own devices privately: install
 it on this Mac and your phone, run `tailscale serve --bg 8000` on the Mac, and put the
-address it prints in `.env` as `JARVIS_REMOTE_ORIGIN` (see `.env.example`). Then open
+address it prints in `.env` as `ULTRON_REMOTE_ORIGIN` (see `.env.example`). Then open
 that address on your phone, from anywhere, while this Mac is awake and Ultron is running.
 
 **Back up.** `scripts/backup.sh` writes everything of yours that isn't on GitHub (`.env`,
