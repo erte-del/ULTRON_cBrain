@@ -5,7 +5,7 @@ in a browser page with a chat on the left, a canvas in the middle and status pan
 the right. The backend only listens on 127.0.0.1, so nothing outside this machine can
 reach it.
 
-See `JARVIS_BUILD_PROMPT.md` for the original plan.
+See `ULTRON_BUILD_PROMPT.md` for the original plan.
 
 ## What Ultron can do
 
