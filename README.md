@@ -54,6 +54,20 @@ only look things up.
   On your phone, "near me" uses the phone's GPS (allow location when the page asks).
   Routes and places show as a live map on the canvas (Google Maps' embed), with a
   satellite view.
+- **Look at your screen.** Click the eye in the top bar (or type "look at my screen"),
+  pick **Entire Screen** in the browser's share window, and a small always-on-top window
+  opens in the bottom-left corner. Type a question in its box and the answer appears above
+  it. Ultron gets a fresh picture of your screen with each question, so it keeps seeing
+  your screen when you switch tabs or apps. Drag the window anywhere (box and answer move
+  together) or resize it. Closing it, or "Stop sharing" in the browser, ends it. Needs
+  Chrome or Edge. Only the newest 10 captures are kept in `backend/storage/uploads/`.
+  In the Mac app (below) the same overlay is a native window instead: press **⌃⌥U** from
+  anywhere (or "Look at my screen" in the orb's menu) to show or hide it. It floats over every
+  app and desktop, remembers where you put it, and Ultron captures the screen the mouse is
+  on, without the overlay in the picture. Needs macOS 14+ and Screen Recording permission
+  (System Settings > Privacy & Security; macOS asks the first time). Rebuilding the app with
+  `scripts/make_app.sh` can make macOS ask for that permission again. The overlay has its own
+  connection to Ultron, so what you ask there shows in its box, not in the main page's chat.
 - **Read your files.** Click 📎 in the chat box or drop files onto it. Images go on
   the canvas, where they can be edited. Text, code, CSV, JSON and PDF files are read
   as text (up to about 100K characters each). Files are kept in

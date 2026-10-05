@@ -5,6 +5,7 @@ Run from the backend folder:
 """
 
 import asyncio
+import io
 import json
 import logging
 from contextlib import aclosing, asynccontextmanager
@@ -25,7 +26,7 @@ from brain.agent import Ultron
 from brain.base import ModelAlias
 from brain.brain_claudecode import ClaudeCodeBrain
 from brain.confirm import ConfirmationGate
-from PIL import UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError
 
 from storage import chat_store, image_store, job_store, memory_store, model_store, upload_store, video_store
 from tools import canvas, mac, spotify
@@ -118,6 +119,27 @@ async def upload(request: Request, name: str) -> dict:
         return {"id": await asyncio.to_thread(upload_store.save, name, data), "name": name}
     await hub.emit(events.canvas_card(rec.id, "image", rec.title, image_store.card_data(rec)))
     return {"id": rec.id, "name": name}
+
+
+@app.post("/screen")
+async def screen(request: Request) -> dict:
+    """A capture of the user's screen (JPEG or PNG bytes as the body), sent along with a
+    message by the screen overlay. Unlike /upload it stays off the canvas; Ultron looks at
+    it with read_upload. Only the newest few are kept. The Mac app can post here too."""
+    if request.headers.get("origin") not in ALLOWED_ORIGINS:
+        raise HTTPException(403)
+    if int(request.headers.get("content-length") or 0) > upload_store.MAX_BYTES:
+        raise HTTPException(413, "Capture too large (max 25 MB)")
+    data = await request.body()
+    if not data or len(data) > upload_store.MAX_BYTES:
+        raise HTTPException(413 if data else 400, "Capture too large (max 25 MB)" if data else "Empty capture")
+    try:
+        await asyncio.to_thread(lambda: Image.open(io.BytesIO(data)).verify())
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise HTTPException(400, "Not an image")
+    upload_id = await asyncio.to_thread(upload_store.save, upload_store.SCREEN_NAME, data)
+    await asyncio.to_thread(upload_store.prune_screens)
+    return {"id": upload_id, "name": upload_store.SCREEN_NAME}
 
 
 def make_sender(ws: WebSocket) -> hub.Sender:

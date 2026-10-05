@@ -62,6 +62,35 @@ class UploadTest(unittest.TestCase):
         self.assertEqual(self.post("x.txt", b"hi", {"origin": "https://evil.example"}).status_code, 403)
         self.assertEqual(self.post("x.txt", b"", ORIGIN).status_code, 400)
 
+    def shot(self, color="blue", size=(2400, 1200)):
+        buf = io.BytesIO()
+        Image.new("RGB", size, color).save(buf, "JPEG")
+        return self.client.post("/screen", content=buf.getvalue(), headers=ORIGIN)
+
+    def test_screen_capture_stays_off_the_canvas_and_is_shrunk(self):
+        res = self.shot()
+        self.assertEqual(res.status_code, 200)
+        file_id = res.json()["id"]
+        self.assertRegex(file_id, r"^upl_\d{3}$")
+        main.hub.emit.assert_not_awaited()
+        content = self.read(file_id)["content"]
+        self.assertIn("screen", content[0]["text"])
+        self.assertEqual(content[1]["type"], "image")
+        import base64
+        self.assertEqual(Image.open(io.BytesIO(base64.b64decode(content[1]["data"]))).width, 1600)
+
+    def test_only_the_newest_screen_captures_are_kept(self):
+        ids = [self.shot(size=(40, 20)).json()["id"] for _ in range(upload_store.KEEP_SCREENS + 2)]
+        for old in ids[:2]:
+            with self.assertRaises(KeyError):
+                upload_store.find(old)
+        upload_store.find(ids[-1])
+
+    def test_screen_endpoint_rejects_strangers_and_non_images(self):
+        self.assertEqual(self.client.post("/screen", content=b"x", headers={"origin": "https://evil.example"}).status_code, 403)
+        self.assertEqual(self.client.post("/screen", content=b"not an image", headers=ORIGIN).status_code, 400)
+        self.assertEqual(self.client.post("/screen", content=b"", headers=ORIGIN).status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

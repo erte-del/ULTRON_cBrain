@@ -1850,3 +1850,23 @@
   text-decoration: line-through;
   opacity: 0.6;
 }
+
+/* Screen overlay: the always-on-top window (see ScreenOverlay.tsx). Its document gets a copy of these styles. */
+.screen-overlay-doc body { overflow: hidden; }
+.so { height: 100vh; display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--panel); }
+.so-answer { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; }
+.so-question { align-self: flex-end; max-width: 90%; padding: 4px 9px; border-radius: 8px; background: var(--user-bubble); color: var(--text-dim); font-size: 11px; }
+.so-msg { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); font-size: 12px; }
+.so-msg > :first-child { margin-top: 0; }
+.so-msg > :last-child { margin-bottom: 0; }
+.so-error { border-color: var(--danger); color: var(--danger); }
+.so-dim { color: var(--text-dim); font-size: 11px; }
+.so-bar { display: flex; align-items: center; gap: 8px; font-size: 10px; }
+.so-eye { margin-right: auto; color: var(--text-dim); }
+.so-eye.on { color: var(--haiku); }
+.so-toggle { color: var(--text-dim); cursor: pointer; }
+.so-btn { padding: 2px 8px; font: inherit; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
+.so-btn:hover { border-color: var(--accent); }
+.so-input { width: 100%; resize: none; padding: 7px 9px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.so-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--glow); }
+.screen-toast { position: fixed; z-index: 50; top: 64px; right: 16px; max-width: 320px; padding: 8px 12px; font-size: 12px; color: var(--danger); background: var(--panel); border: 1px solid var(--danger); border-radius: 8px; cursor: pointer; }

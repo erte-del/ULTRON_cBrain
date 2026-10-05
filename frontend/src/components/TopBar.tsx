@@ -27,6 +27,9 @@ interface TopBarProps {
   jobs: Job[]
   jobRuns: JobRun[]
   onJob: (id: string, action: JobAction) => void
+  screenSupported: boolean
+  screenOpen: boolean
+  onScreen: () => void
 }
 
 /** A menu under a top-bar button that closes on a click outside or Esc. */
@@ -424,7 +427,7 @@ function Settings({ settings, onProvider }: Pick<TopBarProps, 'settings' | 'onPr
 
 export default function TopBar({
   connection, busy, settings, canStartNewChat, onNewChat, onProvider,
-  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, jobs, jobRuns, onJob, ...chats
+  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, ...chats
 }: TopBarProps) {
   const now = useNow()
   const status =
@@ -476,6 +479,22 @@ export default function TopBar({
             <path d="M18 2v6M15 5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </button>
+        {screenSupported && (
+          <button
+            type="button"
+            className={`icon-btn${screenOpen ? ' active' : ''}`}
+            onClick={onScreen}
+            aria-label={screenOpen ? 'Stop watching my screen' : 'Look at my screen'}
+            title={screenOpen
+              ? 'Stop watching my screen and close the overlay'
+              : 'Look at my screen: opens a small window that stays on top, where you can ask about what you see'}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+              <circle cx="12" cy="12" r="3" fill={screenOpen ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" />
+            </svg>
+          </button>
+        )}
         <SavedChats {...chats} />
         <MemoryMenu
           memories={memories}
