@@ -7,6 +7,7 @@ and the image tools can edit them.
 """
 
 import re
+import shutil
 import threading
 from pathlib import Path
 
@@ -17,6 +18,9 @@ from . import image_store
 UPLOADS_DIR = STORAGE_DIR / "uploads"
 UPLOAD_ID = re.compile(r"^upl_\d{3,6}$")
 MAX_BYTES = 25 * 1024 * 1024
+
+SCREEN_NAME = "screen.jpg"  # what a screen capture is saved as (see main.screen)
+KEEP_SCREENS = 10  # older captures are deleted: they can show anything on the screen
 
 _lock = threading.Lock()
 
@@ -54,3 +58,14 @@ def label(file_id: str) -> str:
         return f"{file_id} ({find(file_id).name})"
     except KeyError:
         return file_id
+
+
+def prune_screens(keep: int = KEEP_SCREENS) -> None:
+    """Delete all but the newest `keep` screen captures."""
+    with _lock:
+        folders = sorted(
+            (p for p in UPLOADS_DIR.glob("upl_*") if UPLOAD_ID.match(p.name) and (p / SCREEN_NAME).exists()),
+            key=lambda p: int(p.name[4:]),
+        )
+        for folder in folders[:-keep] if keep else folders:
+            shutil.rmtree(folder, ignore_errors=True)

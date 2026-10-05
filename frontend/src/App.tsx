@@ -1,15 +1,20 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import './App.css'
 import Chat from './components/Chat'
 import Panel from './components/Panel'
+import ScreenOverlay from './components/ScreenOverlay'
 import { LogPanel, TerminalPanel, UsagePanel } from './components/SidePanels'
 import Stage from './components/Stage'
 import TopBar from './components/TopBar'
+import { screenOverlaySupported, useScreenOverlay } from './screen/useScreenOverlay'
 import { useSwipePanes } from './useSwipePanes'
 import { useUltron } from './ws'
 
 const PANES = [['chat', 'CHAT'], ['stage', 'CANVAS'], ['status', 'STATUS']] as const
 const PANE_IDS = PANES.map(([id]) => id)
+
+// "look at my screen" on its own (not a question about screens) opens the screen overlay.
+const LOOK_AT_SCREEN = /^\s*(?:ultron\W+)?(?:please\s+)?(?:(?:can|could) you\s+)?(?:look at|watch|see)\s+(?:my|the)\s+screen\W*$/i
 
 // HUD layout: chat on the left, the core / canvas in the middle, status on the right.
 // A phone shows one of the three at a time (App.css): drag sideways (useSwipePanes), or
@@ -19,6 +24,15 @@ export default function App() {
   const [pane, setPane] = useState<(typeof PANES)[number][0]>('chat')
   const [voiceOn, setVoiceOn] = useState(false) // UI only for now (Phase 5a)
   const { ref: gridRef, go, touch } = useSwipePanes(PANE_IDS, pane, setPane)
+  const screen = useScreenOverlay(ultron.sendText)
+  const canWatch = screenOverlaySupported()
+  const send = useCallback((text: string, files: Parameters<typeof ultron.sendText>[1]) => {
+    if (canWatch && LOOK_AT_SCREEN.test(text) && !files?.length) {
+      void screen.open() // this key press is the click the browser wants
+      return true
+    }
+    return ultron.sendText(text, files)
+  }, [canWatch, screen, ultron])
 
   return (
     <div className="hud">
@@ -44,7 +58,27 @@ export default function App() {
         jobs={ultron.jobs}
         jobRuns={ultron.jobRuns}
         onJob={ultron.updateJob}
+        screenSupported={canWatch}
+        screenOpen={!!screen.win}
+        onScreen={() => (screen.win ? screen.close() : void screen.open())}
       />
+      {screen.error && !screen.win && (
+        <div className="screen-toast" role="alert" onClick={() => screen.open()}>{screen.error}</div>
+      )}
+      {screen.win && (
+        <ScreenOverlay
+          win={screen.win}
+          messages={ultron.messages}
+          connection={ultron.connection}
+          busy={ultron.busy}
+          sharing={screen.sharing}
+          error={screen.error}
+          onAsk={screen.ask}
+          onShare={screen.share}
+          onConfirm={ultron.answerConfirm}
+          onClose={screen.close}
+        />
+      )}
 
       <main className={`hud-grid pane-${pane}`} ref={gridRef} {...touch}>
         <Panel title="COMMS" tag="RT-LINK" className="comms-panel">
@@ -53,7 +87,7 @@ export default function App() {
             connection={ultron.connection}
             busy={ultron.busy}
             activeTool={ultron.activeTool}
-            onSend={ultron.sendText}
+            onSend={send}
             onStop={ultron.stop}
             onConfirm={ultron.answerConfirm}
             voiceOn={voiceOn}

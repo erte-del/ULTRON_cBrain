@@ -210,6 +210,17 @@ export async function uploadFile(file: File): Promise<Attachment> {
   return res.json()
 }
 
+/** Send a capture of the screen. Unlike uploadFile it stays off the canvas. */
+export async function uploadScreen(shot: Blob): Promise<Attachment> {
+  const res = await fetch(`${API_BASE}/screen`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: shot,
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail ?? `Upload failed (${res.status})`)
+  return res.json()
+}
+
 // ---------------------------------------------------------------------------
 // Socket: one connection that reconnects by itself if the backend restarts.
 
