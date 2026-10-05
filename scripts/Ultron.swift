@@ -1,12 +1,139 @@
 // Ultron.app: Ultron in the menu bar. Opening it starts Ultron and opens the page;
 // the orb's menu opens the page again or quits (which stops Ultron).
+// It also owns the screen overlay: a small always-on-top window (ctrl+option+U, or "Look at
+// my screen" in the orb's menu) where you ask about what's on your screen.
 // Built by scripts/make_app.sh, which writes the project folder into Info.plist (UltronRoot).
 import AppKit
+import Carbon.HIToolbox
+import ScreenCaptureKit
+import WebKit
+
+struct OverlayError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+}
+
+/// A panel that can take typing without making Ultron the frontmost app, so the app
+/// you're working in keeps its place.
+final class OverlayPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
+/// The overlay window: the page at /?overlay=1 in a floating panel, plus the capture it asks
+/// for. The page talks to us through window.webkit.messageHandlers.ultron (see
+/// frontend/src/screen/nativeScreenSource.ts): "start" checks Screen Recording permission,
+/// "grab" answers with one JPEG of the screen (base64), "hide" hides the window.
+final class Overlay: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
+    let url: URL
+    var panel: OverlayPanel!
+    var web: WKWebView!
+    var loaded = false
+
+    init(url: URL) {
+        self.url = url
+        super.init()
+        let config = WKWebViewConfiguration()
+        config.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "ultron")
+        web = WKWebView(frame: .zero, configuration: config)
+        web.navigationDelegate = self
+
+        panel = OverlayPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 340),
+            styleMask: [.titled, .closable, .resizable, .utilityWindow, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "Ultron"
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.minSize = NSSize(width: 280, height: 220)
+        panel.contentView = web
+        // Bottom-left the first time; after that wherever you left it.
+        if !panel.setFrameUsingName("UltronOverlay") {
+            let area = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+            panel.setFrameOrigin(NSPoint(x: area.minX + 16, y: area.minY + 16))
+        }
+        panel.setFrameAutosaveName("UltronOverlay")
+    }
+
+    var isVisible: Bool { panel.isVisible }
+
+    func toggle() {
+        if panel.isVisible { panel.orderOut(nil) } else { show() }
+    }
+
+    func show() {
+        if !loaded { web.load(URLRequest(url: url)) }  // the page keeps its chat while hidden
+        panel.orderFrontRegardless()
+        panel.makeKey()
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { loaded = true }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { loaded = false }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        loaded = false  // Ultron wasn't up yet: the next show() tries again
+    }
+
+    func userContentController(
+        _ controller: WKUserContentController,
+        didReceive message: WKScriptMessage,
+        replyHandler: @escaping (Any?, String?) -> Void
+    ) {
+        let kind = (message.body as? [String: Any])?["type"] as? String
+        switch kind {
+        case "start":
+            if CGPreflightScreenCaptureAccess() {
+                replyHandler(true, nil)
+            } else {
+                CGRequestScreenCaptureAccess()
+                replyHandler(nil, "Allow Ultron under System Settings > Privacy & Security > Screen Recording, then press Share my screen.")
+            }
+        case "grab":
+            Task { @MainActor in
+                do { replyHandler(try await self.capture(), nil) }
+                catch { replyHandler(nil, error.localizedDescription) }
+            }
+        case "hide":
+            panel.orderOut(nil)
+            replyHandler(true, nil)
+        default:
+            replyHandler(nil, "Unknown request")
+        }
+    }
+
+    /// One JPEG (base64) of the screen the mouse is on, without this overlay in it.
+    func capture() async throws -> String {
+        guard #available(macOS 14.0, *) else { throw OverlayError(message: "Looking at the screen needs macOS 14 or newer.") }
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
+        let number = screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+        guard let display = content.displays.first(where: { $0.displayID == number?.uint32Value }) ?? content.displays.first
+        else { throw OverlayError(message: "No screen to look at.") }
+
+        let mine = content.windows.filter { $0.owningApplication?.processID == ProcessInfo.processInfo.processIdentifier }
+        let filter = SCContentFilter(display: display, excludingWindows: mine)
+        let config = SCStreamConfiguration()
+        let scale = min(1.0, 1920.0 / Double(max(display.width, display.height)))
+        config.width = Int(Double(display.width) * scale)
+        config.height = Int(Double(display.height) * scale)
+        config.showsCursor = true
+        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        guard let jpeg = NSBitmapImageRep(cgImage: image).representation(using: .jpeg, properties: [.compressionFactor: 0.85])
+        else { throw OverlayError(message: "Couldn't capture the screen.") }
+        return jpeg.base64EncodedString()
+    }
+}
 
 final class App: NSObject, NSApplicationDelegate {
     let root = Bundle.main.object(forInfoDictionaryKey: "UltronRoot") as! String
     let page = URL(string: "http://127.0.0.1:8000")!
     var item: NSStatusItem!
+    lazy var overlay = Overlay(url: URL(string: "http://127.0.0.1:8000/?overlay=1")!)
+    var hotKey: EventHotKeyRef?
 
     func applicationDidFinishLaunching(_ note: Notification) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -14,9 +141,12 @@ final class App: NSObject, NSApplicationDelegate {
         item.button?.toolTip = "Ultron"
         let menu = NSMenu()
         menu.addItem(withTitle: "Open Ultron", action: #selector(openPage), keyEquivalent: "o").target = self
+        menu.addItem(withTitle: "Look at my screen   ⌃⌥U", action: #selector(toggleOverlay), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Ultron", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
+        installEditMenu()
+        registerHotKey()
 
         DispatchQueue.global().async {  // start_ultron.sh can take up to 30 seconds
             let (ok, message) = self.run("start_ultron.sh")
@@ -41,6 +171,36 @@ final class App: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ note: Notification) {
         run("stop_ultron.sh")
+    }
+
+    @objc func toggleOverlay() {
+        overlay.toggle()
+    }
+
+    /// ctrl+option+U shows or hides the overlay from anywhere. Needs no permission.
+    func registerHotKey() {
+        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+        InstallEventHandler(GetApplicationEventTarget(), { _, _, userData in
+            let me = Unmanaged<App>.fromOpaque(userData!).takeUnretainedValue()
+            DispatchQueue.main.async { me.toggleOverlay() }
+            return noErr
+        }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), nil)
+        let id = EventHotKeyID(signature: OSType(0x554C5452), id: 1)  // 'ULTR'
+        RegisterEventHotKey(UInt32(kVK_ANSI_U), UInt32(controlKey | optionKey), id, GetApplicationEventTarget(), 0, &hotKey)
+    }
+
+    /// A menu bar app has no main menu, so copy and paste wouldn't work in the overlay's box.
+    func installEditMenu() {
+        let bar = NSMenu()
+        let holder = NSMenuItem()
+        bar.addItem(holder)
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        holder.submenu = edit
+        NSApp.mainMenu = bar
     }
 
     @objc func openPage() {

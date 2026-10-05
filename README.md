@@ -61,8 +61,13 @@ only look things up.
   your screen when you switch tabs or apps. Drag the window anywhere (box and answer move
   together) or resize it. Closing it, or "Stop sharing" in the browser, ends it. Needs
   Chrome or Edge. Only the newest 10 captures are kept in `backend/storage/uploads/`.
-  The capture sits behind `frontend/src/screen/screenSource.ts` and the overlay view is
-  separate from its window, so a native Mac overlay can reuse both and post to `/screen`.
+  In the Mac app (below) the same overlay is a native window instead: press **⌃⌥U** from
+  anywhere (or "Look at my screen" in the orb's menu) to show or hide it. It floats over every
+  app and desktop, remembers where you put it, and Ultron captures the screen the mouse is
+  on, without the overlay in the picture. Needs macOS 14+ and Screen Recording permission
+  (System Settings > Privacy & Security; macOS asks the first time). Rebuilding the app with
+  `scripts/make_app.sh` can make macOS ask for that permission again. The overlay has its own
+  connection to Ultron, so what you ask there shows in its box, not in the main page's chat.
 - **Read your files.** Click 📎 in the chat box or drop files onto it. Images go on
   the canvas, where they can be edited. Text, code, CSV, JSON and PDF files are read
   as text (up to about 100K characters each). Files are kept in
