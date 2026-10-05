@@ -64,7 +64,7 @@ only look things up.
   In the Mac app (below) the same overlay is a native window instead: press **⌃⌥U** from
   anywhere (or "Look at my screen" in the orb's menu) to show or hide it. It floats over every
   app and desktop, remembers where you put it, and Ultron captures the screen the mouse is
-  on, without the overlay in the picture. Needs macOS 14+ and Screen Recording permission
+  on, without the overlay in the picture. Needs Screen Recording permission
   (System Settings > Privacy & Security; macOS asks the first time). Rebuilding the app with
   `scripts/make_app.sh` can make macOS ask for that permission again. The overlay has its own
   connection to Ultron, so what you ask there shows in its box, not in the main page's chat.
