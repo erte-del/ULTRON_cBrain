@@ -12,7 +12,7 @@ trap 'rm -rf "$TMP"' EXIT
 chmod +x "$ROOT/scripts/start_ultron.sh" "$ROOT/scripts/stop_ultron.sh"
 
 # The app itself: a menu bar app (scripts/Ultron.swift; needs the Xcode command line
-# tools: xcode-select --install; macOS 14 or newer for the screen overlay). LSUIElement keeps it
+# tools: xcode-select --install). LSUIElement keeps it
 # out of the Dock.
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"

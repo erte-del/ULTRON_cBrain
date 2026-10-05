@@ -5,7 +5,6 @@
 // Built by scripts/make_app.sh, which writes the project folder into Info.plist (UltronRoot).
 import AppKit
 import Carbon.HIToolbox
-import ScreenCaptureKit
 import WebKit
 
 struct OverlayError: LocalizedError {
@@ -104,27 +103,44 @@ final class Overlay: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDele
         }
     }
 
-    /// One JPEG (base64) of the screen the mouse is on, without this overlay in it.
+    /// One JPEG (base64) of the screen the mouse is on. Uses macOS's own screencapture tool,
+    /// which works on every macOS version and needs the same Screen Recording permission.
+    /// The overlay is hidden for a moment so it isn't in the picture.
+    @MainActor
     func capture() async throws -> String {
-        guard #available(macOS 14.0, *) else { throw OverlayError(message: "Looking at the screen needs macOS 14 or newer.") }
-        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
-        let number = screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
-        guard let display = content.displays.first(where: { $0.displayID == number?.uint32Value }) ?? content.displays.first
-        else { throw OverlayError(message: "No screen to look at.") }
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.screens[0]
+        let f = screen.frame
+        let top = NSScreen.screens[0].frame.maxY  // screencapture counts y down from the top of the main screen
+        let rect = "\(Int(f.minX)),\(Int(top - f.maxY)),\(Int(f.width)),\(Int(f.height))"
+        let file = NSTemporaryDirectory() + "ultron-screen-\(UUID().uuidString).jpg"
+        defer { try? FileManager.default.removeItem(atPath: file) }
 
-        let mine = content.windows.filter { $0.owningApplication?.processID == ProcessInfo.processInfo.processIdentifier }
-        let filter = SCContentFilter(display: display, excludingWindows: mine)
-        let config = SCStreamConfiguration()
-        let scale = min(1.0, 1920.0 / Double(max(display.width, display.height)))
-        config.width = Int(Double(display.width) * scale)
-        config.height = Int(Double(display.height) * scale)
-        config.showsCursor = true
-        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-        guard let jpeg = NSBitmapImageRep(cgImage: image).representation(using: .jpeg, properties: [.compressionFactor: 0.85])
+        let wasVisible = panel.isVisible
+        if wasVisible {
+            panel.alphaValue = 0
+            try? await Task.sleep(nanoseconds: 150_000_000)
+        }
+        let ok = await Task.detached {
+            Overlay.run("/usr/sbin/screencapture", ["-x", "-t", "jpg", "-R", rect, file])
+                && Overlay.run("/usr/bin/sips", ["-Z", "1920", file])  // shrink: big screens make big files
+        }.value
+        if wasVisible { panel.alphaValue = 1 }
+
+        guard ok, let data = FileManager.default.contents(atPath: file), !data.isEmpty
         else { throw OverlayError(message: "Couldn't capture the screen.") }
-        return jpeg.base64EncodedString()
+        return data.base64EncodedString()
+    }
+
+    static func run(_ path: String, _ arguments: [String]) -> Bool {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: path)
+        p.arguments = arguments
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = FileHandle.nullDevice
+        do { try p.run() } catch { return false }
+        p.waitUntilExit()
+        return p.terminationStatus == 0
     }
 }
 
