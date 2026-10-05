@@ -1,0 +1,75 @@
+{
+ "title": "Coffee mug",
+ "category": "kitchen",
+ "aliases": [
+  "cup",
+  "tea mug",
+  "coffee cup"
+ ],
+ "tags": [
+  "drink",
+  "kitchenware"
+ ],
+ "spec": {
+  "parts": [
+   {
+    "name": "body",
+    "shape": "lathe",
+    "color": "white",
+    "material": "glossy",
+    "points": [
+     [
+      0,
+      0
+     ],
+     [
+      0.04,
+      0
+     ],
+     [
+      0.045,
+      0.005
+     ],
+     [
+      0.047,
+      0.09
+     ],
+     [
+      0.043,
+      0.095
+     ],
+     [
+      0.04,
+      0.09
+     ],
+     [
+      0.035,
+      0.01
+     ],
+     [
+      0,
+      0.01
+     ]
+    ]
+   },
+   {
+    "name": "handle",
+    "shape": "torus",
+    "radius": 0.025,
+    "tube": 0.007,
+    "color": "white",
+    "material": "glossy",
+    "rotation": [
+     90,
+     0,
+     0
+    ],
+    "position": [
+     0.062,
+     0.05,
+     0
+    ]
+   }
+  ]
+ }
+}

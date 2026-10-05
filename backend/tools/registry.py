@@ -38,6 +38,7 @@ from .notes import read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
 from .phone import phone_taxi, phone_volume
+from .library3d import search_3d_library, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
 from .spotify import spotify_control, spotify_playlist_tracks
 from .slides import lectures, make_slides, open_slides
@@ -76,6 +77,9 @@ TOOLS: list[UltronTool] = [
     # AI images are made on this Mac in seconds and only add Ultron's own copies.
     UltronTool(generate_image, "read"),
     UltronTool(image_ai_edit, "read"),
+    # The 3D library only reads ready-made models and puts a copy in the 3D panel.
+    UltronTool(search_3d_library, "read"),
+    UltronTool(show_from_3d_library, "read"),
     # 3D previews only change Ultron's own copies. The final file needs your approval.
     UltronTool(preview_3d, "read"),
     UltronTool(revert_3d, "read"),

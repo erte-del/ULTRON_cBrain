@@ -1,0 +1,55 @@
+{
+ "title": "Desk lamp",
+ "category": "lighting",
+ "aliases": [
+  "lamp",
+  "table lamp",
+  "reading lamp"
+ ],
+ "tags": [
+  "light",
+  "desk"
+ ],
+ "spec": {
+  "parts": [
+   {
+    "name": "base",
+    "shape": "cylinder",
+    "radius": 0.09,
+    "height": 0.02,
+    "position": [
+     0,
+     0.01,
+     0
+    ],
+    "color": "#222",
+    "material": "metal"
+   },
+   {
+    "name": "arm",
+    "shape": "cylinder",
+    "radius": 0.01,
+    "height": 0.4,
+    "position": [
+     0,
+     0.21,
+     0
+    ],
+    "color": "#222",
+    "material": "metal"
+   },
+   {
+    "name": "shade",
+    "shape": "cone",
+    "radius": 0.08,
+    "height": 0.12,
+    "position": [
+     0,
+     0.46,
+     0
+    ],
+    "color": "#c0392b"
+   }
+  ]
+ }
+}

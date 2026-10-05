@@ -179,6 +179,8 @@ const COMMANDS: Record<string, string> = {
   ToolSearch: 'find-tool',
   ask_expert: 'consult-opus',
   show_on_canvas: 'display',
+  search_3d_library: 'find-3d',
+  show_from_3d_library: 'open-3d',
   preview_3d: 'build-3d --preview',
   export_3d: 'build-3d --final',
 }

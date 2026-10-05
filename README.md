@@ -136,6 +136,15 @@ only look things up.
   background, with progress on the canvas. Set it up once with
   `scripts/setup_video.sh` (downloads about 17.6 GB, keeps 14 GB). Text only for
   now: animating an existing image needs a bigger model.
+- **3D library.** Ask for a 3D object and Ultron looks in `backend/library3d/` first. If
+  a ready-made model of that thing is there it shows it in the 3D panel and builds nothing.
+  Only when it isn't there (or only something similar is), or when you ask for a change,
+  does Ultron use its own 3D builder (below). Add models by dropping a `.glb` file into the
+  folder; an optional `name.json` next to it adds a title, `aliases` and `tags` for
+  searching. A `.json` with a `spec` (Ultron's shape format) works without any file, and
+  those models can be changed part by part. A plain `.glb` can't be edited, so a change
+  to one is rebuilt by Ultron from simple shapes. Point `JARVIS_3D_LIBRARY` at another
+  folder to move the library.
 - **Build 3D objects.** Ultron makes a quick preview you can spin around, then checks
   4 rendered views of its own work and fixes mistakes. When you're happy, Blender builds
   the final file (.blend, .fbx, .obj, .stl, .gltf or .glb), never before you say so.
@@ -324,6 +333,7 @@ continue it, ask for your homework, play a song, and open the page on your phone
     backend/tools/     Ultron's own tools, served to Claude as an in-process MCP server,
                        each labelled read (runs freely) or act (asks only for other
                        people or important files)
+    backend/library3d/ ready-made 3D models Ultron shows before building its own
     backend/storage/   images, 3D models, uploads, usage numbers, memory, scheduled jobs (all local files)
     scripts/           builds and runs Ultron.app
 

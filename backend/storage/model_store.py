@@ -30,6 +30,7 @@ class ModelVersion:
     note: str
     parts: int
     size: list[float]  # [width, height, depth] in meters
+    source: str = ""  # "library" for a ready-made model from the 3D library
 
 
 @dataclass
@@ -85,12 +86,12 @@ def create(title: str) -> ModelRecord:
 
 
 def add_version(rec: ModelRecord, spec: dict[str, Any], preview_glb: bytes, note: str,
-                parts: int, size: list[float]) -> ModelVersion:
+                parts: int, size: list[float], source: str = "") -> ModelVersion:
     with _lock:
         number = len(rec.versions) + 1
         (folder(rec.id) / f"v{number}.json").write_text(json.dumps(spec, indent=1))
         (folder(rec.id) / f"v{number}_preview.glb").write_bytes(preview_glb)
-        v = ModelVersion(number, note[:120], parts, size)
+        v = ModelVersion(number, note[:120], parts, size, source)
         rec.versions.append(v)
         rec.current = number
         _save(rec)
@@ -136,7 +137,7 @@ def card_data(rec: ModelRecord) -> dict[str, Any]:
         "model_id": rec.id,
         "current": rec.current,
         "versions": [
-            {"version": v.version, "note": v.note, "parts": v.parts, "size": v.size,
+            {"version": v.version, "note": v.note, "parts": v.parts, "size": v.size, "source": v.source,
              "preview_url": f"{base}/v{v.version}_preview.glb"}
             for v in rec.versions
         ],

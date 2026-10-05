@@ -56,6 +56,7 @@ export default function Model3DViewer({ data }: { data: Model3DData }) {
   const key = `${data.current}/${data.versions.length}`
   const viewing = pick?.key === key ? pick.version : data.current
   const version = data.versions.find((v) => v.version === viewing) ?? data.versions[data.versions.length - 1]
+  const fromLibrary = version.source === 'library' // a finished model: shown as it is, not as a preview
 
   // Set up the 3D view once.
   useEffect(() => {
@@ -133,19 +134,21 @@ export default function Model3DViewer({ data }: { data: Model3DData }) {
       (gltf) => {
         if (cancelled) return disposeObject(gltf.scene)
         const model = gltf.scene
-        // Preview look: flat, faceted shading with soft highlights.
-        model.traverse((node) => {
-          const mesh = node as THREE.Mesh
-          if (mesh.isMesh) {
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-            materials.forEach((m) => {
-              const standard = m as THREE.MeshStandardMaterial
-              standard.flatShading = true
-              standard.roughness = Math.max(standard.roughness, PREVIEW_MIN_ROUGHNESS)
-              m.needsUpdate = true
-            })
-          }
-        })
+        // Preview look: flat, faceted shading with soft highlights. Library models are finished: left as they are.
+        if (!fromLibrary) {
+          model.traverse((node) => {
+            const mesh = node as THREE.Mesh
+            if (mesh.isMesh) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+              materials.forEach((m) => {
+                const standard = m as THREE.MeshStandardMaterial
+                standard.flatShading = true
+                standard.roughness = Math.max(standard.roughness, PREVIEW_MIN_ROUGHNESS)
+                m.needsUpdate = true
+              })
+            }
+          })
+        }
         // Center it, so it rotates around its middle.
         const box = new THREE.Box3().setFromObject(model)
         model.position.sub(box.getCenter(new THREE.Vector3()))
@@ -170,7 +173,7 @@ export default function Model3DViewer({ data }: { data: Model3DData }) {
     return () => {
       cancelled = true
     }
-  }, [url])
+  }, [url, fromLibrary])
 
   const [w, h, d] = version.size
   const exports = data.exports.slice().reverse()
@@ -178,7 +181,7 @@ export default function Model3DViewer({ data }: { data: Model3DData }) {
     <div className="model-viewer">
       <div className="model-stage" ref={mountRef}>
         <div className="stage-badge">
-          Preview · low detail · v{version.version}
+          {fromLibrary ? 'Library model' : 'Preview · low detail'} · v{version.version}
           <span>
             {w} × {h} × {d} m
           </span>
