@@ -1,7 +1,8 @@
 """/ws/terminal: a real shell in a canvas tab, for you to type in (e.g. to run Claude Code).
 
-Ultron can open the tab (open_terminal) but never types in it: the shell only gets
-what you type in that tab. Only pages on this Mac may connect, not your phone through
+Ultron can open the tab (open_terminal) and read what it shows (read_terminal: the page
+sends a plain-text snapshot of the screen after output settles), but never types in it:
+the shell only gets what you type in that tab. Only pages on this Mac may connect, not your phone through
 Tailscale: a shell is more than the rest of Ultron can do.
 
 The shell lives as long as the tab's connection: closing the tab or reloading the
@@ -33,6 +34,9 @@ LOCAL_ORIGINS = {
     "http://127.0.0.1:8000",
     "http://localhost:8000",
 }
+# Terminal tab number -> its latest screen text, while its shell is open.
+SCREENS: dict[int, str] = {}
+MAX_SCREEN = 100_000  # characters kept per terminal
 
 
 def _shell_env() -> dict[str, str]:
@@ -61,6 +65,10 @@ async def serve(ws: WebSocket) -> None:
         await ws.close(code=1008)
         return
     await ws.accept()
+    try:
+        number = int(ws.query_params.get("n", "0"))
+    except ValueError:
+        number = 0
 
     master, slave = pty.openpty()
     shell = os.environ.get("SHELL") or "/bin/zsh"
@@ -112,9 +120,12 @@ async def serve(ws: WebSocket) -> None:
                 cols, rows = int(msg["cols"]), int(msg["rows"])
                 if 0 < cols < 1000 and 0 < rows < 1000:
                     _resize(master, cols, rows)
+            elif msg.get("type") == "screen" and number:
+                SCREENS[number] = str(msg.get("text", ""))[-MAX_SCREEN:]
     except (WebSocketDisconnect, RuntimeError, OSError, ValueError, KeyError, TypeError):
         pass
     finally:
+        SCREENS.pop(number, None)
         pumping.cancel()
         loop.remove_reader(master)
         try:

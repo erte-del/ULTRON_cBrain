@@ -12,6 +12,7 @@ from claude_agent_sdk import tool
 
 import events
 import hub
+import terminal
 
 CARD_KINDS = ["text", "table", "email_list", "events", "tasks", "map", "youtube"]
 # A map card is Google Maps' own embed (no API key), built here so the page only ever
@@ -186,8 +187,8 @@ async def show_on_canvas(args: dict[str, Any]) -> dict[str, Any]:
 @tool(
     "open_terminal",
     "Open a fresh terminal (a real shell on this Mac) in a new canvas tab, for the user to "
-    "type in, e.g. to work with Claude Code. Every call opens another one. You can't see or "
-    "type in it. It only works on the Mac itself, not on the phone.",
+    "type in, e.g. to work with Claude Code. Every call opens another one. You can't "
+    "type in it, but read_terminal shows you what's on its screen. It only works on the Mac itself, not on the phone.",
     {
         "type": "object",
         "properties": {
@@ -202,3 +203,28 @@ async def open_terminal(args: dict[str, Any]) -> dict[str, Any]:
     await hub.emit(events.terminal_open(args.get("claude") is True))
     note = "" if hub.has_clients() else " No browser is open, so nobody can see it right now."
     return {"content": [{"type": "text", "text": f"A new terminal tab is open on the canvas.{note}"}]}
+
+
+@tool(
+    "read_terminal",
+    "Read what a terminal tab on the canvas shows right now (its screen plus recent "
+    "scrollback, as plain text). Use it when the user asks about what's in the terminal.",
+    {
+        "type": "object",
+        "properties": {
+            "number": {
+                "type": "integer",
+                "description": "The terminal's number (TERMINAL 1, 2, ...). Defaults to the newest.",
+            },
+        },
+    },
+)
+async def read_terminal(args: dict[str, Any]) -> dict[str, Any]:
+    if not terminal.SCREENS:
+        return {"content": [{"type": "text", "text": "No terminal is open on the canvas."}], "is_error": True}
+    number = args.get("number") or max(terminal.SCREENS)
+    if number not in terminal.SCREENS:
+        open_ = ", ".join(str(n) for n in sorted(terminal.SCREENS))
+        return {"content": [{"type": "text", "text": f"No terminal {number}. Open: {open_}."}], "is_error": True}
+    text = terminal.SCREENS[number] or "(the screen is empty)"
+    return {"content": [{"type": "text", "text": f"Terminal {number}:\n{text}"}]}

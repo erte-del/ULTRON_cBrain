@@ -167,7 +167,7 @@ export default function Stage(props: StageProps) {
         {terminals.length > 0 && (
           <Suspense fallback={null}>
             {terminals.map((t) => (
-              <Terminal key={t.id} visible={tab === t.id} claude={t.claude} />
+              <Terminal key={t.id} visible={tab === t.id} claude={t.claude} number={t.number} />
             ))}
           </Suspense>
         )}
