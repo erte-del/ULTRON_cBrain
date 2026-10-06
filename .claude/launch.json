@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "backend",
-      "runtimeExecutable": "/Users/erselinankul/Desktop/Jarvis_cBrain/backend/.venv/bin/python",
-      "runtimeArgs": ["/Users/erselinankul/Desktop/Jarvis_cBrain/backend/main.py"],
+      "runtimeExecutable": "/Users/erselinankul/Desktop/ULTRON_cBrain/backend/.venv/bin/python",
+      "runtimeArgs": ["/Users/erselinankul/Desktop/ULTRON_cBrain/backend/main.py"],
       "port": 8000,
       "url": "http://127.0.0.1:8000"
     },
@@ -12,10 +12,10 @@
       "name": "frontend",
       "runtimeExecutable": "/Users/erselinankul/.nvm/versions/node/v24.21.0/bin/node",
       "runtimeArgs": [
-        "/Users/erselinankul/Desktop/Jarvis_cBrain/frontend/node_modules/vite/bin/vite.js",
-        "/Users/erselinankul/Desktop/Jarvis_cBrain/frontend",
+        "/Users/erselinankul/Desktop/ULTRON_cBrain/frontend/node_modules/vite/bin/vite.js",
+        "/Users/erselinankul/Desktop/ULTRON_cBrain/frontend",
         "--config",
-        "/Users/erselinankul/Desktop/Jarvis_cBrain/frontend/vite.config.ts"
+        "/Users/erselinankul/Desktop/ULTRON_cBrain/frontend/vite.config.ts"
       ],
       "port": 5173,
       "url": "http://127.0.0.1:5173"

@@ -30,6 +30,7 @@ interface TopBarProps {
   screenSupported: boolean
   screenOpen: boolean
   onScreen: () => void
+  onTyping?: () => void // set in voice mode: back to typing
 }
 
 /** A menu under a top-bar button that closes on a click outside or Esc. */
@@ -427,7 +428,7 @@ function Settings({ settings, onProvider }: Pick<TopBarProps, 'settings' | 'onPr
 
 export default function TopBar({
   connection, busy, settings, canStartNewChat, onNewChat, onProvider,
-  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, ...chats
+  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, onTyping, ...chats
 }: TopBarProps) {
   const now = useNow()
   const status =
@@ -505,6 +506,15 @@ export default function TopBar({
         />
         <ScheduleMenu jobs={jobs} jobRuns={jobRuns} onJob={onJob} />
         <Settings settings={settings} onProvider={onProvider} />
+        {onTyping && (
+          <button type="button" className="typing-btn" onClick={onTyping} title="Back to typing (Esc)">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <rect x="2" y="6" width="20" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M6 10h1M10 10h1M14 10h1M17 10h1M7 14h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            TYPE
+          </button>
+        )}
       </div>
     </header>
   )

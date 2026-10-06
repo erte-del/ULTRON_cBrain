@@ -56,7 +56,7 @@ function Waveform({ state }: { state: VoiceState }) {
   )
 }
 
-function Core({ busy, activeTool, connection, voiceOn, onVoice }: Pick<StageProps, 'busy' | 'activeTool' | 'connection' | 'voiceOn' | 'onVoice'>) {
+export function Core({ busy, activeTool, connection, voiceOn, onVoice }: Pick<StageProps, 'busy' | 'activeTool' | 'connection' | 'voiceOn' | 'onVoice'>) {
   const [preview, setPreview] = useState<VoiceState>('listening')
   const state: VoiceState = voiceOn ? preview : busy ? 'thinking' : 'idle'
   const sample = voiceOn ? SAMPLE[preview] : {}

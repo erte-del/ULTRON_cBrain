@@ -1870,3 +1870,138 @@
 .so-input { width: 100%; resize: none; padding: 7px 9px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
 .so-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--glow); }
 .screen-toast { position: fixed; z-index: 50; top: 64px; right: 16px; max-width: 320px; padding: 8px 12px; font-size: 12px; color: var(--danger); background: var(--panel); border: 1px solid var(--danger); border-radius: 8px; cursor: pointer; }
+
+/* ---- Voice mode ------------------------------------------------------- */
+/* The mic button flips .hud-grid.voice inside a view transition (App.tsx, morph): the
+   chat slides down out of the way, the log and terminal slide off to the right, and the
+   core drifts left into the middle of the space the chat left. A canvas in voice mode
+   takes that whole left side and the core moves under the usage panel (.voice-core). */
+
+.comms-panel { view-transition-name: comms; }
+.stage { view-transition-name: stage; }
+.core { view-transition-name: core; }
+.usage-panel { view-transition-name: usage; }
+.log-panel { view-transition-name: log; }
+.terminal-panel { view-transition-name: term; }
+.typing-btn { view-transition-name: typing; }
+
+.typing-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.typing-btn:hover { background: rgba(168, 85, 247, 0.22); }
+
+.voice-core { display: none; }
+
+/* Desktop only; smaller screens keep the text layout in voice mode for now. */
+@media (min-width: 1201px) and (min-height: 501px) {
+  .hud-grid.voice > .comms-panel,
+  .hud-grid.voice .log-panel,
+  .hud-grid.voice .terminal-panel { display: none; }
+  .hud-grid.voice > .stage { grid-column: 1 / 3; grid-row: 1; }
+  .hud-grid.voice > .hud-right { grid-column: 3; grid-row: 1; }
+
+  /* The usage panel gets a little shorter, to leave the core room underneath. */
+  .hud-grid.voice .usage-panel .panel-head { padding: 12px 0 8px; }
+  .hud-grid.voice .usage-panel .panel-body { padding-block: 8px 10px; }
+  .hud-grid.voice .usage-panel .usage-section { margin-top: 10px; padding-top: 8px; }
+  .hud-grid.voice .usage-panel .usage-label:not(.usage-section .usage-label) { margin: 10px 0 6px; }
+  .hud-grid.voice .usage-panel .model-btn { aspect-ratio: 1.6; }
+
+  .hud-grid.voice .voice-core { display: flex; flex: 1; min-height: 0; }
+  .voice-core .core { gap: 10px; padding: 6px 0; overflow-y: auto; }
+  .voice-core .reactor { width: min(88%, 32vh); flex-shrink: 0; }
+}
+
+/* Going to voice: chat, log and terminal leave first, then the rest moves in.
+   Going back: the core and usage panel settle first, then chat, log and terminal return.
+   Three ways out, picked at random per switch (html[data-anim], App.tsx morph). */
+::view-transition-group(*) {
+  animation-duration: 1s;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+}
+html[data-morph='voice']::view-transition-group(*) { animation-delay: 0.4s; }
+html[data-morph='voice']::view-transition-group(comms),
+html[data-morph='voice']::view-transition-group(fold),
+html[data-morph='voice']::view-transition-group(log),
+html[data-morph='voice']::view-transition-group(term) { animation-delay: 0s; }
+html[data-morph='text']::view-transition-group(comms),
+html[data-morph='text']::view-transition-group(fold),
+html[data-morph='text']::view-transition-group(log),
+html[data-morph='text']::view-transition-group(term) { animation-delay: 0.55s; }
+
+/* Animation 1: the chat slides down, the log and terminal slide right. */
+::view-transition-old(comms):only-child,
+::view-transition-old(fold):only-child { animation: vt-down 0.7s cubic-bezier(0.5, 0, 0.75, 0) both; }
+::view-transition-new(comms):only-child,
+::view-transition-new(fold):only-child { animation: vt-down 0.75s cubic-bezier(0.25, 1, 0.5, 1) 0.55s reverse both; }
+::view-transition-old(log):only-child,
+::view-transition-old(term):only-child { animation: vt-right 0.7s cubic-bezier(0.5, 0, 0.75, 0) both; }
+::view-transition-new(log):only-child,
+::view-transition-new(term):only-child { animation: vt-right 0.75s cubic-bezier(0.25, 1, 0.5, 1) 0.55s reverse both; }
+
+/* Animation 2: the chat drifts off to the left, the log and terminal drop down. */
+html[data-anim='2']::view-transition-old(comms):only-child,
+html[data-anim='2']::view-transition-new(comms):only-child { animation-name: vt-left; }
+html[data-anim='2']::view-transition-old(log):only-child,
+html[data-anim='2']::view-transition-new(log):only-child,
+html[data-anim='2']::view-transition-old(term):only-child,
+html[data-anim='2']::view-transition-new(term):only-child { animation-name: vt-down; }
+
+/* Animation 3: the chat folds in half like paper (fold.ts), then drops; the log goes
+   right, the terminal drops. Coming back it rises folded, then unfolds. */
+html[data-anim='3']::view-transition-old(term):only-child,
+html[data-anim='3']::view-transition-new(term):only-child { animation-name: vt-down; }
+
+@keyframes vt-down { to { transform: translateY(110vh); } }
+@keyframes vt-left { to { transform: translateX(calc(-100% - 40px)); } }
+
+/* The top half of the folding chat: a copy of the panel on the front, a plain back. */
+.fold-leaf {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  transform-style: preserve-3d; /* no view-transition-name here: it flattens the 3D (fold.ts) */
+}
+.fold-leaf > .fold-front {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  view-transition-name: none;
+  clip-path: inset(0 0 50% 0);
+  backface-visibility: hidden;
+}
+.fold-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateX(180deg);
+  backface-visibility: hidden;
+  background: linear-gradient(0deg, rgba(28, 16, 54, 0.95), rgba(12, 7, 24, 0.98));
+  border: 1px solid var(--border);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+}
+.fold-leaf.folded > .fold-front { visibility: hidden; }
+.fold-leaf.folded > .fold-back { transform: none; }
+.fold-back {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+.fold-back svg {
+  transform: rotate(-16deg);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 6px var(--glow));
+}
