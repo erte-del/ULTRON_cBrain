@@ -1967,3 +1967,10 @@
   opacity: 0.85;
   filter: drop-shadow(0 0 6px var(--glow));
 }
+
+.btn-approve kbd,
+.btn-deny kbd {
+  font: inherit;
+  opacity: 0.6;
+  margin-left: 4px;
+}
