@@ -379,6 +379,17 @@ def run(args: dict[str, Any]) -> tuple[str, bool]:
     return text.strip() or "(no output; print the results)", r.returncode != 0
 
 
+def stop_old_copies() -> None:
+    """Stop earlier ultron_pc.py processes. Stopping the task leaves its --no-update child running, and it
+    would keep answering on the port with the old code."""
+    keep = f"{os.getpid()},{os.getppid()}"
+    try:
+        ps("Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | Where-Object { $_.CommandLine -like "
+           f"'*ultron_pc.py*' -and $_.ProcessId -notin @({keep}) }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}")
+    except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
+        print(f"couldn't stop old copies: {e}", file=sys.stderr)
+
+
 def update() -> bool:
     """git pull the repo this file is in. True if new code came down. Any failure (offline, local
     edits, diverged history) keeps the code as it is."""
@@ -443,8 +454,10 @@ if __name__ == "__main__":
         sys.exit(f"No token in {TOKEN_FILE}: run install.ps1 first.")
     if sys.stderr is None:  # pythonw has no console: log next to the script
         sys.stderr = open(Path(__file__).with_name("ultron_pc.log"), "a", buffering=1, encoding="utf-8")
+    stop_old_copies()
     if "--no-update" not in sys.argv and update():
         # New code on disk: run it, and pass its exit code on so the task's restart-on-failure still works.
         sys.exit(subprocess.call([sys.executable, __file__, "--no-update"]))
     # ponytail: one request at a time (keeps pycaw's COM on one thread). Fine for one Ultron.
+    HTTPServer.allow_reuse_address = False  # on Windows it lets a second copy share the port, and the old one answers
     HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
