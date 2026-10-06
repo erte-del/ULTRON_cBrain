@@ -293,15 +293,21 @@ async def mac_read(args: dict[str, Any]) -> dict[str, Any]:
 # --- changing ------------------------------------------------------------------------
 
 def find_app(name: str) -> Path | None:
-    """'safari' -> /Applications/Safari.app. Only apps in the Applications folders."""
+    """'safari' -> Safari.app, 'unity' -> Unity Hub.app, 'chrome' -> Google Chrome.app: the exact name,
+    else the shortest name starting with it, else the shortest containing it. Only the Applications folders."""
     want = name.strip().lower().removesuffix(".app")
     if not want or "/" in want:
         return None
-    for d in APP_DIRS:
-        for app in d.glob("*.app") if d.is_dir() else []:
-            if app.stem.lower() == want:
-                return app
+    apps = sorted(installed_apps(), key=lambda a: len(a.stem))
+    for match in (lambda n: n == want, lambda n: n.startswith(want), lambda n: want in n):
+        found = next((a for a in apps if match(a.stem.lower())), None)
+        if found:
+            return found
     return None
+
+
+def installed_apps() -> list[Path]:
+    return [app for d in APP_DIRS if d.is_dir() for app in d.glob("*.app")]
 
 
 async def _shortcut(name: str, text: str) -> str:
@@ -346,7 +352,8 @@ async def _trash(path: str) -> str:
 
 @tool(
     "mac_change",
-    "Do something on this Mac. action: 'open_app' (name), 'open_url' (url, http or https), "
+    "Do something on this Mac. action: 'open_app' (name: the app's name or part of it, e.g. 'unity'; "
+    "if it isn't found you get the list of installed apps to pick from), 'open_url' (url, http or https), "
     "'open_file' (path: a document opens in its app, a folder shows in Finder), "
     "'run_shortcut' (name, optional text as its input), 'copy' (text to the clipboard), "
     "'volume' (level 0-100), 'mute' (on), 'dark_mode' (on), 'move' (path → to, also renames; "
@@ -376,7 +383,9 @@ async def mac_change(args: dict[str, Any]) -> dict[str, Any]:
         if action == "open_app":
             app = find_app(name)
             if app is None:
-                return _text(f"No app called {name!r} in the Applications folders.", True)
+                names = sorted({a.stem for a in installed_apps()}, key=str.lower)
+                return _text(f"No app called {name!r}. Installed apps: {', '.join(names)}. If one of these is "
+                             "what the user meant, open it by that name; otherwise say it isn't installed.", True)
             await _out("open", "-a", str(app))
             return _text(f"Opened {app.stem}.")
         if action == "open_url":

@@ -129,6 +129,10 @@ class MacTest(unittest.TestCase):
             self.assertTrue(call(mac.mac_change, action="open_app", name=str(self.root / "x.app"))["is_error"])
         self.assertEqual(mac.find_app("finder"), None)  # Finder lives in CoreServices, not Applications
         self.assertEqual(mac.find_app("Calculator"), Path("/System/Applications/Calculator.app"))
+        self.assertEqual(mac.find_app("calcul"), Path("/System/Applications/Calculator.app"))  # start of a name
+        self.assertEqual(mac.find_app("culator"), Path("/System/Applications/Calculator.app"))  # anywhere in it
+        with mock.patch.object(mac, "_run", self.fake_run):
+            self.assertIn("Calculator", call(mac.mac_change, action="open_app", name="Calculater")["content"][0]["text"])
 
     def test_location(self):
         def fake_open(answer):
