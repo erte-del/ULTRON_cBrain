@@ -6,6 +6,7 @@ One Claude Code process stays running for the whole conversation
 
 import asyncio
 import logging
+import re
 import time
 import warnings
 from typing import AsyncIterator
@@ -26,7 +27,7 @@ from claude_agent_sdk import (
 )
 
 import usage
-from config import CONNECTORS, EFFORT, GATEWAY_MODEL, PROVIDER, STORAGE_DIR, set_login
+from config import CONNECTORS, EFFORT, GATEWAY_MODEL, OLLAMA_CONNECTORS, OLLAMA_URL, PROVIDER, STORAGE_DIR, set_login
 from storage import memory_store
 from tools import registry
 
@@ -59,10 +60,34 @@ BLOCKED_TOOLS = [
     "Glob", "Grep", "Agent", "Task", "Skill",
 ]
 
+# Ultron's own tools a local model may see in a scheduled job. The rest (canvas, images,
+# 3D, ...) and every tool that changes something are hidden: a small model's context is
+# 32k tokens, and all tools together overflow it.
+LOCAL_TOOLS = {
+    "check_homework", "syllabus", "textbook", "lectures", "find_contact", "recall",
+    "search_notes", "read_note", "list_jobs", "mac_read", "maps", "flights", "youtube", "amazon_read",
+}
+_local_hidden: list[str] = []  # worked out by the first local session, then reused
+
+
+def hidden_for_local(servers: list[dict]) -> list[str]:
+    """Tool names a local job's model shouldn't see, from get_mcp_status()."""
+    hidden = []
+    for server in servers:
+        prefix = "mcp__" + re.sub(r"[^A-Za-z0-9_-]", "_", server["name"]) + "__"
+        for tool in server.get("tools") or []:
+            name = tool["name"] if isinstance(tool, dict) else tool
+            full = prefix + name
+            if registry.classify(full) != "read" or (full.startswith(registry.PREFIX) and name not in LOCAL_TOOLS) \
+                    or full.startswith(registry.ASSETS_PREFIX):
+                hidden.append(full)
+    return hidden
+
 
 class ClaudeCodeBrain:
     def __init__(self, model: ModelAlias = "sonnet", can_use_tool: CanUseTool | None = None) -> None:
-        self.provider = PROVIDER  # "claude" (Pro login) or "omniroute" (gateway)
+        # "claude" (Pro login), "omniroute" (gateway), or "ollama" (local model, scheduled jobs only)
+        self.provider = PROVIDER
         self.gateway_model = GATEWAY_MODEL  # picked in the app (OmniRoute only)
         # A Claude alias (haiku / sonnet / opus), or a gateway model on OmniRoute.
         self._model: str = model if self.provider == "claude" else self.gateway_model
@@ -92,6 +117,7 @@ class ClaudeCodeBrain:
 
     def _options(self) -> ClaudeAgentOptions:
         on_claude = self.provider == "claude"
+        local = self.provider == "ollama"  # a local model, still on the Pro login for the connectors
         return ClaudeAgentOptions(
             # Replaces Claude Code's coding prompt. Your school notes and what Ultron remembers
             # about you are added each time a conversation starts.
@@ -104,7 +130,8 @@ class ClaudeCodeBrain:
             # WebSearch runs on Anthropic's servers, and there are no connectors to search.
             tools=registry.builtin_tools() if on_claude else ["WebFetch"],
             # belt and braces; ask_expert calls Claude Opus, which a gateway doesn't have
-            disallowed_tools=BLOCKED_TOOLS if on_claude else [*BLOCKED_TOOLS, registry.PREFIX + "ask_expert"],
+            disallowed_tools=BLOCKED_TOOLS if on_claude else [*BLOCKED_TOOLS, registry.PREFIX + "ask_expert",
+                                                              *(_local_hidden if local else ())],
             hooks=registry.hooks(),  # e.g. WebFetch may not reach local addresses
             mcp_servers=registry.mcp_servers(),  # Ultron's own tools (ask_expert, ...)
             allowed_tools=registry.auto_allowed(),  # 'read' tools run without asking
@@ -116,6 +143,17 @@ class ClaudeCodeBrain:
                 "ENABLE_TOOL_SEARCH": "true" if on_claude else "false",
                 # A gateway that's down or broken: give up after a few seconds, not minutes.
                 **({} if on_claude else {"CLAUDE_CODE_MAX_RETRIES": "2"}),
+                # Ollama speaks Claude's API itself. Set here, not in os.environ, so your own
+                # chat isn't touched. No token of its own: the Pro login is what loads the
+                # connectors (empty clears a gateway's, if your chat is on OmniRoute).
+                **({
+                    "ANTHROPIC_BASE_URL": OLLAMA_URL,
+                    "ANTHROPIC_AUTH_TOKEN": "",
+                    "ANTHROPIC_API_KEY": "",
+                    # qwen3 thought ~2000 tokens before every step: minutes per job on a Mac.
+                    "MAX_THINKING_TOKENS": "0",
+                    **{f"ANTHROPIC_DEFAULT_{m}_MODEL": self._model for m in ("HAIKU", "SONNET", "OPUS")},
+                } if self.provider == "ollama" else {}),
             },
             include_partial_messages=True,  # stream text word by word
             # Tool results with pictures (slides, photos) come as one JSON line; the SDK's
@@ -125,7 +163,7 @@ class ClaudeCodeBrain:
             # False = also load the claude.ai connectors (Gmail, ...) of the Pro account.
             # Their tools are labelled read/act in tools/connectors.py. Never through a
             # gateway: your emails would go to other providers' models.
-            strict_mcp_config=not on_claude,
+            strict_mcp_config=not (on_claude or local),
             skills=[],
             cwd=STORAGE_DIR,
             resume=self._session_id,
@@ -133,12 +171,19 @@ class ClaudeCodeBrain:
 
     async def _connect(self) -> ClaudeSDKClient:
         if self._client is None:
-            set_login(self.provider)
+            if self.provider != "ollama":
+                set_login(self.provider)
             client = ClaudeSDKClient(self._options())
             await client.connect()
             self._client = client
             log.info("Claude Code session started (provider=%s, model=%s)", self.provider, self._model)
             await self._wait_for_connectors(client)
+            if self.provider == "ollama" and not _local_hidden:
+                servers = (await client.get_mcp_status()).get("mcpServers", [])
+                _local_hidden.extend(hidden_for_local(s for s in servers if s.get("status") == "connected"))
+                log.info("Local jobs: hiding %d tools; starting again without them", len(_local_hidden))
+                await self.close()
+                return await self._connect()
         return self._client
 
     async def _wait_for_connectors(self, client: ClaudeSDKClient) -> None:
@@ -160,7 +205,7 @@ class ClaudeCodeBrain:
                 break
             await asyncio.sleep(0.5)
         await self._apply_connector_choice(client, servers)
-        self._has_connectors = self.provider != "claude" or any(
+        self._has_connectors = self.provider == "omniroute" or any(
             s["name"].startswith("claude.ai ") for s in servers
         )
         self._connector_retry_at = time.time() + CONNECTOR_RETRY_S
@@ -190,11 +235,12 @@ class ClaudeCodeBrain:
     async def _apply_connector_choice(self, client: ClaudeSDKClient, servers: list) -> None:
         """Switch claude.ai connectors on or off to match JARVIS_CONNECTORS (.env).
         Claude Code remembers the switch, so both directions are needed."""
+        chosen = OLLAMA_CONNECTORS if self.provider == "ollama" else CONNECTORS
         for server in servers:
             name = server.get("name", "")
             if not name.startswith("claude.ai "):
                 continue
-            wanted = "all" in CONNECTORS or name.removeprefix("claude.ai ").lower() in CONNECTORS
+            wanted = "all" in chosen or name.removeprefix("claude.ai ").lower() in chosen
             is_off = server.get("status") == "disabled"
             if wanted == is_off:
                 try:
@@ -224,7 +270,7 @@ class ClaudeCodeBrain:
         async with self._lock:
             finished = False
             try:
-                if model != self._model and self.provider == "omniroute":
+                if model != self._model and self.provider != "claude":
                     # Switching model in a running Claude Code asks the gateway to confirm
                     # the name, and OmniRoute keeps its model list behind its own key. So
                     # restart with the new model instead; `resume` keeps the conversation.

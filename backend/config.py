@@ -110,6 +110,22 @@ if not GATEWAY_MODELS:
 # Claude Code's own sonnet / opus / haiku names (e.g. for WebFetch) go to this one.
 GATEWAY_MODEL = GATEWAY_MODELS[0]
 
+# A local model (Ollama) for scheduled jobs, so background work doesn't use the Pro limit.
+# Your own chats always stay on the brain you picked. "" = jobs run on that brain too.
+# Jobs with an "allow" list (they change things) or "brain": "claude" in jobs.json stay on Claude.
+OLLAMA_URL = (os.getenv("JARVIS_OLLAMA_URL") or "http://localhost:11434").strip().rstrip("/")
+OLLAMA_MODEL = os.getenv("JARVIS_OLLAMA_MODEL", "").strip()
+# Claude Code only loads the claude.ai connectors on the Pro login, so local jobs send that
+# login along to Ollama (which ignores it). It must never leave this machine.
+if re.match(r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$", OLLAMA_URL) is None:
+    raise SystemExit(f"JARVIS_OLLAMA_URL={OLLAMA_URL!r}: must be on this machine, e.g. http://localhost:11434")
+# The claude.ai connectors local jobs may use. Fewer = less for a small model to read.
+OLLAMA_CONNECTORS = [
+    c.strip().lower()
+    for c in os.getenv("JARVIS_OLLAMA_CONNECTORS", "Gmail, TickTick, Google Drive, Google Calendar, Shopify").split(",")
+    if c.strip()
+]
+
 # If any of these are set, Claude Code uses them instead of the Pro login.
 _API_AUTH_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")
 # Where Claude Code's model names go. Your own values (from .env) are kept for the

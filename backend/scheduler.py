@@ -1,7 +1,11 @@
 """Runs scheduled jobs (storage/job_store.py): Ultron acting on its own.
 
-A loop checks every half minute which jobs are due. Each run is its own short Claude
+A loop checks every half minute which jobs are due. Each run is its own short
 conversation, separate from yours, and tells you the result through notify.py.
+
+Jobs run on the local model (JARVIS_OLLAMA_MODEL) when one is set, except jobs that
+change things ("allow" list) or say "brain": "claude". If the local model is down or
+fails twice, the job runs on Claude instead, and the notification says so.
 
 Safe defaults:
   - a job can only use 'read' tools: anything that sends, creates, changes or deletes is
@@ -15,6 +19,7 @@ Safe defaults:
 import asyncio
 import logging
 import time
+import urllib.request
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
@@ -104,9 +109,21 @@ def job_prompt(job: dict) -> str:
     return "\n".join([*lines, job["prompt"]])
 
 
-async def _ask(job: dict) -> str:
+def runs_local(job: dict) -> bool:
+    return bool(config.OLLAMA_MODEL) and not job.get("allow") and job.get("brain") != "claude"
+
+
+def ollama_up() -> bool:
+    try:
+        with urllib.request.urlopen(config.OLLAMA_URL + "/api/version", timeout=3):
+            return True
+    except OSError:
+        return False
+
+
+async def _ask(job: dict, local: bool = False) -> str:
     """Run the job's prompt in a fresh conversation; the reply text. RuntimeError if it failed."""
-    provider, gateway_model = current_brain()
+    provider, gateway_model = ("ollama", config.OLLAMA_MODEL) if local else current_brain()
     # Watchers run often, so they get the cheapest model.
     model = ("haiku" if job["every_min"] else "sonnet") if provider == "claude" else gateway_model
     brain = ClaudeCodeBrain(can_use_tool=_gate(job))
@@ -126,6 +143,8 @@ async def _ask(job: dict) -> str:
         raise RuntimeError(f"no answer within {JOB_TIMEOUT_S // 60} minutes") from None
     finally:
         await brain.close()
+    if local and not text.strip():  # small models sometimes stop without a word: not "nothing to say"
+        raise RuntimeError("it gave no answer")
     return text.strip()
 
 
@@ -137,18 +156,34 @@ async def run_job(job_id: str) -> None:
         except KeyError:
             return
         try:
-            five = usage.snapshot("claude", 0)["windows"].get("five_hour")
-            if current_brain()[0] == "claude" and five and five["used"] >= config.JOBS_MAX_USAGE:
-                job_store.log_run(job, "skipped", f"{round(five['used'] * 100)}% of the 5-hour limit is used")
-                return
             log.info("Running job %s (%s)", job["id"], job["title"])
-            text = await _ask(job)
+            text, footer = None, ""
+            if runs_local(job):
+                footer = "(The local model wasn't running, so Claude did this.)"
+                if await asyncio.to_thread(ollama_up):
+                    for attempt in (1, 2):
+                        try:
+                            text = await _ask(job, local=True)
+                            footer = f"({config.OLLAMA_MODEL})"
+                            break
+                        except RuntimeError as e:
+                            log.warning("Job %s failed on the local model (try %d): %s", job_id, attempt, e)
+                            footer = f"(The local model failed: {str(e)[:100]}. Claude did this instead.)"
+            if text is None:
+                five = usage.snapshot("claude", 0)["windows"].get("five_hour")
+                if current_brain()[0] == "claude" and five and five["used"] >= config.JOBS_MAX_USAGE:
+                    reason = f"{round(five['used'] * 100)}% of the 5-hour limit is used"
+                    job_store.log_run(job, "skipped", reason)
+                    if footer:  # it should have run locally: don't let it vanish silently
+                        await notify.push(job["title"], f"Skipped: the local model failed and {reason}.")
+                    return
+                text = await _ask(job)
             if not text or text.upper().startswith(NOTHING):
                 job_store.log_run(job, "nothing")
                 return
             job_store.log_run(job, "told", text)
             job_store.change(job_id, last_text=text[:500], **({"enabled": False} if job["once"] else {}))
-            await notify.push(job["title"], text)
+            await notify.push(job["title"], f"{text}\n\n{footer}" if footer else text)
         except KeyError:
             pass  # deleted while it ran
         except Exception as e:
