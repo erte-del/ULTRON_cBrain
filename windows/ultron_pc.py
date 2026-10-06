@@ -13,6 +13,8 @@ overwritten, "trash" goes to the Recycle Bin, only documents open, and apps only
 subfolder, killed after 60 s. Ultron asks you before every /run.
 
 Setup: install Python 3.11+ and Tailscale (the Mac's account), then run install.ps1 once.
+Updates: every start (logon, or Stop/Start-ScheduledTask Ultron) git-pulls this repo first and runs
+the new code. Offline or local edits: it keeps running the code it has.
 """
 
 import ctypes
@@ -43,6 +45,7 @@ DOCUMENTS = {"pdf", "txt", "md", "rtf", "csv", "tsv", "json", "xml", "log", "doc
 ACTIONS = ["open_app", "open_url", "open_file", "open_terminal", "copy", "volume", "mute", "dark_mode", "media", "move", "trash"]
 MEDIA_KEYS = {"play_pause": 0xB3, "next": 0xB0, "previous": 0xB1}
 THEME_KEY = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+REPO = Path(__file__).resolve().parents[1]
 
 
 def ps(script: str, stdin: str = "") -> str:
@@ -287,6 +290,34 @@ def run(args: dict[str, Any]) -> tuple[str, bool]:
     return text.strip() or "(no output; print the results)", r.returncode != 0
 
 
+def update() -> bool:
+    """git pull the repo this file is in. True if new code came down. Any failure (offline, local
+    edits, diverged history) keeps the code as it is."""
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}  # never wait on a login
+
+    def git(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True, errors="replace",
+                              timeout=60, env=env, creationflags=NO_WINDOW)
+    try:
+        before = git("rev-parse", "HEAD").stdout.strip()
+        pulled = git("pull", "--ff-only")
+        if pulled.returncode:
+            print(f"update skipped, running the code as it is: {pulled.stderr.strip()}", file=sys.stderr)
+            return False
+        after = git("rev-parse", "HEAD").stdout.strip()
+        if before == after:
+            return False
+        if git("diff", "--name-only", before, after, "--", "windows/requirements.txt").stdout.strip():
+            subprocess.run([sys.executable, "-m", "pip", "install", "--user", "-r",
+                            str(Path(__file__).with_name("requirements.txt"))],
+                           capture_output=True, timeout=300, creationflags=NO_WINDOW)
+        print(f"updated {before[:7]} -> {after[:7]}", file=sys.stderr)
+        return True
+    except (OSError, subprocess.TimeoutExpired) as e:  # no git, or the network hung
+        print(f"update skipped: {e}", file=sys.stderr)
+        return False
+
+
 ROUTES = {"/read": read, "/change": change, "/run": run}
 
 
@@ -320,5 +351,8 @@ if __name__ == "__main__":
         sys.exit(f"No token in {TOKEN_FILE}: run install.ps1 first.")
     if sys.stderr is None:  # pythonw has no console: log next to the script
         sys.stderr = open(Path(__file__).with_name("ultron_pc.log"), "a", buffering=1, encoding="utf-8")
+    if "--no-update" not in sys.argv and update():
+        # New code on disk: run it, and pass its exit code on so the task's restart-on-failure still works.
+        sys.exit(subprocess.call([sys.executable, __file__, "--no-update"]))
     # ponytail: one request at a time (keeps pycaw's COM on one thread). Fine for one Ultron.
     HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

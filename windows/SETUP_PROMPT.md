@@ -65,4 +65,5 @@ moving on. Don't change any settings I didn't ask for.
    Don't put the token anywhere else (no files, commits or messages).
 
 Ultron's files on this PC live in `%USERPROFILE%\Ultron Files` (set `ULTRON_PC_FOLDER` to change it).
-To update later: `git pull`, then `Stop-ScheduledTask Ultron; Start-ScheduledTask Ultron`.
+Updates are automatic: every time the agent starts (each logon) it pulls the latest code from
+GitHub. To update right away: `Stop-ScheduledTask Ultron; Start-ScheduledTask Ultron`.

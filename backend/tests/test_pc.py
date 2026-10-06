@@ -4,6 +4,7 @@ Only the cross-platform parts run here (token, folder fence, no overwrites, unre
 """
 
 import asyncio
+import subprocess
 import importlib.util
 import tempfile
 import threading
@@ -82,6 +83,25 @@ class PcTest(unittest.TestCase):
     def test_bad_input(self):
         self.assertTrue(call(pc.pc_change, action="open_url", url="file:///C:/Windows")[1])
         self.assertTrue(call(pc.pc_change, action="format_disk")[1])
+
+    def test_update_pulls_new_code(self):
+        def git(*args, cwd):
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=cwd, check=True,
+                           capture_output=True)
+        origin, clone = self.root.parent / "origin", self.root.parent / "clone"
+        origin.mkdir()
+        git("init", "-q", "-b", "main", cwd=origin)
+        git("commit", "-q", "--allow-empty", "-m", "one", cwd=origin)
+        git("clone", "-q", str(origin), str(clone), cwd=origin)
+        with mock.patch.object(agent, "REPO", clone):
+            self.assertFalse(agent.update())  # nothing new
+            git("commit", "-q", "--allow-empty", "-m", "two", cwd=origin)
+            self.assertTrue(agent.update())
+            (clone / "f").write_text("local"); git("add", "f", cwd=clone); git("commit", "-q", "-m", "mine", cwd=clone)
+            git("commit", "-q", "--allow-empty", "-m", "three", cwd=origin)
+            self.assertFalse(agent.update())  # diverged: keeps running what it has
+        with mock.patch.object(agent, "REPO", self.root.parent / "nowhere"):
+            self.assertFalse(agent.update())
 
     def test_wrong_token(self):
         with mock.patch.object(config, "PC_TOKEN", "wrong"):
