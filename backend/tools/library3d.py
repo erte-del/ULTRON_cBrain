@@ -22,11 +22,12 @@ import io
 import json
 import logging
 import re
+import urllib.error
+import urllib.request
 from urllib.parse import urlparse
 from dataclasses import dataclass, field
 from typing import Any
 
-import httpx
 import trimesh
 from claude_agent_sdk import tool
 
@@ -238,16 +239,19 @@ def _allowed_host(url: str) -> bool:
     return parsed.scheme == "https" and any(host == h or host.endswith("." + h) for h in config.ASSETS_3D_HOSTS)
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None  # a redirect could lead off the allowed hosts, so it surfaces as an HTTP error
+
+
 def _download(url: str) -> bytes:
     """The file at url, refusing redirects and anything over MAX_ASSET_BYTES."""
-    data = bytearray()
-    with httpx.stream("GET", url, timeout=60, follow_redirects=False) as r:
-        r.raise_for_status()
-        for chunk in r.iter_bytes():
-            data += chunk
-            if len(data) > MAX_ASSET_BYTES:
-                raise ValueError(f"bigger than {MAX_ASSET_BYTES // 2**20} MB")
-    return bytes(data)
+    opener = urllib.request.build_opener(_NoRedirect)
+    with opener.open(urllib.request.Request(url, headers={"User-Agent": "Ultron"}), timeout=60) as r:
+        data = r.read(MAX_ASSET_BYTES + 1)
+    if len(data) > MAX_ASSET_BYTES:
+        raise ValueError(f"bigger than {MAX_ASSET_BYTES // 2**20} MB")
+    return data
 
 
 def _read_downloaded(glb: bytes) -> tuple[int, list[float]]:
