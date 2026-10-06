@@ -3,8 +3,10 @@
 """
 
 import asyncio
+import http.server
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -153,6 +155,36 @@ class AssetsDevTest(unittest.TestCase):
 
     def test_cdn_subdomains_of_an_allowed_host_work(self):
         self.assertTrue(library3d._allowed_host("https://cdn.3dassets.dev/x.glb"))
+
+    def test_real_download_refuses_redirects_and_big_files(self):
+        library3d._download = self.old[1]  # the real one, against a local server
+        small = library3d.MAX_ASSET_BYTES
+        library3d.MAX_ASSET_BYTES = 100
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == "/ok":
+                    self.send_response(200); self.end_headers(); self.wfile.write(b"x" * 50)
+                elif self.path == "/big":
+                    self.send_response(200); self.end_headers(); self.wfile.write(b"x" * 500)
+                else:
+                    self.send_response(302); self.send_header("Location", "http://example.com/"); self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{server.server_port}"
+        try:
+            self.assertEqual(library3d._download(base + "/ok"), b"x" * 50)
+            with self.assertRaises(ValueError):
+                library3d._download(base + "/big")
+            with self.assertRaises(Exception):  # the redirect is not followed
+                library3d._download(base + "/moved")
+        finally:
+            server.shutdown()
+            library3d.MAX_ASSET_BYTES = small
 
     def test_a_failed_download_is_explained(self):
         def boom(url):
