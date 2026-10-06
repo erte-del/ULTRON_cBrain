@@ -1,467 +1,496 @@
-# Graph Report - Jarvis_cBrain  (2026-10-02)
+# Graph Report - ULTRON_cBrain  (2026-10-06)
 
 ## Corpus Check
-- 140 files · ~80,907 words
+- 159 files · ~95,926 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 7 file(s) not represented in the graph (top: (none) 4, .css 2, .example 1)
+- Unclassified: 12 file(s) not represented in the graph (top: (none) 7, .css 2, .example 1)
 
 ## Summary
-- 1688 nodes · 3621 edges · 117 communities (70 shown, 47 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 135 edges (avg confidence: 0.9)
-- Token cost: 0 input · 0 output
-
-## Graph Freshness
-- Built from commit: `e31003cd`
-- Run `git rev-parse HEAD` and compare to check if the graph is stale.
-- Run `graphify update .` after code changes (no API cost).
+- 1946 nodes · 4211 edges · 139 communities (72 shown, 67 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 144 edges (avg confidence: 0.88)
+- Token cost: 203,700 input · 0 output
 
 ## Community Hubs (Navigation)
-- model_store.py
-- ws.ts
-- shapes.py
-- image_ops.py
-- image_store.py
-- StoreTest
-- package.json
-- main.py
-- web.py
-- scheduler.py
-- websocket_endpoint
-- RouterTest
-- FakeBrain
-- compilerOptions
-- Brain
-- events.py
-- compilerOptions
-- config.py
-- mac.py
-- re
-- ._connect
-- spotify.py
-- Locator
-- Jarvis_cBrain
-- asyncio
-- job_store.py
-- ApiBrain
-- video.py
-- .oxlintrc.json
-- Ultron
-- Ultron Frontend index.html (Vite entry, #root, /src/main.tsx)
-- typing
-- Favicon (glowing cyan orb)
-- tsconfig.json
-- start_ultron.sh
-- db.py
-- memory_store.py
-- voice/__init__.py
-- stt.py
-- tts.py
-- vad.py
-- make_app.sh
-- stop_ultron.sh
-- Stage.tsx
-- JobsTest
-- registry.py
-- textbook.py
-- Canvas.tsx
-- Chat.tsx
-- storage/__init__.py
-- TopBar.tsx
-- notes.py
-- canvas.py
-- terminal.py
-- slides.py
-- App.tsx
-- SidePanels.tsx
-- chat_store.py
-- youtube.py
-- important.py
-- Terminal.tsx
-- Ultron — Full Build Prompt
-- models3d.py
-- Trimesh
-- Ultron To-Do List
-- GateTest
-- HomeworkTest
-- contacts.py
-- floating_parts
-- test_backup.py
-- ContactsTest
-- VideoTest
-- phone.py
-- whatsapp.py
-- AmazonTest
-- FakeClient
-- ImageGenTest
-- MemoryTest
-- NotesTest
-- run
-- consult_expert
-- telegram.py
-- FlightsTest
-- ClassifyTest
-- UploadTest
-- Model3DViewer.tsx
-- now_note
-- .can_use_tool
-- upload
-- NeedsOkTest
-- SlidesTest
-- TelegramTest
-- YoutubeTest
-- ask_expert
-- _blender
-- What Ultron can do
-- StartTest
-- LoginTest
-- ShapesTest
-- SyllabusTest
-- test_textbook.py
-- FloatingTest
-- NewShapesTest
-- RemindersTest
-- DueTest
-- UsageNumbersTest
-- push
-- ChatStoreTest
-- SmallChangesTest
-- TerminalTest
-- autostart.sh
-- mcp/README.md
-- backup.sh
-- setup_images.sh
-- setup_location.sh
-- setup_video.sh
-- itertools
+- Canvas Events & Config
+- Amazon & Flights Browsing
+- Storage & Tool Test Suite
+- Image Store & Generation
+- 3D Shape Builder
+- Image Ops Tests
+- Blender Scripts
+- Agent & Confirmation Gate
+- Connectors & Important Files
+- Scheduled Jobs
+- OmniRoute Gateway
+- Config & System Prompts
+- Slides Builder
+- HTTP Asset Endpoints
+- Frontend Dependencies
+- Screen Overlay App
+- Brain Protocol & Events
+- Mac Tool Tests
+- Claude Code Brain Session
+- Read-only Tool Tests
+- Web Helper & URL Safety
+- 3D Library Importer
+- App Shell & Panels
+- Chat UI
+- Canvas Viewers
+- Textbook & Syllabus
+- Stage & Voice Orb
+- 3D Model Store
+- Confirm Card & WebSocket Client
+- Ultron Conversation Loop
+- Swift Location Types
+- Swift Overlay Panel
+- Memory Store
+- 3D Preview & Export
+- TS App Config
+- 3D & Canvas Features (docs)
+- Top Bar Menus
+- Device Hub & Senders
+- Library & Homework Tests
+- YouTube Tool
+- TS Node Config
+- Obsidian Notes Tool
+- Swift App Delegate
+- Terminal UI
+- Notifications & Telegram
+- 3DAssets Download Tests
+- Chat Store
+- 3D Model Store Tests
+- Briefing & Action Tools (docs)
+- Connector Startup
+- Device Tests
+- Router Tests
+- Slides Tests
+- Upload Tests
+- Confirmation Gate Tests
+- Connector Retry Tests
+- Idle Restart Tests
+- Contacts Lookup
+- Swift Overlay Errors
+- Terminal Backend
+- Contacts Tests
+- Homework Tests
+- Video Tests
+- Memory Tools
+- Phone Tools
+- WhatsApp Tool
+- Brain Design (docs)
+- Image Gen Tests
+- Memory Tests
+- Notes Tests
+- PC Tool Tests
+- Expert Canvas Tests
+- WhatsApp Tests
+- Expert & Usage Tracking
+- API Brain Placeholder
+- Amazon Tests
+- Flights Tests
+- Tool Classification Tests
+- Swift Locate Script
+- Calendar & Time Note
+- Tool Permission Callback
+- Upload Store
+- Needs-OK Tests
+- Telegram Tests
+- Memory Search
+- Gateway Start Tests
+- Login Switch Tests
+- Shapes Tests
+- Syllabus Tests
+- Lint Config
+- Floating Parts Tests
+- New Shapes Tests
+- Reminders Tests
+- Scheduler Due Tests
+- Terminal Tests
+- Usage Numbers Tests
+- Chat Store Tests
+- 3D Small Changes Tests
+- Textbook Tests
+- Model Router
+- Pending Confirmations
+- WebSocket Protocol
+- Job Tool Gate
+- Gateway Error Tests
+- Seed Library Tests
+- Tool Hooks
+- Favicon & Brand
+- TS Root Config
+- Autostart Script
+- Start Script
+- Local Image Gen (FLUX)
+- SQLite DB Stub
+- Voice Pipeline Stub
+- Speech to Text
+- Text to Speech
+- Voice Activity Detection
+- HTML Entry
+- Backup Script
+- App Bundle Script
+- Image Setup Script
+- Location Setup Script
+- Video Setup Script
+- Stop Script
+- mapbox-earcut
+- numpy
+- openpyxl
+- python-dotenv
+- python-pptx
+- rtree
+- scipy
+- shapely
+- uvicorn
+- Obsidian Vault
+- Look at Screen
+- Terminal Tab
+- Local Video Gen (Wan)
+- Safety & Trust
+- Voice Phase
 
 ## God Nodes (most connected - your core abstractions)
-1. `ClaudeCodeBrain` - 29 edges
+1. `ClaudeCodeBrain` - 30 edges
 2. `websocket_endpoint()` - 22 edges
 3. `emit()` - 21 edges
-4. `Ultron` - 20 edges
-5. `compilerOptions` - 18 edges
-6. `Done` - 17 edges
-7. `_text()` - 17 edges
-8. `EditError` - 17 edges
-9. `react` - 16 edges
-10. `Ultron — Full Build Prompt` - 16 edges
+4. `Ultron` - 19 edges
+5. `_text()` - 19 edges
+6. `react` - 19 edges
+7. `compilerOptions` - 18 edges
+8. `Done` - 17 edges
+9. `EditError` - 17 edges
+10. `Overlay` - 17 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Knowing you` --references--> `Ultron`  [INFERRED]
-  README.md → backend/brain/agent.py
-- `11. Project structure` --references--> `error()`  [INFERRED]
-  JARVIS_BUILD_PROMPT.md → backend/events.py
-- `3. Contacts lookup  — *Priority 3*` --references--> `find_contact()`  [INFERRED]
-  to_do_list.md → backend/tools/contacts.py
-- `6. Notifications  — *Priority 5 (ships with the scheduler)*` --references--> `text_me()`  [INFERRED]
-  to_do_list.md → backend/tools/telegram.py
-- `Honorable mentions (later)` --references--> `youtube()`  [INFERRED]
-  to_do_list.md → backend/tools/youtube.py
+- `Claude Pro Login Brain` --semantically_similar_to--> `ClaudeCodeBrain`  [INFERRED] [semantically similar]
+  README.md → ULTRON_BUILD_PROMPT.md
+- `Confirmation Card Gate` --semantically_similar_to--> `Approval Policy (confirm.py, needs_ok)`  [INFERRED] [semantically similar]
+  README.md → ULTRON_BUILD_PROMPT.md
+- `Model Router` --semantically_similar_to--> `brain/router.py Model Routing`  [INFERRED] [semantically similar]
+  README.md → ULTRON_BUILD_PROMPT.md
+- `3D Builder (preview + Blender export)` --semantically_similar_to--> `3D Preview Mode`  [INFERRED] [semantically similar]
+  README.md → ULTRON_BUILD_PROMPT.md
+- `pycaw (Windows volume/mute)` --semantically_similar_to--> `mac_read / mac_change / run_python`  [INFERRED] [semantically similar]
+  windows/requirements.txt → to_do_list.md
 
 ## Import Cycles
 - None detected.
 
-## Communities (117 total, 47 thin omitted)
+## Hyperedges (group relationships)
+- **Daily Briefing Flow** — to_do_list_daily_briefing, to_do_list_calendar, to_do_list_ticktick_reminders, backend_storage_memory_store, backend_scheduler, backend_notify [EXTRACTED 1.00]
+- **Read/Act Approval Gate** — ultron_build_prompt_approval_policy, ultron_build_prompt_read_act_labels, ultron_build_prompt_tool_registry, readme_confirmation_gate [INFERRED 0.85]
+- **3D Preview-to-Export Pipeline** — ultron_build_prompt_scene_spec, ultron_build_prompt_3d_preview_mode, ultron_build_prompt_blender_export, backend_requirements_trimesh [EXTRACTED 1.00]
 
-### Community 0 - "model_store.py"
-Cohesion: 0.20
-Nodes (22): model_file(), 3D previews (.glb) and finished exports. Names are checked strictly., add_export(), add_version(), card_data(), create(), download_name(), Export (+14 more)
+## Communities (139 total, 67 thin omitted)
 
-### Community 1 - "ws.ts"
-Cohesion: 0.12
-Nodes (21): ConfirmCardProps, STATUS_LABEL, Action, baseReducer(), BatteryManager, ChatState, ClientEvent, clip() (+13 more)
+### Community 0 - "Canvas Events & Config"
+Cohesion: 0.05
+Nodes (67): For urlopen to HTTPS sites: Python's own certificates plus the Mac keychain's,…, ssl_context(), canvas_card(), emit(), has_clients(), Event, Send an event to every connected tab., A file from your computer (the raw bytes as the body). Images go on the canvas;… (+59 more)
 
-### Community 2 - "shapes.py"
-Cohesion: 0.14
-Nodes (24): apply_changes(), build_scene(), _linear(), _loft_sections(), _material(), Part, _points(), Any (+16 more)
+### Community 1 - "Amazon & Flights Browsing"
+Cohesion: 0.06
+Nodes (69): amazon_change(), amazon_read(), _open(), page_url(), Any, tool, Amazon: browse the user's account in Chrome on this Mac, where they're signed…, The Amazon address for 'orders', 'cart', 'lists', an ASIN or a path. ValueError… (+61 more)
 
-### Community 3 - "image_ops.py"
+### Community 2 - "Storage & Tool Test Suite"
+Cohesion: 0.09
+Nodes (34): asyncio, Local storage: SQLite + assets/ folder., Amazon: which pages it opens, which buttons it presses, never checkout. Chrome…, Saved chats: the 5-chat limit. Run from the backend folder: .venv/bin/python -m…, Homework: what's new, read-only label, errors. Chrome itself isn't touched.…, AI images, with fake mflux commands instead of FLUX. Run from the backend…, Image editing and storage tests (no network). Run from the backend folder:…, 3D library tests. Run from the backend folder: .venv/bin/python -m unittest… (+26 more)
+
+### Community 3 - "Image Store & Generation"
+Cohesion: 0.09
+Nodes (50): add_version(), card_data(), create(), _dir(), file_path(), ImageRecord, load(), open_version() (+42 more)
+
+### Community 4 - "3D Shape Builder"
+Cohesion: 0.08
+Nodes (46): apply_changes(), build_scene(), _display_name(), floating_parts(), _gap(), _linear(), _loft(), _loft_sections() (+38 more)
+
+### Community 5 - "Image Ops Tests"
 Cohesion: 0.11
 Nodes (30): OpsTest, Image, sample(), StoreTest, add_border(), add_text(), apply_all(), blur() (+22 more)
 
-### Community 4 - "image_store.py"
-Cohesion: 0.07
-Nodes (56): add_version(), card_data(), create(), _dir(), file_path(), ImageRecord, load(), open_version() (+48 more)
+### Community 6 - "Blender Scripts"
+Cohesion: 0.09
+Nodes (38): Runs INSIDE Blender (never imported by Ultron). Fixed script: Claude never…, Runs INSIDE Blender (never imported by Ultron). Fixed script: Claude never…, BaseHTTPRequestHandler, bpy, ctypes, difflib, hmac, math (+30 more)
 
-### Community 6 - "package.json"
-Cohesion: 0.06
-Nodes (35): dependencies, react, react-dom, react-markdown, remark-gfm, @xterm/addon-fit, @xterm/xterm, devDependencies (+27 more)
-
-### Community 7 - "main.py"
+### Community 7 - "Agent & Confirmation Gate"
 Cohesion: 0.08
-Nodes (21): Ultron logic: router -> brain -> events., ConfirmationGate, Event, Confirmation gate for 'act' tools. (Phase 4a) Claude Code runs 'read' tools…, Record your answer from the browser. False if nothing was waiting., Open questions, for a tab that connects while they're waiting., Ultron's brain: talks to Claude., Pushes events to every open browser tab. Replies stream back on the tab that… (+13 more)
+Nodes (26): Ultron logic: router -> brain -> events., ConfirmationGate, Confirmation gate for 'act' tools. (Phase 4a) Claude Code runs 'read' tools…, Record your answer from the browser. False if nothing was waiting., Ultron's brain: talks to Claude., Pushes events to every open browser tab. Replies stream back on the tab that…, Reaching you when you're not looking at the chat. One notification goes three…, Notifications since the user's last message, for Ultron's conversation to know… (+18 more)
 
-### Community 8 - "web.py"
+### Community 8 - "Connectors & Important Files"
+Cohesion: 0.08
+Nodes (38): _dicts(), is_read(), item_label(), parse(), Any, claude.ai connectors (Gmail, Supabase, Canva, ...): read/act labels. Claude…, mcp__claude_ai_Gmail__search_threads' -> ('Gmail', 'search_threads'). None if…, h5hdgf82...' -> 'Ultron test (2026-09-30T16:00:00+04:00)', if Ultron has seen… (+30 more)
+
+### Community 9 - "Scheduled Jobs"
+Cohesion: 0.11
+Nodes (37): jobs_list(), change_job(), jobs_event(), Something you did in the schedule panel., loop(), Run one job now and tell the user the result. Never raises., Started with the server; runs until it's cancelled at shutdown., run_job() (+29 more)
+
+### Community 10 - "OmniRoute Gateway"
+Cohesion: 0.08
+Nodes (34): explain_error(), _find_omniroute(), _is_local(), OmniRoute (the optional gateway brain): is it running, start it, explain its…, Does anything answer at the gateway's address? (Any HTTP reply counts.), The omniroute command. Ultron.app starts without your shell's PATH, so also…, Start OmniRoute in the background (on this Mac only). Returns None when it's…, OmniRoute's errors list every provider it tried. Say what to do about it. (+26 more)
+
+### Community 11 - "Config & System Prompts"
+Cohesion: 0.07
+Nodes (29): Ultron system prompt(s)., Settings loaded from .env., Point Claude Code at the Pro login (provider "claude") or at the gateway. The…, set_login(), lifespan(), FastAPI app + /ws WebSocket, bound to 127.0.0.1. Run from the backend folder:…, /ws/terminal: a real shell in a canvas tab, for you to type in (e.g. to run…, Which device you're talking from reaches Ultron, so "play this" happens on that… (+21 more)
+
+### Community 12 - "Slides Builder"
+Cohesion: 0.09
+Nodes (36): build(), _deck(), _figure(), _fill(), _free(), lectures(), make_slides(), open_slides() (+28 more)
+
+### Community 13 - "HTTP Asset Endpoints"
+Cohesion: 0.10
+Nodes (34): asset(), health(), Finished videos. Names are checked strictly., Spotify sends you back here after the login link Ultron showed you., Image files for the canvas. Names are checked strictly, so only stored images…, spotify_callback(), video_file(), card_data() (+26 more)
+
+### Community 14 - "Frontend Dependencies"
+Cohesion: 0.06
+Nodes (33): dependencies, react, react-dom, react-markdown, remark-gfm, @xterm/addon-fit, @xterm/xterm, devDependencies (+25 more)
+
+### Community 15 - "Screen Overlay App"
+Cohesion: 0.10
+Nodes (15): errorText(), OverlayApp(), Bridge, NativeScreenSource, browserCanShareScreen(), BrowserScreenSource, ImageCaptureLike, ScreenSource (+7 more)
+
+### Community 16 - "Brain Protocol & Events"
+Cohesion: 0.12
+Nodes (25): Done, Error, Brain protocol + BrainEvent types. Everything in Ultron talks to a `Brain`,…, A small piece of the reply text, streamed as it is generated., Claude started using a tool (e.g. a web search)., A tool finished. `data` is the tool's structured result, when there is one., Something for the frontend to show (canvas image, card, ...). Phase 4a+., The reply is complete. `model` is the full model ID that answered. (+17 more)
+
+### Community 17 - "Mac Tool Tests"
+Cohesion: 0.07
+Nodes (8): call(), MacTest, fake_run(), fake_open(), run(), skipUnless, JobsTest, ask()
+
+### Community 18 - "Claude Code Brain Session"
+Cohesion: 0.11
+Nodes (30): The model the conversation is on now., chats_list(), confirm_request(), confirm_resolved(), conversation_loaded(), conversation_new(), done(), error() (+22 more)
+
+### Community 19 - "Read-only Tool Tests"
+Cohesion: 0.11
+Nodes (19): Contacts: relationship words, read-only label, errors. The Contacts app itself…, Flights: the search it opens, what it refuses. Chrome isn't touched.…, This Mac: labels, the folder fence, no overwrites, what may be opened, the…, YouTube: the search it fetches, how it reads the page, what it refuses. Nothing…, flights: search Google Flights in Chrome on this Mac. (read) Google Flights has…, Homework: read Microsoft Teams from Chrome on this Mac (read-only). The…, maps: places nearby and travel times, from Apple Maps on this Mac. (read) No…, search_notes / read_note / write_note: your Obsidian vault (JARVIS_VAULT in… (+11 more)
+
+### Community 20 - "Web Helper & URL Safety"
 Cohesion: 0.10
 Nodes (21): PublicUrlTest, Web helper tests. Run from the backend folder: .venv/bin/python -m unittest…, SourcesTest, block_private_urls(), domain(), _is_public_ip(), is_public_url(), links_in_text() (+13 more)
 
-### Community 9 - "scheduler.py"
-Cohesion: 0.09
-Nodes (29): Done, Error, Brain protocol + BrainEvent types. Everything in Ultron talks to a `Brain`,…, A small piece of the reply text, streamed as it is generated., Claude started using a tool (e.g. a web search)., A tool finished. `data` is the tool's structured result, when there is one., The reply is complete. `model` is the full model ID that answered., TextDelta (+21 more)
+### Community 21 - "3D Library Importer"
+Cohesion: 0.13
+Nodes (29): _allowed_host(), _describe(), _download(), _import_glb(), _import_spec(), Item, items(), _meaningful() (+21 more)
 
-### Community 10 - "websocket_endpoint"
-Cohesion: 0.09
-Nodes (36): conversation_new(), error(), notice(), connect(), disconnect(), emit(), Event, Sender (+28 more)
+### Community 22 - "App Shell & Panels"
+Cohesion: 0.13
+Nodes (26): App(), PANE_IDS, PANES, Panel(), PanelProps, COMMANDS, countdown(), fmt() (+18 more)
 
-### Community 12 - "FakeBrain"
-Cohesion: 0.14
-Nodes (4): ExpertCanvasTest, FakeBrain, IdleStartOverTest, tab()
+### Community 23 - "Chat UI"
+Cohesion: 0.13
+Nodes (26): Chat(), ChatProps, CopyButton(), domain(), LongWait(), Message(), MicIcon(), ModelBadge() (+18 more)
 
-### Community 13 - "compilerOptions"
+### Community 24 - "Canvas Viewers"
+Cohesion: 0.13
+Nodes (25): three, CanvasProps, CardBody(), EmailList(), Events(), isUnread(), Item, MapCard() (+17 more)
+
+### Community 25 - "Textbook & Syllabus"
+Cohesion: 0.11
+Nodes (22): Textbook: page lookup over saved OCR text. No PDF or tesseract needed.…, _download(), find(), Any, tool, Syllabus: what the user's A-level exam boards say is on each course. The…, Indexes of the pages to show: the course overview without a query, else the…, syllabus() (+14 more)
+
+### Community 26 - "Stage & Voice Orb"
+Cohesion: 0.13
+Nodes (23): Canvas(), Core(), SAMPLE, Stage(), StageProps, Terminal, VOICE_PILL, VOICE_STATES (+15 more)
+
+### Community 27 - "3D Model Store"
+Cohesion: 0.20
+Nodes (22): model_file(), 3D previews (.glb) and finished exports. Names are checked strictly., add_export(), add_version(), card_data(), create(), download_name(), Export (+14 more)
+
+### Community 28 - "Confirm Card & WebSocket Client"
+Cohesion: 0.12
+Nodes (22): ConfirmCardProps, STATUS_LABEL, Action, baseReducer(), BatteryManager, ChatState, ClientEvent, clip() (+14 more)
+
+### Community 29 - "Ultron Conversation Loop"
+Cohesion: 0.11
+Nodes (14): Event, A big conversation left alone for over an hour: Claude's cached copy has…, Answer one user message, yielding WebSocket events for the browser., Ultron, Brain, BrainEvent, Send one user message and stream back events until `Done` or `Error`., Forget the conversation and start a fresh one (optionally on another provider),… (+6 more)
+
+### Community 30 - "Swift Location Types"
+Cohesion: 0.23
+Nodes (9): CLLocation, CLLocationCoordinate2D, CLLocationManager, CLLocationManagerDelegate, Double, MKMapItem, Locator, Any (+1 more)
+
+### Community 31 - "Swift Overlay Panel"
+Cohesion: 0.15
+Nodes (14): AppKit, Bool, Carbon.HIToolbox, NSPanel, Overlay, .isVisible, OverlayPanel, .canBecomeKey (+6 more)
+
+### Community 32 - "Memory Store"
+Cohesion: 0.18
+Nodes (19): change_memory(), An edit you made in the memory panel. ValueError with the reason if it can't be…, add(), _check(), delete(), label(), _luhn(), What Ultron remembers about you between chats, in storage/memory.json. Short… (+11 more)
+
+### Community 33 - "3D Preview & Export"
+Cohesion: 0.23
+Nodes (19): _blender(), _build_preview(), _contact_sheet(), export_3d(), get_3d_spec(), _load(), preview_3d(), Any (+11 more)
+
+### Community 34 - "TS App Config"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowArbitraryExtensions, allowImportingTsExtensions, erasableSyntaxOnly, jsx, lib, module, moduleDetection (+11 more)
 
-### Community 14 - "Brain"
-Cohesion: 0.14
-Nodes (10): Brain, BrainEvent, Send one user message and stream back events until `Done` or `Error`., Forget the conversation and start a fresh one (optionally on another provider),…, Release resources (e.g. stop the Claude Code process)., 13. FIRST STEPS (start here), 1. Decision: how Ultron talks to Claude, ❌ NOT USED (documented for later): Claude API with an API key (+2 more)
-
-### Community 15 - "events.py"
-Cohesion: 0.13
-Nodes (23): Something for the frontend to show (canvas image, card, ...). Phase 4a+., UIEvent, The model the conversation is on now., canvas_card(), chats_list(), confirm_request(), confirm_resolved(), conversation_loaded() (+15 more)
-
-### Community 16 - "compilerOptions"
+### Community 35 - "3D & Canvas Features (docs)"
 Cohesion: 0.12
-Nodes (16): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, lib, module, moduleDetection, noEmit, noFallthroughCasesInSwitch (+8 more)
+Nodes (19): pypdf, trimesh, 3D Builder (preview + Blender export), 3D Library (backend/library3d), 3DAssets.dev MCP, Canvas, claude.ai Connectors, Persistent Memory (remember/recall/forget) (+11 more)
 
-### Community 17 - "config.py"
-Cohesion: 0.08
-Nodes (25): Ultron system prompt(s)., Settings loaded from .env., explain_error(), _find_omniroute(), _is_local(), OmniRoute (the optional gateway brain): is it running, start it, explain its…, Does anything answer at the gateway's address? (Any HTTP reply counts.), The omniroute command. Ultron.app starts without your shell's PATH, so also… (+17 more)
-
-### Community 18 - "mac.py"
-Cohesion: 0.11
-Nodes (37): Runs INSIDE Blender (never imported by Ultron). Fixed script: Claude never…, Runs INSIDE Blender (never imported by Ultron). Fixed script: Claude never…, find_app(), find_files(), _folder(), in_folder(), locator(), mac_change() (+29 more)
-
-### Community 19 - "re"
-Cohesion: 0.20
-Nodes (13): _dicts(), is_read(), parse(), Any, claude.ai connectors (Gmail, Supabase, Canva, ...): read/act labels. Claude…, mcp__claude_ai_Gmail__search_threads' -> ('Gmail', 'search_threads'). None if…, Every dict inside a tool result; JSON text is parsed on the way., remember_items() (+5 more)
-
-### Community 20 - "._connect"
-Cohesion: 0.20
-Nodes (8): Give slow connectors a moment, so the first message can already use them., Switch claude.ai connectors on or off to match JARVIS_CONNECTORS (.env). Claude…, The school notes as a paragraph for the system prompt ("" when there are none)., school_block(), Point Claude Code at the Pro login (provider "claude") or at the gateway. The…, set_login(), ClaudeAgentOptions, ClaudeSDKClient
-
-### Community 21 - "spotify.py"
-Cohesion: 0.08
-Nodes (45): For urlopen to HTTPS sites: Python's own certificates plus the Mac keychain's,…, ssl_context(), MatchPlaylistTest, PhoneTest, Spotify helper tests. Run from the backend folder: .venv/bin/python -m unittest…, ToUriTest, _new_card_id(), Put a markdown card on the canvas from Ultron's own code. Returns the card id. (+37 more)
-
-### Community 22 - "Locator"
-Cohesion: 0.08
-Nodes (26): AppKit, Bool, CLLocation, CLLocationCoordinate2D, CLLocationManager, CLLocationManagerDelegate, CoreLocation, Date (+18 more)
-
-### Community 23 - "Jarvis_cBrain"
-Cohesion: 0.18
-Nodes (10): claude-agent-sdk==0.2.160, fastapi / uvicorn, pillow, Backend Python Requirements, trimesh + geometry deps (numpy, shapely, mapbox-earcut, scipy, rtree), How it fits together, Jarvis_cBrain, Move to a new Mac (+2 more)
-
-### Community 24 - "asyncio"
-Cohesion: 0.09
-Nodes (26): asyncio, Reaching you when you're not looking at the chat. One notification goes three…, Notifications since the user's last message, for Ultron's conversation to know…, take_unseen(), Amazon: which pages it opens, which buttons it presses, never checkout. Chrome…, Saved chats: the 5-chat limit. Run from the backend folder: .venv/bin/python -m…, Contacts: relationship words, read-only label, errors. The Contacts app itself…, Homework: what's new, read-only label, errors. Chrome itself isn't touched.… (+18 more)
-
-### Community 25 - "job_store.py"
-Cohesion: 0.09
-Nodes (42): jobs_list(), change_job(), jobs_event(), Something you did in the schedule panel., due(), loop(), quiet(), Run one job now and tell the user the result. Never raises. (+34 more)
-
-### Community 27 - "video.py"
-Cohesion: 0.10
-Nodes (35): asset(), health(), Finished videos. Names are checked strictly., Spotify sends you back here after the login link Ultron showed you., Image files for the canvas. Names are checked strictly, so only stored images…, spotify_callback(), video_file(), card_data() (+27 more)
-
-### Community 28 - ".oxlintrc.json"
-Cohesion: 0.33
-Nodes (5): plugins, rules, react/only-export-components, react/rules-of-hooks, $schema
-
-### Community 29 - "Ultron"
-Cohesion: 0.09
-Nodes (13): Ultron, Event, A big conversation left alone for over an hour: Claude's cached copy has…, Answer one user message, yielding WebSocket events for the browser., Haiku / Sonnet / Opus selection. Order of checks: 1. The model picked in the UI…, Route, DeviceTest, send() (+5 more)
-
-### Community 31 - "typing"
-Cohesion: 0.11
-Nodes (30): Flights: the search it opens, what it refuses. Chrome isn't touched.…, amazon_change(), amazon_read(), _open(), page_url(), Any, tool, Amazon: browse the user's account in Chrome on this Mac, where they're signed… (+22 more)
-
-### Community 32 - "Favicon (glowing cyan orb)"
-Cohesion: 0.67
-Nodes (3): AI Core Orb Visual Identity, Favicon (glowing cyan orb), Radial Gradient g (cyan-to-teal)
-
-### Community 36 - "memory_store.py"
-Cohesion: 0.10
-Nodes (36): change_memory(), An edit you made in the memory panel. ValueError with the reason if it can't be…, add(), _check(), delete(), entries(), label(), _luhn() (+28 more)
-
-### Community 43 - "Stage.tsx"
-Cohesion: 0.17
-Nodes (18): Core(), SAMPLE, Stage(), StageProps, Terminal, VOICE_PILL, VOICE_STATES, Waveform() (+10 more)
-
-### Community 44 - "JobsTest"
-Cohesion: 0.09
-Nodes (7): call(), MacTest, fake_run(), fake_open(), run(), skipUnless, JobsTest
-
-### Community 45 - "registry.py"
-Cohesion: 0.09
-Nodes (22): item_label(), h5hdgf82...' -> 'Ultron test (2026-09-30T16:00:00+04:00)', if Ultron has seen…, _always_load(), auto_allowed(), describe_call(), friendly_name(), hooks(), UltronTool (+14 more)
-
-### Community 46 - "textbook.py"
-Cohesion: 0.12
-Nodes (22): _download(), find(), Any, tool, Syllabus: what the user's A-level exam boards say is on each course. The…, Indexes of the pages to show: the course overview without a query, else the…, syllabus(), _image() (+14 more)
-
-### Community 47 - "Canvas.tsx"
-Cohesion: 0.19
-Nodes (18): Canvas(), CanvasProps, CardBody(), EmailList(), Events(), isUnread(), Item, MapCard() (+10 more)
-
-### Community 48 - "Chat.tsx"
-Cohesion: 0.18
-Nodes (18): Chat(), ChatProps, CopyButton(), domain(), LongWait(), Message(), MicIcon(), ModelBadge() (+10 more)
-
-### Community 49 - "storage/__init__.py"
-Cohesion: 0.15
-Nodes (13): Local storage: SQLite + assets/ folder., Files you upload from your computer. storage/uploads/upl_001/report.pdf Images…, Store a file and return its id (upl_001, ...)., save(), AI images, with fake mflux commands instead of FLUX. Run from the backend…, Image editing and storage tests (no network). Run from the backend folder:…, Uploads: the /upload endpoint and read_upload. Run from the backend folder:…, read_upload: open a file the user uploaded from their computer. (+5 more)
-
-### Community 50 - "TopBar.tsx"
+### Community 36 - "Top Bar Menus"
 Cohesion: 0.21
 Nodes (18): jobWhen(), MemoryMenu(), MemoryProps, RUN_STATUS, SavedChats(), ScheduleMenu(), Settings(), TopBar() (+10 more)
 
-### Community 51 - "notes.py"
-Cohesion: 0.24
-Nodes (17): is_private(), _notes(), Any, Path, tool, search_notes / read_note / write_note: your Obsidian vault (JARVIS_VAULT in…, Write a note; returns its path in the vault. ValueError when it can't., The vault file a relative path names. ValueError if it leaves the vault or is… (+9 more)
-
-### Community 52 - "canvas.py"
-Cohesion: 0.20
-Nodes (13): has_clients(), Calendar: Google Calendar reads run freely, writes ask; Ultron knows the date;…, Reminders: TickTick reads run freely, changes ask; task cards. .venv/bin/python…, _card_data(), map_data(), open_terminal(), Any, tool (+5 more)
-
-### Community 53 - "terminal.py"
+### Community 37 - "Device Hub & Senders"
 Cohesion: 0.15
-Nodes (13): WebSocket, /ws/terminal: a real shell in a canvas tab, for you to type in (e.g. to run…, Your normal environment, without the variables that point Ultron's own Claude…, In the shell's process, before it starts: make the pty its terminal, so Ctrl-C…, _resize(), serve(), _shell_env(), _take_terminal() (+5 more)
+Nodes (18): connect(), disconnect(), Sender, device_of(), make_sender(), send(), phone_location(), phone_status() (+10 more)
 
-### Community 54 - "slides.py"
-Cohesion: 0.19
-Nodes (14): build(), _fill(), _free(), make_slides(), Any, Path, tool, Slides: PowerPoint lessons in the style of the user's computing teacher. The… (+6 more)
+### Community 38 - "Library & Homework Tests"
+Cohesion: 0.18
+Nodes (5): fake_run(), fake_run(), LibraryTest, run(), text()
 
-### Community 55 - "App.tsx"
-Cohesion: 0.27
-Nodes (11): App(), PANE_IDS, PANES, Panel(), PanelProps, LogPanel(), TerminalPanel(), frontend_src_index (+3 more)
+### Community 39 - "YouTube Tool"
+Cohesion: 0.15
+Nodes (11): YoutubeTest, _fetch(), Any, tool, YouTube's text objects: {'simpleText': ...} or {'runs': [{'text': ...}, ...]}., One line per video in the search page: link | title | channel | length | views…, _renderers(), search_url() (+3 more)
 
-### Community 56 - "SidePanels.tsx"
+### Community 40 - "TS Node Config"
+Cohesion: 0.12
+Nodes (16): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, lib, module, moduleDetection, noEmit, noFallthroughCasesInSwitch (+8 more)
+
+### Community 41 - "Obsidian Notes Tool"
 Cohesion: 0.22
-Nodes (14): COMMANDS, countdown(), fmt(), GatewayModels(), Meter(), MODELS, resetTime(), TerminalPanelProps (+6 more)
+Nodes (16): is_private(), _notes(), Any, Path, tool, Write a note; returns its path in the vault. ValueError when it can't., The vault file a relative path names. ValueError if it leaves the vault or is…, (relative path, text) of every note Ultron may read, newest first. (+8 more)
 
-### Community 57 - "chat_store.py"
-Cohesion: 0.21
-Nodes (13): _clean(), _clean_cards(), delete(), load(), Saved chats (at most MAX_CHATS), in storage/chats.json. A saved chat is the…, Only what's needed to show the chat again; the browser sends the rest too., Newest first, without the messages., Save (or update) a chat. ValueError when it's new and MAX_CHATS are already… (+5 more)
-
-### Community 58 - "youtube.py"
-Cohesion: 0.22
-Nodes (12): YouTube: the search it fetches, how it reads the page, what it refuses. Nothing…, _fetch(), Any, tool, youtube: search YouTube. (read) No API key: it fetches YouTube's own search…, YouTube's text objects: {'simpleText': ...} or {'runs': [{'text': ...}, ...]}., One line per video in the search page: link | title | channel | length | views…, _renderers() (+4 more)
-
-### Community 59 - "important.py"
-Cohesion: 0.32
-Nodes (13): entries(), _listing(), mark_important(), matches(), normalize(), Any, tool, mark_important / unmark_important: files and folders Ultron must ask about… (+5 more)
-
-### Community 60 - "Terminal.tsx"
-Cohesion: 0.22
-Nodes (7): Terminal(), TerminalProps, API_BASE, UltronSocket, useUltron(), @xterm/addon-fit, @xterm/xterm
-
-### Community 61 - "Ultron — Full Build Prompt"
-Cohesion: 0.14
-Nodes (13): 0. Role and goal, 10. Memory, 11. Project structure, 2. Architecture, 5. Web search, 6. Connectors (Gmail, Calendar, Drive, …), 7. Canvas and images (the "dog picture" feature), 7b. 3D objects: preview mode (Phase 4d) (+5 more)
-
-### Community 62 - "models3d.py"
-Cohesion: 0.42
-Nodes (12): _build_preview(), export_3d(), get_3d_spec(), _load(), preview_3d(), Any, tool, 3D objects: fast previews, changes through chat, final file only after… (+4 more)
-
-### Community 63 - "Trimesh"
-Cohesion: 0.21
-Nodes (13): _loft(), _mesh(), Spin a [radius, height] profile around the vertical axis., A box with rounded corners: the hull of a small sphere in each corner., Points around a cross-section, from a rectangle (roundness 0) to an oval (1).…, Add `steps - 1` in-between sections: x linear (keeps order), the rest on a…, A smooth body through cross-sections placed along X (car bodies, hulls,…, _revolve() (+5 more)
-
-### Community 64 - "Ultron To-Do List"
+### Community 42 - "Swift App Delegate"
 Cohesion: 0.17
-Nodes (11): maps(), Any, tool, 1. Calendar read/write  — *Priority 1*, 2. Reminders / tasks  — *Priority 2*, 3. Contacts lookup  — *Priority 3*, 6. Notifications  — *Priority 5 (ships with the scheduler)*, 8. Messaging + maps/travel  — *Priority 7* (+3 more)
+Nodes (8): EventHotKeyRef, Notification, NSApplication, NSApplicationDelegate, NSImage, NSObject, NSStatusItem, App
 
-### Community 67 - "contacts.py"
+### Community 43 - "Terminal UI"
+Cohesion: 0.21
+Nodes (8): snapshot(), Terminal(), TerminalProps, API_BASE, UltronSocket, useUltron(), @xterm/addon-fit, @xterm/xterm
+
+### Community 44 - "Notifications & Telegram"
+Cohesion: 0.21
+Nodes (13): notification(), _mac(), push(), Tell the user something. A channel that fails is logged, never raised., _call(), configured(), Any, tool (+5 more)
+
+### Community 46 - "Chat Store"
+Cohesion: 0.23
+Nodes (12): _clean(), _clean_cards(), delete(), load(), Saved chats (at most MAX_CHATS), in storage/chats.json. A saved chat is the…, Only what's needed to show the chat again; the browser sends the rest too., Newest first, without the messages., Save (or update) a chat. ValueError when it's new and MAX_CHATS are already… (+4 more)
+
+### Community 48 - "Briefing & Action Tools (docs)"
+Cohesion: 0.15
+Nodes (13): Confirmation Card Gate, WhatsApp Send, Calendar Read/Write (Google Calendar), Daily Briefing Milestone, find_contact (macOS Contacts), mac_read / mac_change / run_python, TickTick Reminders, Ultron To-Do List (+5 more)
+
+### Community 49 - "Connector Startup"
+Cohesion: 0.20
+Nodes (7): Give slow connectors a moment, so the first message can already use them., Switch claude.ai connectors on or off to match JARVIS_CONNECTORS (.env). Claude…, Start Claude Code ahead of the first message (called at server startup)., The school notes as a paragraph for the system prompt ("" when there are none)., school_block(), ClaudeAgentOptions, ClaudeSDKClient
+
+### Community 50 - "Device Tests"
+Cohesion: 0.17
+Nodes (3): DeviceTest, tab(), SimpleNamespace
+
+### Community 55 - "Connector Retry Tests"
+Cohesion: 0.27
+Nodes (3): FakeClient, A session that started without the claude.ai connectors looks for them again., RetryConnectors
+
+### Community 57 - "Contacts Lookup"
 Cohesion: 0.29
 Nodes (10): find_contact(), Any, tool, Contacts: look people up in macOS Contacts (read-only). There's no claude.ai…, my mom' -> 'mother', 'Annem' -> 'mother'. None if it isn't a relationship word., What to search for a relation, in order: the user's own word, English, Turkish,…, relation_label(), _run() (+2 more)
 
-### Community 68 - "floating_parts"
-Cohesion: 0.18
-Nodes (11): _display_name(), floating_parts(), _gap(), (size [width, height, depth] in meters, triangle count)., 003m_mirror (mirrored)' -> 'mirror (mirrored)'., True if a and b touch, overlap, or one sits inside the other., Parts not connected to the main object, with their gap in meters. Parts count…, summary() (+3 more)
+### Community 58 - "Swift Overlay Errors"
+Cohesion: 0.24
+Nodes (8): LocalizedError, OverlayError, .errorDescription, Any, String, Void, WKScriptMessage, WKUserContentController
 
-### Community 69 - "test_backup.py"
-Cohesion: 0.31
-Nodes (8): BackupTest, project(), Path, scripts/backup.sh: a backup made in one project folder restores into another.…, run(), sessions(), CompletedProcess, shutil
+### Community 59 - "Terminal Backend"
+Cohesion: 0.20
+Nodes (8): terminal_endpoint(), WebSocket, Your normal environment, without the variables that point Ultron's own Claude…, In the shell's process, before it starts: make the pty its terminal, so Ctrl-C…, _resize(), serve(), _shell_env(), _take_terminal()
 
-### Community 72 - "phone.py"
+### Community 63 - "Memory Tools"
+Cohesion: 0.42
+Nodes (9): _changed(), forget(), Any, tool, remember / recall / forget: what Ultron knows about you between chats. The…, Keep the memory panel in every open tab up to date., recall(), remember() (+1 more)
+
+### Community 64 - "Phone Tools"
 Cohesion: 0.42
 Nodes (9): _call(), phone_taxi(), phone_volume(), Any, tool, The user's Android phone, through MacroDroid macros on it. (read: only their…, The address of the macro whose webhook identifier this is. ValueError if…, _text() (+1 more)
 
-### Community 73 - "whatsapp.py"
+### Community 65 - "WhatsApp Tool"
 Cohesion: 0.33
 Nodes (9): phone_digits(), Any, tool, WhatsApp: send a message from the WhatsApp app on this Mac. (act: asks you…, +90 532 138 20 11' -> '905321382011'. None without a country code or if it…, _run(), _text(), _whatsapp_in_front() (+1 more)
 
-### Community 79 - "run"
+### Community 66 - "Brain Design (docs)"
+Cohesion: 0.22
+Nodes (9): Connector MCP Configs (fallback), No __init__.py in backend/mcp, claude-agent-sdk, Claude Pro Login Brain, brain_api.py Placeholder, Brain Protocol (brain/base.py), ClaudeCodeBrain, In-process SDK MCP Server (ultron) (+1 more)
+
+### Community 72 - "WhatsApp Tests"
 Cohesion: 0.28
 Nodes (3): Run whatsapp_send with fake commands; front_apps is what's frontmost at each…, run(), WhatsAppTest
 
-### Community 80 - "consult_expert"
+### Community 73 - "Expert & Usage Tracking"
 Cohesion: 0.28
 Nodes (9): consult_expert(), Any, From Claude Code's rate_limit_event. The numbers cover your whole Pro plan…, From a reply's ResultMessage.model_usage ({model: {inputTokens, ...}})., Everything the usage panel shows., record_limits(), record_turn(), _save() (+1 more)
 
-### Community 81 - "telegram.py"
-Cohesion: 0.36
-Nodes (8): _call(), Any, tool, Telegram: Ultron texts you from its own bot, which shows up on your phone as a…, Text your own chat (blocking). RuntimeError with the reason if it didn't go., send_text(), _text(), text_me()
+### Community 74 - "API Brain Placeholder"
+Cohesion: 0.25
+Nodes (3): ApiBrain, BrainEvent, Placeholder: API-key brain. Not used. Ultron runs on the Claude Pro…
 
-### Community 85 - "Model3DViewer.tsx"
+### Community 78 - "Swift Locate Script"
 Cohesion: 0.32
-Nodes (7): three, disposeObject(), frame(), Model3DViewer(), Viewer, Model3DData, three
+Nodes (7): CoreLocation, Date, Foundation, MapKit, iso(), parseDate(), String
 
-### Community 86 - "now_note"
+### Community 79 - "Calendar & Time Note"
 Cohesion: 0.29
 Nodes (3): now_note(), Tuesday 29 September 2026, 20:15 CEST (UTC+0200)': local time with its offset., CalendarTest
 
-### Community 87 - ".can_use_tool"
+### Community 80 - "Tool Permission Callback"
 Cohesion: 0.29
 Nodes (6): _Pending, Any, Called by Claude Code before any tool that isn't auto-allowed., PermissionResultAllow, PermissionResultDeny, ToolPermissionContext
 
-### Community 88 - "upload"
+### Community 81 - "Upload Store"
 Cohesion: 0.29
-Nodes (7): fresh_page(), A file from your computer (the raw bytes as the body). Images go on the canvas;…, The page itself must never come from the browser's cache, or a rebuilt Ultron…, upload(), middleware, post, Request
+Nodes (6): prune_screens(), Files you upload from your computer. storage/uploads/upl_001/report.pdf Images…, Store a file and return its id (upl_001, ...)., Delete all but the newest `keep` screen captures., save(), threading
 
-### Community 93 - "ask_expert"
+### Community 84 - "Memory Search"
 Cohesion: 0.33
-Nodes (7): ask_expert(), tool, 3. Model routing (cheap by default, strong when needed), Claude on your Pro login (the default), OmniRoute (optional), Talking and thinking, The brains
+Nodes (6): entries(), prompt_block(), Memories that contain every word of the query (any order, any case). No query:…, The newest memories as a paragraph for the system prompt ("" when there are…, Every memory, most recently changed first., search()
 
-### Community 94 - "_blender"
-Cohesion: 0.33
-Nodes (7): _blender(), _contact_sheet(), Path, The four views in a 2×2 grid with labels, as a JPEG for Claude., Four quick views of a preview for Claude to look at, or None if Blender isn't…, Run one of Ultron's fixed Blender scripts in the background. Returns Blender's…, render_views()
-
-### Community 95 - "What Ultron can do"
-Cohesion: 0.29
-Nodes (7): Doing things on its own, Knowing you, Making things, Messages, On this Mac, What Ultron can do, Your accounts
-
-### Community 96 - "StartTest"
+### Community 85 - "Gateway Start Tests"
 Cohesion: 0.53
 Nodes (3): dict, object, StartTest
 
-### Community 97 - "LoginTest"
+### Community 86 - "Login Switch Tests"
 Cohesion: 0.47
 Nodes (3): LoginTest, dict, object
 
-### Community 106 - "push"
+### Community 89 - "Lint Config"
+Cohesion: 0.33
+Nodes (5): plugins, rules, react/only-export-components, react/rules-of-hooks, $schema
+
+### Community 99 - "Model Router"
 Cohesion: 0.50
-Nodes (4): _mac(), push(), Tell the user something. A channel that fails is logged, never raised., configured()
+Nodes (4): ask_expert (Sonnet to Opus), Model Router, brain/router.py Model Routing, Sticky Routing
+
+### Community 101 - "WebSocket Protocol"
+Cohesion: 0.67
+Nodes (3): fastapi, hub.py Event Push, WebSocket Protocol (events.py / ws.ts)
+
+### Community 105 - "Tool Hooks"
+Cohesion: 0.67
+Nodes (3): hooks(), Checks that run before a tool does., HookMatcher
+
+### Community 106 - "Favicon & Brand"
+Cohesion: 0.67
+Nodes (3): ULTRON cBrain Brand Identity (AI Orb), ULTRON Favicon (Purple Glowing Orb), Purple Radial Gradient (#e9d5ff -> #a855f7 -> #3b146e)
 
 ## Knowledge Gaps
-- **129 isolated node(s):** `$schema`, `plugins`, `react/rules-of-hooks`, `react/only-export-components`, `name` (+124 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 635 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **47 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **150 isolated node(s):** `$schema`, `plugins`, `react/rules-of-hooks`, `react/only-export-components`, `name` (+145 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 729 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **67 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ClaudeCodeBrain` connect `scheduler.py` to `main.py`, `FakeClient`, `MemoryTest`, `events.py`, `._connect`, `asyncio`?**
-  _High betweenness centrality (0.046) - this node is a cross-community bridge._
-- **Why does `VideoTest` connect `VideoTest` to `asyncio`?**
+- **Why does `ClaudeCodeBrain` connect `Brain Protocol & Events` to `Storage & Tool Test Suite`, `Memory Tests`, `Agent & Confirmation Gate`, `Config & System Prompts`, `Connector Startup`, `Claude Code Brain Session`, `Connector Retry Tests`?**
+  _High betweenness centrality (0.040) - this node is a cross-community bridge._
+- **Why does `JobsTest` connect `Mac Tool Tests` to `Agent & Confirmation Gate`?**
+  _High betweenness centrality (0.021) - this node is a cross-community bridge._
+- **Why does `AssetsDevTest` connect `3DAssets Download Tests` to `Storage & Tool Test Suite`, `Library & Homework Tests`?**
   _High betweenness centrality (0.020) - this node is a cross-community bridge._
-- **Why does `YoutubeTest` connect `YoutubeTest` to `youtube.py`?**
-  _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **What connects `$schema`, `plugins`, `react/rules-of-hooks` to the rest of the system?**
-  _129 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `ws.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.1225296442687747 - nodes in this community are weakly interconnected._
-- **Should `shapes.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.14 - nodes in this community are weakly interconnected._
-- **Should `image_ops.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.1101010101010101 - nodes in this community are weakly interconnected._
+  _150 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `Canvas Events & Config` be split into smaller, more focused modules?**
+  _Cohesion score 0.054385964912280704 - nodes in this community are weakly interconnected._
+- **Should `Amazon & Flights Browsing` be split into smaller, more focused modules?**
+  _Cohesion score 0.060764587525150904 - nodes in this community are weakly interconnected._
+- **Should `Storage & Tool Test Suite` be split into smaller, more focused modules?**
+  _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
