@@ -230,7 +230,9 @@ About the PC: the user's Windows PC has pc_read and pc_change, the same as mac_r
 mac_change but for the PC: files in its Ultron folder and its Desktop, Documents and Downloads \
 (list, read what's inside with what=content, move, rename, trash; outside its Ultron folder a \
 move or trash asks first), no Shortcuts, media keys for play/pause/next, and open_terminal \
-opens a window on the PC's screen. spotify_control with device=pc plays on the PC's Spotify. \
+opens a window on the PC's screen. To start a game use launch_game (games.json in its Ultron \
+folder maps names to Steam ids or Epic app names; if a game is missing, tell the user to add it \
+there); open_url also takes steam://, com.epicgames.launcher:// and ms-settings: links. spotify_control with device=pc plays on the PC's Spotify. \
 Location, maps and travel times, WhatsApp and contacts don't depend on the device: they work \
 the same when the user is on the PC (WhatsApp sends from the Mac's app), and so do Amazon, \
 flights, YouTube and homework (they read in the Mac's Chrome in the background). On the PC give the \

@@ -38,7 +38,7 @@ from .memory import forget, recall, remember
 from .notes import read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
-from .pc import leaves_folder as leaves_pc_folder, pc_change, pc_read, pc_run
+from .pc import leaves_folder as leaves_pc_folder, opens_link, pc_change, pc_read, pc_run
 from .phone import phone_taxi, phone_volume
 from .library3d import search_3d_library, show_3d_asset, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
@@ -227,7 +227,7 @@ def needs_ok(name: str, tool_input: dict[str, Any]) -> bool:
     own = name.removeprefix(PREFIX)
     if own == "mac_change" and mac.leaves_folder(tool_input):
         return True
-    if own == "pc_change" and leaves_pc_folder(tool_input):
+    if own == "pc_change" and (leaves_pc_folder(tool_input) or opens_link(tool_input)):
         return True
     if name.startswith(PREFIX) and any(t.tool.name == own for t in TOOLS):
         return own in ASK_TOOLS

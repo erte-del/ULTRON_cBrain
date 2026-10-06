@@ -29,7 +29,7 @@ from .homework import _text
 from .uploads import IMAGES, READABLE, jpeg_of, text_of
 
 TIMEOUT_S = 75  # the PC stops a run after 60 s
-ACTIONS = ["open_app", "open_url", "open_file", "open_terminal", "copy", "volume", "mute", "dark_mode", "media", "move", "trash"]
+ACTIONS = ["open_app", "open_url", "launch_game", "open_file", "open_terminal", "copy", "volume", "mute", "dark_mode", "media", "move", "trash"]
 
 
 def _post(path: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -84,6 +84,13 @@ def leaves_folder(args: dict[str, Any]) -> bool:
     return False
 
 
+def opens_link(args: dict[str, Any]) -> bool:
+    """A pc_change open_url that isn't a plain web address (steam://, ms-settings:): it asks first.
+    launch_game doesn't: it only opens games the user listed in games.json."""
+    url = str(args.get("url") or "").strip().lower()
+    return args.get("action") == "open_url" and not url.startswith(("http://", "https://"))
+
+
 @tool(
     "pc_read",
     "Read things on the user's Windows PC. what: 'status' (battery, volume, dark mode, Wi-Fi), "
@@ -126,8 +133,9 @@ async def pc_read(args: dict[str, Any]) -> dict[str, Any]:
 @tool(
     "pc_change",
     "Do something on the user's Windows PC. action: 'open_app' (the Start menu name or part of it, e.g. 'chrome', "
-    "else a Desktop shortcut's name, e.g. a Steam or Epic game), 'open_url' "
-    "(http or https), 'open_file' (path: a document or a .lnk/.url shortcut; a folder opens in Explorer), "
+    "else a Desktop shortcut's name), 'open_url' (http or https; also steam://, "
+    "com.epicgames.launcher:// and ms-settings: links, which ask the user first), 'launch_game' (name: a game "
+    "in games.json in the PC's Ultron folder, e.g. 'rocket league'; started through Steam or Epic), 'open_file' (path: a document or a .lnk/.url shortcut; a folder opens in Explorer), "
     "'open_terminal' (a terminal window on the PC's screen, for the user to type in), "
     "'copy' (text to the PC's clipboard), 'volume' (level 0-100), 'mute' (on), 'dark_mode' (on), "
     "'media' (name: play_pause, next or previous, for whatever is playing, e.g. Spotify), 'move' "
@@ -139,7 +147,7 @@ async def pc_read(args: dict[str, Any]) -> dict[str, Any]:
         "type": "object",
         "properties": {
             "action": {"type": "string", "enum": ACTIONS},
-            "name": {"type": "string", "description": "App name, or the media key."},
+            "name": {"type": "string", "description": "App or game name, or the media key."},
             "url": {"type": "string"},
             "path": {"type": "string"},
             "to": {"type": "string", "description": "For move: the new path or folder."},

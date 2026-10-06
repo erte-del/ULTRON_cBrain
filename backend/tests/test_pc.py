@@ -116,6 +116,23 @@ class PcTest(unittest.TestCase):
     def test_bad_input(self):
         self.assertTrue(call(pc.pc_change, action="open_url", url="file:///C:/Windows")[1])
         self.assertTrue(call(pc.pc_change, action="format_disk")[1])
+        for url in ["javascript:alert(1)", "ms-settings-x:", "steam:// x", "steam://", "STEAMx://a", "https:///x"]:
+            self.assertRaises(ValueError, agent.launch, url)
+
+    def test_launch_links(self):
+        ok = lambda **a: registry.needs_ok("mcp__ultron__pc_change", a)
+        self.assertFalse(ok(action="open_url", url="https://example.com"))
+        self.assertTrue(ok(action="open_url", url="steam://rungameid/252950"))
+        self.assertFalse(ok(action="launch_game", name="rocket league"))
+        epic = "com.epicgames.launcher://apps/Sugar?action=launch&silent=true"
+        self.assertEqual(agent.game_link("rocket"), epic)  # writes the default games.json
+        (self.root / "games.json").write_text('{"Rocket League": {"epic": "Sugar"}, "CS2": {"steam": "730"}}')
+        self.assertEqual(agent.game_link("rocket league"), epic)
+        self.assertEqual(agent.game_link("cs2"), "steam://rungameid/730")
+        self.assertRaises(ValueError, agent.game_link, "halo")
+        with mock.patch.object(agent.os, "startfile", create=True) as start:
+            self.assertEqual(agent.launch("ms-settings:display"), "Opened ms-settings:display.")
+            start.assert_called_once_with("ms-settings:display")
 
     def test_update_pulls_new_code(self):
         def git(*args, cwd):
