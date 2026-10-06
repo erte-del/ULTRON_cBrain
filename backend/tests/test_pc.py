@@ -67,6 +67,17 @@ class PcTest(unittest.TestCase):
             self.assertEqual(popen.call_count, 2)
             self.assertRaises(ValueError, agent.open_app, "photoshop")
 
+    def test_open_app_falls_back_to_desktop_shortcuts(self):
+        desktop = self.root.parent / "Desktop"
+        desktop.mkdir()
+        (desktop / "Rocket League®.url").write_text("[InternetShortcut]\nURL=com.epicgames.launcher://x")
+        with mock.patch.object(agent, "ps", return_value="[]"), \
+                mock.patch.object(agent, "user_dirs", return_value={"Desktop": desktop}), \
+                mock.patch.object(agent.os, "startfile", create=True) as start:
+            self.assertEqual(agent.open_app("rocket league"), "Opened Rocket League® from the Desktop.")
+            start.assert_called_once_with(desktop / "Rocket League®.url")
+            self.assertRaises(ValueError, agent.open_app, "photoshop")
+
     def test_files_and_move_inside_the_fence(self):
         self.root.mkdir()
         (self.root / "a.txt").write_text("x")

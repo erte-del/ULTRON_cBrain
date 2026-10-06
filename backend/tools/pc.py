@@ -125,8 +125,9 @@ async def pc_read(args: dict[str, Any]) -> dict[str, Any]:
 
 @tool(
     "pc_change",
-    "Do something on the user's Windows PC. action: 'open_app' (the Start menu name or part of it, e.g. 'chrome'), 'open_url' "
-    "(http or https), 'open_file' (path: a document; a folder opens in Explorer), "
+    "Do something on the user's Windows PC. action: 'open_app' (the Start menu name or part of it, e.g. 'chrome', "
+    "else a Desktop shortcut's name, e.g. a Steam or Epic game), 'open_url' "
+    "(http or https), 'open_file' (path: a document or a .lnk/.url shortcut; a folder opens in Explorer), "
     "'open_terminal' (a terminal window on the PC's screen, for the user to type in), "
     "'copy' (text to the PC's clipboard), 'volume' (level 0-100), 'mute' (on), 'dark_mode' (on), "
     "'media' (name: play_pause, next or previous, for whatever is playing, e.g. Spotify), 'move' "

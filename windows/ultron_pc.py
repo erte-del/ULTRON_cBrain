@@ -10,7 +10,7 @@
 It listens on 127.0.0.1 only; `tailscale serve` passes your own devices through to it over
 HTTPS. Nothing reaches the public internet. Files: ULTRON_PC_FOLDER plus your Desktop, Documents
 and Downloads; nothing leaves them, a move or trash outside ULTRON_PC_FOLDER needs Ultron's
-approval flag (the Mac asks you first), nothing is overwritten, "trash" goes to the Recycle Bin, only documents open, and apps only from the Start menu.
+approval flag (the Mac asks you first), nothing is overwritten, "trash" goes to the Recycle Bin, only documents and shortcuts open, and apps only from the Start menu or Desktop shortcuts.
 /run is NOT sandboxed (Windows has no sandbox-exec): it runs as you, in the folder's Output
 subfolder, killed after 60 s. Ultron asks you before every /run.
 
@@ -49,6 +49,7 @@ NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 DOCUMENTS = {"pdf", "txt", "md", "rtf", "csv", "tsv", "json", "xml", "log", "doc", "docx", "xls", "xlsx",
              "ppt", "pptx", "odt", "ods", "png", "jpg", "jpeg", "gif", "heic", "webp", "tiff", "bmp", "svg",
              "mp3", "m4a", "wav", "aac", "flac", "mp4", "mov", "m4v", "mkv", "zip"}
+SHORTCUTS = {".lnk", ".url"}  # you put them on the Desktop, so they open like apps
 ACTIONS = ["open_app", "open_url", "open_file", "open_terminal", "copy", "volume", "mute", "dark_mode", "media", "move", "trash"]
 MEDIA_KEYS = {"play_pause": 0xB3, "next": 0xB0, "previous": 0xB1}
 THEME_KEY = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
@@ -188,21 +189,34 @@ def status() -> str:
                       f"Sound: {sound}", f"Appearance: {'light' if light else 'dark'}", f"Wi-Fi: {wifi}"])
 
 
+def pick(names: list[str], want: str) -> str | None:
+    """Like the Mac: 'chrome' -> Google Chrome. Exact, else shortest starting with it, else containing it."""
+    names = sorted(names, key=len)
+    return next((n for match in (lambda n: n == want, lambda n: n.startswith(want), lambda n: want in n)
+                 for n in names if want and match(n)), None)
+
+
+def desktop_shortcuts() -> dict[str, Path]:
+    """Shortcuts on your Desktop and the Public one, by lowercase name: games from Steam or Epic live here."""
+    dirs = [user_dirs()["Desktop"], Path(os.getenv("PUBLIC", r"C:\Users\Public")) / "Desktop"]
+    return {p.stem.lower(): p for d in dirs if d.is_dir() for p in d.iterdir() if p.suffix.lower() in SHORTCUTS}
+
+
 def open_app(name: str) -> str:
-    """By its Start menu name or part of it; Store apps too. Only what the Start menu lists."""
+    """By its Start menu name or part of it (Store apps too), else a Desktop shortcut's name."""
     apps = json.loads(ps("Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress") or "[]")
     apps = {a["Name"].lower(): a for a in ([apps] if isinstance(apps, dict) else apps)}
     want = name.strip().lower()
-    # Like the Mac: 'chrome' -> Google Chrome. Exact, else shortest starting with it, else containing it.
-    names = sorted(apps, key=len)
-    app = next((apps[n] for match in (lambda n: n == want, lambda n: n.startswith(want), lambda n: want in n)
-                for n in names if want and match(n)), None)
-    if app is None:
-        near = difflib.get_close_matches(want, apps, n=5, cutoff=0.4)
-        raise ValueError(f"No Start menu app called {name!r}." +
-                         (f" Close: {', '.join(apps[n]['Name'] for n in near)}." if near else ""))
-    subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + app["AppID"]])
-    return f"Opened {app['Name']}."
+    if n := pick(list(apps), want):
+        subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + apps[n]["AppID"]])
+        return f"Opened {apps[n]['Name']}."
+    links = desktop_shortcuts()
+    if n := pick(list(links), want):
+        os.startfile(links[n])  # .url (steam://, com.epicgames.launcher://) or .lnk: its launcher runs it
+        return f"Opened {links[n].stem} from the Desktop."
+    near = difflib.get_close_matches(want, [*apps, *links], n=5, cutoff=0.4)
+    raise ValueError(f"No Start menu app or Desktop shortcut called {name!r}." +
+                     (f" Close: {', '.join(near)}." if near else ""))
 
 
 def show_in_explorer(p: Path) -> None:
@@ -277,7 +291,7 @@ def change(args: dict[str, Any]) -> str:
             return f"Opened {show(p)} in Explorer."
         if not p.is_file():
             raise ValueError(f"{path!r} doesn't exist.")
-        if p.suffix.lower().lstrip(".") not in DOCUMENTS:
+        if p.suffix.lower().lstrip(".") not in DOCUMENTS and p.suffix.lower() not in SHORTCUTS:
             show_in_explorer(p)
             raise ValueError(f"Ultron only opens documents, not {p.suffix or 'files without a type'}; "
                              f"showed {show(p)} in Explorer instead.")
