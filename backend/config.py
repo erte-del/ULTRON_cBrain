@@ -82,6 +82,13 @@ REMOTE_ORIGIN = os.getenv("JARVIS_REMOTE_ORIGIN", "").strip().rstrip("/")
 if REMOTE_ORIGIN and not re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net", REMOTE_ORIGIN):
     raise SystemExit(f"JARVIS_REMOTE_ORIGIN={REMOTE_ORIGIN!r}: use your Tailscale address, e.g. https://mac.tail1234.ts.net")
 
+# The user's Windows PC (optional): the address "tailscale serve" gives it, and the token
+# windows/ultron_pc.py checks. Only a tailnet address, so it's never the public internet.
+PC_URL = os.getenv("JARVIS_PC_URL", "").strip().rstrip("/")
+PC_TOKEN = os.getenv("JARVIS_PC_TOKEN", "").strip()
+if PC_URL and not re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net", PC_URL):
+    raise SystemExit(f"JARVIS_PC_URL={PC_URL!r}: use the PC's Tailscale address, e.g. https://pc.tail1234.ts.net")
+
 # Which brain Ultron runs on. You can switch in the UI (gear icon); this is the choice
 # at startup.
 #   claude    - Claude on your Pro login (the default)

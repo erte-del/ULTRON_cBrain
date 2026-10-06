@@ -93,6 +93,7 @@ export type ServerEvent =
     }
   | { type: 'tool.started'; id: string; name: string; detail: string; label: string }
   | { type: 'tool.finished'; id: string; is_error: boolean }
+  | { type: 'assistant.retry'; attempt: number; max: number; error: string }
   | { type: 'error'; message: string; id?: string }
   | { type: 'notice'; message: string }
   | { type: 'confirm.request'; id: string; title: string; summary: string; details: [string, string][] }
@@ -321,6 +322,7 @@ interface ChatState {
   connection: ConnectionState
   busy: boolean // a reply is in progress
   activeTool: ActiveTool | null
+  retry: string | null // e.g. "model overloaded(2/10)" while Claude Code retries
   modelOverride: ModelAlias | null
   cards: CanvasCard[]
   stageTab: string // centre panel: 'core', 'cards', or the id of a 3D model or terminal
@@ -487,25 +489,27 @@ function baseReducer(state: ChatState, action: Action): ChatState {
         }
         return m
       })
-      return { ...state, connection: 'closed', busy: false, activeTool: null, messages }
+      return { ...state, connection: 'closed', busy: false, activeTool: null, retry: null, messages }
     }
 
     case 'server': {
       const ev = action.ev
       switch (ev.type) {
         case 'status':
-          if (ev.state !== 'idle') return { ...state, busy: true, activeTool: null }
+          if (ev.state !== 'idle') return { ...state, busy: true, activeTool: null, retry: null }
           // A stopped reply never gets assistant.done: end its cursor here.
           return {
             ...state,
             busy: false,
             activeTool: null,
+            retry: null,
             messages: state.messages.map((m) => (m.role === 'assistant' && !m.done ? { ...m, done: true } : m)),
           }
         case 'assistant.text_delta':
           return {
             ...state,
             activeTool: null,
+            retry: null,
             messages: updateMessage(state.messages, ev.id, (m) => ({ ...m, text: m.text + ev.text })),
           }
         case 'assistant.done':
@@ -521,7 +525,9 @@ function baseReducer(state: ChatState, action: Action): ChatState {
             })),
           }
         case 'tool.started':
-          return { ...state, activeTool: { name: ev.name, detail: ev.detail, label: ev.label } }
+          return { ...state, retry: null, activeTool: { name: ev.name, detail: ev.detail, label: ev.label } }
+        case 'assistant.retry':
+          return { ...state, retry: `${ev.error === 'overloaded' ? 'model overloaded' : 'retrying'}(${ev.attempt}/${ev.max})` }
         case 'tool.finished':
           return { ...state, activeTool: null }
         case 'confirm.request': {
@@ -648,6 +654,7 @@ const initialState: ChatState = {
   connection: 'connecting',
   busy: false,
   activeTool: null,
+  retry: null,
   modelOverride: null,
   cards: [],
   stageTab: 'core',

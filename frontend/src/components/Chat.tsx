@@ -12,6 +12,7 @@ interface ChatProps {
   connection: ConnectionState
   busy: boolean
   activeTool: ActiveTool | null
+  retry: string | null
   onSend: (text: string, files: Attachment[]) => boolean
   onStop: () => void
   onConfirm: (id: string, approved: boolean) => void
@@ -138,9 +139,18 @@ function MicIcon() {
 
 // After a minute of work: a note above the indicator and a timer below it, so a long
 // task doesn't look frozen.
-function LongWait({ children }: { children: ReactNode }) {
+// `retry` (Claude overloaded) shows in the timer's place straight away.
+function LongWait({ children, retry }: { children: ReactNode; retry?: string | null }) {
   const [since] = useState(() => Date.now())
   const seconds = Math.max(0, Math.floor((useNow().getTime() - since) / 1000))
+  if (retry) {
+    return (
+      <div className="long-wait">
+        {children}
+        <div className="wait-timer">{retry}</div>
+      </div>
+    )
+  }
   if (seconds < 60) return children
   return (
     <div className="long-wait">
@@ -153,7 +163,7 @@ function LongWait({ children }: { children: ReactNode }) {
   )
 }
 
-export default function Chat({ messages, connection, busy, activeTool, onSend, onStop, onConfirm, voiceOn, onVoice }: ChatProps) {
+export default function Chat({ messages, connection, busy, activeTool, retry, onSend, onStop, onConfirm, voiceOn, onVoice }: ChatProps) {
   const [draft, setDraft] = useState('')
   const [files, setFiles] = useState<Attachment[]>([])
   const [uploading, setUploading] = useState(0)
@@ -249,7 +259,7 @@ export default function Chat({ messages, connection, busy, activeTool, onSend, o
         )}
         {waitingForFirstWord && !waitingForYou && (
           <div className="msg msg-assistant">
-            <LongWait>
+            <LongWait retry={retry}>
               <div className="bubble typing">
                 {activeTool ? toolLabel(activeTool) : <><span /><span /><span /></>}
               </div>

@@ -38,6 +38,7 @@ from .memory import forget, recall, remember
 from .notes import read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
+from .pc import pc_change, pc_read, pc_run
 from .phone import phone_taxi, phone_volume
 from .library3d import search_3d_library, show_3d_asset, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
@@ -140,6 +141,11 @@ TOOLS: list[UltronTool] = [
     UltronTool(mac_change, "act"),
     # Sandboxed: no network or other programs, writes only in Ultron's Output folder.
     UltronTool(run_python, "act"),
+    # The Windows PC, same rules as this Mac: reading is free, changes stay in its Ultron folder.
+    UltronTool(pc_read, "read"),
+    UltronTool(pc_change, "act"),
+    # Not sandboxed on Windows: always asks (ASK_TOOLS).
+    UltronTool(pc_run, "act"),
     # Apple Maps: looking places and travel times up changes nothing.
     UltronTool(maps, "read"),
     # Google Flights: only searches, can't book.
@@ -150,7 +156,7 @@ TOOLS: list[UltronTool] = [
 
 # In chat, an 'act' tool asks you first only when it reaches other people or touches
 # something you marked important. These are the ones of Ultron's own that always ask.
-ASK_TOOLS = {"whatsapp_send", "unmark_important"}
+ASK_TOOLS = {"whatsapp_send", "unmark_important", "pc_run"}
 # Connector actions whose name has one of these words reach other people (send_message,
 # reply, share, respond_to_event, publish_app, ...). Drafts don't: they wait for you.
 PEOPLE_WORDS = {"send", "reply", "forward", "share", "invite", "respond", "broadcast",
@@ -180,6 +186,8 @@ TITLES = {
     "change_job": "Change a scheduled job",
     "unmark_important": "Stop protecting this",
     "mac_change": "Change something on this Mac",
+    "pc_change": "Change something on the PC",
+    "pc_run": "Run code on the PC",
 }
 
 # Claude Code's own built-in tools that Ultron may use (all 'read').

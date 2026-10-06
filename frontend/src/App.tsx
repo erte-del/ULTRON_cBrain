@@ -87,6 +87,7 @@ export default function App() {
             connection={ultron.connection}
             busy={ultron.busy}
             activeTool={ultron.activeTool}
+            retry={ultron.retry}
             onSend={send}
             onStop={ultron.stop}
             onConfirm={ultron.answerConfirm}

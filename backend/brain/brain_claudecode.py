@@ -30,7 +30,7 @@ from config import CONNECTORS, EFFORT, GATEWAY_MODEL, PROVIDER, STORAGE_DIR, set
 from storage import memory_store
 from tools import registry
 
-from .base import BrainEvent, Done, Error, ModelAlias, TextDelta, ToolResult, ToolStart
+from .base import BrainEvent, Done, Error, ModelAlias, TextDelta, ToolResult, ToolStart, UIEvent
 from .prompts import JARVIS_SYSTEM_PROMPT, school_block
 
 log = logging.getLogger("ultron.brain")
@@ -286,6 +286,14 @@ class ClaudeCodeBrain:
                         self.auth_source = msg.data.get("apiKeySource")
                         self._session_id = msg.data.get("session_id")
                         log.info("Claude Code auth: apiKeySource=%s", self.auth_source)
+
+                    elif isinstance(msg, SystemMessage) and msg.subtype == "api_retry":
+                        # Claude Code retries quietly (e.g. 529 overloaded); show the count.
+                        d = msg.data
+                        log.warning("Claude API retry %s/%s: %s", d.get("attempt"), d.get("max_retries"), d.get("error"))
+                        yield UIEvent("assistant.retry", {
+                            "attempt": d.get("attempt"), "max": d.get("max_retries"), "error": d.get("error"),
+                        })
 
                     elif isinstance(msg, RateLimitEvent):
                         usage.record_limits(msg.rate_limit_info.raw)
