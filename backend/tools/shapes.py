@@ -10,8 +10,12 @@ Conventions (also explained to Claude in the tool description):
   - round shapes (cylinder, cone, capsule, lathe, torus) have their axis along Y
   - a loft runs along X (vehicles: front toward +X, width along Z)
   - `mirror` adds a copy reflected across the middle (default: left/right, the Z axis)
+  - an `asset` part is another stored model (e.g. one pulled from 3DAssets.dev) placed in
+    this one, with its bottom center at `position`; `colors` recolors its materials by name
 """
 
+import io
+import json
 import math
 from dataclasses import dataclass, field
 from typing import Any
@@ -23,7 +27,9 @@ from shapely.geometry import Polygon
 from trimesh import creation, transformations
 from trimesh.visual.material import PBRMaterial
 
-SHAPES = ["box", "sphere", "cylinder", "cone", "torus", "capsule", "lathe", "extrude", "loft"]
+from storage import model_store
+
+SHAPES = ["box", "sphere", "cylinder", "cone", "torus", "capsule", "lathe", "extrude", "loft", "asset"]
 
 # name -> (metallic, roughness, alpha)
 MATERIALS = {
@@ -132,6 +138,29 @@ def _loft_sections(raw: dict, where: str) -> list[list[float]]:
     return out
 
 
+def _color(value: Any, where: str) -> tuple[int, int, int]:
+    try:
+        return ImageColor.getrgb(str(value))[:3]  # type: ignore[return-value]
+    except ValueError:
+        raise SpecError(f"{where}: unknown color {value!r}") from None
+
+
+def _asset_params(raw: dict, where: str) -> dict[str, Any]:
+    try:
+        rec = model_store.load(str(raw.get("model")))
+        version = rec.get(raw.get("version")).version
+    except (KeyError, TypeError, ValueError):
+        raise SpecError(f"{where}: 'model' must be an existing model id (e.g. mdl_004), "
+                        "and 'version' one of its versions") from None
+    # Pin the version into the spec, so later changes to that model don't change this one.
+    raw["version"] = version
+    colors = raw.get("colors") or {}
+    if not isinstance(colors, dict):
+        raise SpecError(f"{where}: 'colors' must be {{material name: color}}")
+    return {"model": rec.id, "version": version,
+            "colors": {str(k): _color(c, f"{where} colors") for k, c in colors.items()}}
+
+
 def validate(spec: Any) -> list[Part]:
     """Check a spec from Claude and turn it into Parts. Raises SpecError with a clear message."""
     if not isinstance(spec, dict) or not isinstance(spec.get("parts"), list):
@@ -192,12 +221,10 @@ def validate(spec: Any) -> list[Part]:
             params = {"outline": outline, "depth": _size(raw, "depth", where)}
         elif shape == "loft":
             params = {"sections": _loft_sections(raw, where)}
+        elif shape == "asset":
+            params = _asset_params(raw, where)
 
-        color_name = str(raw.get("color", "#c8c8c8"))
-        try:
-            color = ImageColor.getrgb(color_name)[:3]
-        except ValueError:
-            raise SpecError(f"{where}: unknown color {color_name!r}") from None
+        color = _color(raw.get("color", "#c8c8c8"), where)
         material = raw.get("material", "matte")
         if material not in MATERIALS:
             raise SpecError(f"{where}: 'material' must be one of {list(MATERIALS)}")
@@ -371,6 +398,72 @@ def _material(part: Part) -> PBRMaterial:
     )
 
 
+# Largest value of each integer component type (glTF componentType -> max).
+_NORMALIZED_MAX = {5120: 127, 5121: 255, 5122: 32767, 5123: 65535}
+
+
+def _position_divisor(glb: bytes) -> int:
+    """How much trimesh over-scales a KHR_mesh_quantization file (1 = not quantized).
+
+    3DAssets.dev stores positions as normalized int16; trimesh reads them raw, so a 2 m tree
+    comes out 65 km tall. Blender and the 3D panel read them correctly, only trimesh needs this.
+    """
+    gltf = json.loads(glb[20:20 + int.from_bytes(glb[12:16], "little")])
+    accessors = gltf.get("accessors", [])
+    found = {_NORMALIZED_MAX.get(accessors[p["attributes"]["POSITION"]]["componentType"], 1)
+             if accessors[p["attributes"]["POSITION"]].get("normalized") else 1
+             for m in gltf.get("meshes", []) for p in m.get("primitives", []) if "POSITION" in p.get("attributes", {})}
+    # ponytail: assumes one quantization for the whole file (true for 3DAssets); mixed files keep raw sizes
+    return found.pop() if len(found) == 1 else 1
+
+
+def load_glb(glb: bytes) -> trimesh.Scene:
+    """A .glb as a trimesh scene at its real size."""
+    scene = trimesh.load(io.BytesIO(glb), file_type="glb", force="scene")
+    divisor = _position_divisor(glb)
+    if divisor > 1:
+        for geom in scene.geometry.values():
+            geom.vertices = geom.vertices / divisor  # also drops the (quantized) normals trimesh read
+    return scene
+
+
+def _material_name(mesh: trimesh.Trimesh) -> str:
+    return str(getattr(getattr(mesh.visual, "material", None), "name", None) or "unnamed")
+
+
+def materials(scene: trimesh.Scene) -> list[str]:
+    """Material names in a model: what an asset part's 'colors' can change."""
+    return sorted({_material_name(g) for g in scene.geometry.values()})
+
+
+def _asset_meshes(part: Part) -> list[tuple[trimesh.Trimesh, str]]:
+    """A stored model's meshes, recolored, with the bottom center of the whole model at the origin."""
+    p = part.params
+    glb = model_store.file_path(p["model"], f"v{p['version']}_preview.glb").read_bytes()
+    scene = load_glb(glb)
+    unknown = set(p["colors"]) - set(materials(scene))
+    if unknown:
+        raise SpecError(f"Part {part.name}: {p['model']} has no material {', '.join(map(repr, sorted(unknown)))}. "
+                        f"Its materials are: {', '.join(materials(scene))}")
+    meshes = [g for g in scene.dump() if isinstance(g, trimesh.Trimesh)]
+    (x0, y0, z0), (x1, _, z1) = scene.bounds
+    pieces = []
+    for k, mesh in enumerate(meshes):
+        mesh.apply_translation([-(x0 + x1) / 2, -y0, -(z0 + z1) / 2])
+        name = _material_name(mesh)
+        if name in p["colors"]:
+            old = mesh.visual.material
+            factor = getattr(old, "baseColorFactor", None)
+            alpha = 1.0 if factor is None else float(factor[3]) / 255  # trimesh keeps it as 0–255
+            new = PBRMaterial(name=name, baseColorFactor=[*(_linear(c) for c in p["colors"][name]), alpha],
+                              metallicFactor=getattr(old, "metallicFactor", None),
+                              roughnessFactor=getattr(old, "roughnessFactor", None),
+                              alphaMode=getattr(old, "alphaMode", None))
+            mesh.visual = trimesh.visual.TextureVisuals(uv=getattr(mesh.visual, "uv", None), material=new)
+        pieces.append((mesh, f"{part.name}/{k}:{name}"))
+    return pieces
+
+
 _MIRROR = {"x": np.diag([-1.0, 1, 1, 1]), "y": np.diag([1.0, -1, 1, 1]), "z": np.diag([1.0, 1, -1, 1])}
 
 
@@ -378,19 +471,24 @@ def build_scene(parts: list[Part], detail: str = "preview") -> trimesh.Scene:
     segments = DETAIL[detail]
     scene = trimesh.Scene()
     for i, part in enumerate(parts, 1):
-        mesh = _mesh(part, segments, detail)
-        mesh.apply_transform(_transform(part))
-        copies = [(mesh, part.name)]
-        if part.mirror:
-            reflected = mesh.copy()
-            reflected.apply_transform(_MIRROR[part.mirror])  # trimesh keeps the faces facing outward
-            copies.append((reflected, f"{part.name} (mirrored)"))
+        if part.shape == "asset":
+            pieces = _asset_meshes(part)
+        else:
+            mesh = _mesh(part, segments, detail)
+            mesh.visual = trimesh.visual.TextureVisuals(material=_material(part))
+            pieces = [(mesh, part.name)]
         # The node name carries the shape, so the Blender step knows what to bevel.
         kind = "roundbox" if part.shape == "box" and part.params.get("round") else part.shape
-        for k, (m, name) in enumerate(copies):
-            m.visual = trimesh.visual.TextureVisuals(material=_material(part))
-            tag = f"{i:03d}{'m' if k else ''}"
-            scene.add_geometry(m, node_name=f"{tag}_{part.name}__{kind}", geom_name=f"{tag}_{name}")
+        for mesh, name in pieces:
+            mesh.apply_transform(_transform(part))
+            copies = [(mesh, name, "")]
+            if part.mirror:
+                reflected = mesh.copy()
+                reflected.apply_transform(_MIRROR[part.mirror])  # trimesh keeps the faces facing outward
+                copies.append((reflected, f"{name} (mirrored)", "m"))
+            for m, n, suffix in copies:
+                tag = f"{i:03d}{suffix}"
+                scene.add_geometry(m, node_name=f"{tag}_{n}__{kind}", geom_name=f"{tag}_{n}")
     return scene
 
 
@@ -445,6 +543,10 @@ def floating_parts(scene: trimesh.Scene) -> list[tuple[str, float]]:
     bounds = np.array([m.bounds for m in meshes])  # (n, 2, 3)
 
     links: list[set[int]] = [set() for _ in meshes]
+    # The meshes of one asset part share a tag ('003_house/0:plaster'): they are one part.
+    tags = [n.split("_", 1)[0] for n in names]
+    for i in range(len(meshes)):
+        links[i] |= {j for j in range(len(meshes)) if j != i and tags[j] == tags[i]}
     for i in range(len(meshes)):
         for j in range(i + 1, len(meshes)):
             box_gap = np.maximum(0, np.maximum(bounds[j, 0] - bounds[i, 1], bounds[i, 0] - bounds[j, 1]))

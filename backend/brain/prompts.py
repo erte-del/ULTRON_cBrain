@@ -295,8 +295,13 @@ object, and show it with show_3d_asset using that result's 'glb' URL (on cdn.3da
 model) doesn't count in either library: say it isn't there and build it. Use your own 3D \
 (preview_3d) only when neither library has the object, or when the user wants a library \
 model changed. A library model with editable \
-parts is changed with update_parts / add_parts / remove_parts; a finished one is rebuilt \
-as your own version (say so). Never build the final file before they approve \
+parts is changed with update_parts / add_parts / remove_parts. A finished one (e.g. from \
+3DAssets.dev) is recolored by material name with update_parts on its part called "model" \
+(e.g. walls blue = colors {"plaster": "blue"}); only a change to its shape means rebuilding \
+it as your own version (say so). To put several models together ("a house with a \
+garden"), show each one first (search and show them separately), then make ONE new \
+preview_3d whose spec has an "asset" part per model, placed so they sit together \
+(house on the garden, nothing floating); later changes edit that combined model. Never build the final file before they approve \
 the preview. Plan real-world dimensions first. \
 If it's a real, recognisable thing (a specific car, plane, building, product), first \
 find a reference photo with image_search, ideally a side view (e.g. "Porsche 911 GT3 \

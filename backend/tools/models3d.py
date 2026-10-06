@@ -59,6 +59,10 @@ SPEC_DESCRIPTION = (
     "roundness 0 = square, 1 = oval; bottom_roundness defaults to roundness). Use loft for car bodies, "
     "cabins, boat hulls, fuselages, sofas: anything curved in more than one direction. "
     "Round shapes stand upright (axis along Y); rotate [90,0,0] to make a wheel. "
+    "asset {model: a model id (e.g. one shown from 3DAssets.dev or the library), version (optional), "
+    "colors {material name: color}}: places that whole model, its bottom center at 'position', "
+    "turned with 'rotation' and sized with 'scale'. Use asset parts to COMBINE models into one scene "
+    "(a house on a garden) and to recolor a finished model by material name (e.g. 'plaster' = walls). "
     "Parts must touch or overlap slightly: nothing should float."
 )
 
@@ -147,7 +151,9 @@ async def render_views(glb: bytes) -> bytes | None:
     "(image_search, ideally a side view) and match its silhouette and proportions. "
     "Each call makes a new version. For a SMALL change to an existing model, pass model_id "
     "with update_parts / add_parts / remove_parts instead of the whole spec (much faster); "
-    "send a full spec only for a new object or a big rebuild. "
+    "send a full spec only for a new object or a big rebuild. To put models that are already "
+    "showing together (e.g. a house and a garden from 3DAssets.dev), make a NEW model whose spec "
+    "has one 'asset' part per model, placed next to / on each other. "
     "This never makes the final file (that's export_3d, only after the user approves). "
     "You get back 4 rendered views and a list of any floating parts: check them and fix "
     "mistakes before replying. Keep previews fast: as few parts as show the shape, loft for "
@@ -192,10 +198,8 @@ async def preview_3d(args: dict[str, Any]) -> dict[str, Any]:
         elif changes and rec is not None:
             current = model_store.spec(rec)
             if not current.get("parts") and LIBRARY_SPEC_KEY in current:
-                return _text(
-                    f"Preview not made: {rec.id} is a finished model from the 3D library, so its parts can't "
-                    "be edited one by one. Rebuild it with your own full 'spec' (same model_id) including the "
-                    "change, using the views you got when you showed it as the reference.", is_error=True)
+                # A finished model: edit it as one 'asset' part called 'model' (recolor, add parts next to it).
+                current = {"parts": [{"name": "model", "shape": "asset", "model": rec.id, "version": rec.current}]}
             spec = shapes.apply_changes(current, **changes)
         else:
             return _text("Preview not made: pass a full 'spec', or a model_id with "

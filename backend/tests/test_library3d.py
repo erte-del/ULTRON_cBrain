@@ -105,7 +105,7 @@ class LibraryTest(unittest.TestCase):
         run(library3d.show_from_3d_library, item_id="toy-truck")
         small = run(models3d.preview_3d, model_id="mdl_001", update_parts=[{"name": "x", "color": "red"}])
         self.assertTrue(small.get("is_error"))
-        self.assertIn("full 'spec'", text(small))
+        self.assertIn("The parts are: 'model", text(small))  # the finished model is one part called 'model'
         rebuilt = run(models3d.preview_3d, model_id="mdl_001", spec=CHAIR, note="rebuilt")
         self.assertFalse(rebuilt.get("is_error"), rebuilt)
         self.assertEqual(model_store.load("mdl_001").current, 2)
@@ -247,3 +247,80 @@ class SeedLibraryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _house_glb(materials=("plaster", "thatch")):
+    """A 'house' like 3DAssets ships them: meshes with named materials, sitting off-center."""
+    scene = trimesh.Scene()
+    for k, name in enumerate(materials):
+        box = trimesh.creation.box([2.0, 1.0, 2.0])
+        box.apply_translation([5.0, 0.5 + k, 3.0])
+        box.visual = trimesh.visual.TextureVisuals(
+            material=trimesh.visual.material.PBRMaterial(name=name, baseColorFactor=[200, 200, 200, 255]))
+        scene.add_geometry(box, node_name=name, geom_name=name)
+    return scene.export(file_type="glb")
+
+
+class EditAssetTest(unittest.TestCase):
+    """Recolor and combine models pulled from 3DAssets.dev."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old = model_store.MODELS_DIR, library3d._download
+        model_store.MODELS_DIR = Path(self.tmp.name)
+        garden = trimesh.creation.box([10.0, 0.1, 10.0])
+        garden.apply_translation([0, 0.05, 0])
+        self.files = {"house": _house_glb(), "garden": garden.export(file_type="glb")}
+        library3d._download = lambda url: self.files[url.rsplit("/", 1)[1]]
+
+    def tearDown(self):
+        model_store.MODELS_DIR, library3d._download = self.old
+        self.tmp.cleanup()
+
+    def show(self, name):
+        result = run(library3d.show_3d_asset, url=f"https://cdn.3dassets.dev/m/{name}", title=name)
+        self.assertFalse(result.get("is_error"), result)
+        return text(result)
+
+    def colors(self, model_id):
+        glb = model_store.file_path(model_id, f"v{model_store.load(model_id).current}_preview.glb").read_bytes()
+        return {shapes._material_name(g): tuple(g.visual.material.baseColorFactor[:3])
+                for g in shapes.load_glb(glb).geometry.values() if hasattr(g.visual, "material")}
+
+    def test_recolors_a_finished_model_by_material(self):
+        self.assertIn("plaster, thatch", self.show("house"))
+        result = run(models3d.preview_3d, model_id="mdl_001",
+                     update_parts=[{"name": "model", "colors": {"plaster": "blue"}}])
+        self.assertFalse(result.get("is_error"), result)
+        colors = self.colors("mdl_001")
+        self.assertEqual(colors["plaster"], (0, 0, 255))
+        self.assertEqual(colors["thatch"], (200, 200, 200))
+        rec = model_store.load("mdl_001")
+        self.assertEqual(model_store.spec(rec)["parts"][0]["version"], 1)  # pinned to the original
+
+    def test_unknown_material_lists_the_real_ones(self):
+        self.show("house")
+        result = run(models3d.preview_3d, model_id="mdl_001",
+                     update_parts=[{"name": "model", "colors": {"walls": "blue"}}])
+        self.assertTrue(result.get("is_error"))
+        self.assertIn("plaster, thatch", text(result))
+
+    def test_combines_two_models_and_keeps_them_editable(self):
+        self.show("house")
+        self.show("garden")
+        spec = {"parts": [{"name": "garden", "shape": "asset", "model": "mdl_002"},
+                          {"name": "house", "shape": "asset", "model": "mdl_001", "position": [0, 0.1, 0]}]}
+        result = run(models3d.preview_3d, title="House with garden", spec=spec)
+        self.assertFalse(result.get("is_error"), result)
+        self.assertNotIn("PROBLEM", text(result))  # house sits on the lawn; its own meshes count as one part
+        rec = model_store.load("mdl_003")
+        self.assertEqual(rec.versions[0].size, [10.0, 2.1, 10.0])  # house re-centered onto the garden
+        change = run(models3d.preview_3d, model_id="mdl_003",
+                     update_parts=[{"name": "house", "colors": {"plaster": "#0000ff"}}])
+        self.assertFalse(change.get("is_error"), change)
+        self.assertEqual(self.colors("mdl_003")["plaster"], (0, 0, 255))
+
+    def test_a_missing_model_is_a_clear_error(self):
+        result = run(models3d.preview_3d, spec={"parts": [{"name": "x", "shape": "asset", "model": "mdl_999"}]})
+        self.assertTrue(result.get("is_error"))
+        self.assertIn("existing model id", text(result))

@@ -207,6 +207,7 @@ async def show_from_3d_library(args: dict[str, Any]) -> dict[str, Any]:
 async def _present(title: str, spec: dict[str, Any], glb: bytes, parts: int, size: list[float],
                    source: str, fixed: bool, origin: str) -> dict[str, Any]:
     """Put a ready-made model in the 3D panel and tell Claude what it can do next."""
+    names = await asyncio.to_thread(lambda: shapes.materials(shapes.load_glb(glb))) if fixed else []
     rec = model_store.create(title)
     await asyncio.to_thread(model_store.add_version, rec, spec, glb, f"from {origin}", parts, size, source)
     await _show(rec)
@@ -215,9 +216,12 @@ async def _present(title: str, spec: dict[str, Any], glb: bytes, parts: int, siz
     content: list[dict[str, Any]] = []
     if fixed:
         lines.append(
-            "It's a finished model, so its parts can't be edited. If the user wants a change, rebuild it "
-            f"as your own version: preview_3d with model_id {rec.id} and a full 'spec' (the views attached "
-            "show what it looks like now), and say that you rebuilt it from simple shapes."
+            f"It's a finished model with these materials: {', '.join(names)}. To recolor it, call preview_3d "
+            f"with model_id {rec.id} and update_parts [{{\"name\": \"model\", \"colors\": {{material: color}}}}] "
+            "(pick the materials that match what the user means, e.g. walls = plaster/stone; look at the views). "
+            "add_parts adds your own parts next to it. To combine it with another model, make a new preview_3d "
+            f"spec with an 'asset' part for each (model {rec.id}). For a change to its shape, rebuild it "
+            "with your own full 'spec' and say you rebuilt it from simple shapes."
         )
         sheet = await render_views(glb)
         if sheet:
@@ -257,31 +261,8 @@ def _download(url: str) -> bytes:
     return data
 
 
-# Largest value of each integer component type (glTF componentType -> max).
-_NORMALIZED_MAX = {5120: 127, 5121: 255, 5122: 32767, 5123: 65535}
-
-
-def _position_divisor(glb: bytes) -> int:
-    """How much trimesh over-scales a KHR_mesh_quantization file (1 = not quantized).
-
-    3DAssets.dev stores positions as normalized int16; trimesh reads them raw, so a 2 m tree
-    comes out 65 km tall. Blender and the 3D panel read them correctly, only our sizes need this.
-    """
-    gltf = json.loads(glb[20:20 + int.from_bytes(glb[12:16], "little")])
-    accessors = gltf.get("accessors", [])
-    found = {_NORMALIZED_MAX.get(accessors[p["attributes"]["POSITION"]]["componentType"], 1)
-             if accessors[p["attributes"]["POSITION"]].get("normalized") else 1
-             for m in gltf.get("meshes", []) for p in m.get("primitives", []) if "POSITION" in p.get("attributes", {})}
-    # ponytail: assumes one quantization for the whole file (true for 3DAssets); mixed files keep raw sizes
-    return found.pop() if len(found) == 1 else 1
-
-
 def _read_downloaded(glb: bytes) -> tuple[int, list[float]]:
-    scene = trimesh.load(io.BytesIO(glb), file_type="glb", force="scene")
-    divisor = _position_divisor(glb)
-    if divisor > 1:
-        for geom in scene.geometry.values():
-            geom.vertices = geom.vertices / divisor
+    scene = shapes.load_glb(glb)
     size, _ = shapes.summary(scene)
     return len(scene.geometry), size
 
