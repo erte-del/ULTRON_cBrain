@@ -149,7 +149,7 @@ async def pc_read(args: dict[str, Any]) -> dict[str, Any]:
 @tool(
     "pc_change",
     "Do something on the user's Windows PC. action: 'open_app' (the Start menu name or part of it, e.g. 'chrome', "
-    "else a Desktop shortcut's name), 'open_url' (http or https; also steam://, "
+    "else a Start Menu or Desktop shortcut's name, which covers installed Steam/Epic/Riot games; nicknames like 'rl' work via nicknames.json in the PC's Ultron folder), 'open_url' (http or https; also steam://, "
     "com.epicgames.launcher:// and ms-settings: links, which ask the user first), 'launch_game' (name: a game "
     "in games.json in the PC's Ultron folder, e.g. 'rocket league'; started through Steam or Epic), 'open_file' (path: a document or a .lnk/.url shortcut; a folder opens in Explorer), "
     "'open_terminal' (a terminal window on the PC's screen, for the user to type in), "

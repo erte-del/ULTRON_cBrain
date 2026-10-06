@@ -10,7 +10,7 @@
 It listens on 127.0.0.1 only; `tailscale serve` passes your own devices through to it over
 HTTPS. Nothing reaches the public internet. Files: ULTRON_PC_FOLDER plus your Desktop, Documents
 and Downloads; nothing leaves them, a move or trash outside ULTRON_PC_FOLDER needs Ultron's
-approval flag (the Mac asks you first), nothing is overwritten, "trash" goes to the Recycle Bin, only documents and shortcuts open, and apps only from the Start menu or Desktop shortcuts.
+approval flag (the Mac asks you first), nothing is overwritten, "trash" goes to the Recycle Bin, only documents and shortcuts open, and apps only from the Start menu or Start Menu/Desktop shortcuts (nicknames.json maps 'rl' to 'rocket league').
 /run is NOT sandboxed (Windows has no sandbox-exec): it runs as you, in the folder's Output
 subfolder, killed after 60 s. Ultron asks you before every /run.
 
@@ -56,6 +56,9 @@ URL_SCHEMES = ("http://", "https://", "steam://", "com.epicgames.launcher://", "
 URL_OK = re.compile(r"(?i)(https?|steam|com\.epicgames\.launcher)://[^\s/]\S*|ms-settings:\S+")
 GAMES_FILE = "games.json"  # in the Ultron folder, yours to edit: {"Rocket League": {"epic": "Sugar"}, ...}
 GAMES = {"Rocket League": {"epic": "Sugar"}}  # written there the first time
+NICKNAMES_FILE = "nicknames.json"  # in the Ultron folder, yours to edit: {"rl": "rocket league", ...}
+NICKNAMES = {"rl": "rocket league", "cs": "counter-strike", "r6": "rainbow six", "lol": "league of legends",
+             "league": "league of legends", "val": "valorant", "mc": "minecraft", "acc": "assetto corsa competizione"}
 MEDIA_KEYS = {"play_pause": 0xB3, "next": 0xB0, "previous": 0xB1}
 THEME_KEY = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
 REPO = Path(__file__).resolve().parents[1]
@@ -201,26 +204,38 @@ def pick(names: list[str], want: str) -> str | None:
                  for n in names if want and match(n)), None)
 
 
-def desktop_shortcuts() -> dict[str, Path]:
-    """Shortcuts on your Desktop and the Public one, by lowercase name: games from Steam or Epic live here."""
-    dirs = [user_dirs()["Desktop"], Path(os.getenv("PUBLIC", r"C:\Users\Public")) / "Desktop"]
-    return {p.stem.lower(): p for d in dirs if d.is_dir() for p in d.iterdir() if p.suffix.lower() in SHORTCUTS}
+def shortcuts() -> dict[str, Path]:
+    """Shortcuts in the Start Menu folders (Windows' /Applications: installers and Steam, Epic, Riot put one there)
+    and on your Desktop and the Public one, by lowercase name. The Desktop wins a name clash."""
+    menu = r"Microsoft\Windows\Start Menu\Programs"
+    dirs = [Path(os.getenv("PROGRAMDATA", r"C:\ProgramData")) / menu, Path(os.getenv("APPDATA", "")) / menu,
+            Path(os.getenv("PUBLIC", r"C:\Users\Public")) / "Desktop", user_dirs()["Desktop"]]
+    return {p.stem.lower(): p for d in dirs if d.is_dir() for p in d.rglob("*") if p.suffix.lower() in SHORTCUTS}
+
+
+def real_name(name: str) -> str:
+    """'rl' -> 'rocket league' from nicknames.json (written with NICKNAMES the first time), else the name as said."""
+    f = folder() / NICKNAMES_FILE
+    if not f.exists():
+        f.write_text(json.dumps(NICKNAMES, indent=2), encoding="utf-8")
+    want = name.strip().lower()
+    return {k.lower(): v for k, v in json.loads(f.read_text(encoding="utf-8")).items()}.get(want, want).lower()
 
 
 def open_app(name: str) -> str:
-    """By its Start menu name or part of it (Store apps too), else a Desktop shortcut's name."""
+    """By its Start menu name or part of it (Store apps too), else a Start Menu or Desktop shortcut's name."""
     apps = json.loads(ps("Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress") or "[]")
     apps = {a["Name"].lower(): a for a in ([apps] if isinstance(apps, dict) else apps)}
-    want = name.strip().lower()
+    want = real_name(name)
     if n := pick(list(apps), want):
         subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + apps[n]["AppID"]])
         return f"Opened {apps[n]['Name']}."
-    links = desktop_shortcuts()
+    links = shortcuts()
     if n := pick(list(links), want):
         os.startfile(links[n])  # .url (steam://, com.epicgames.launcher://) or .lnk: its launcher runs it
-        return f"Opened {links[n].stem} from the Desktop."
+        return f"Opened {links[n].stem}."
     near = difflib.get_close_matches(want, [*apps, *links], n=5, cutoff=0.4)
-    raise ValueError(f"No Start menu app or Desktop shortcut called {name!r}." +
+    raise ValueError(f"No Start menu app or shortcut called {name!r}." +
                      (f" Close: {', '.join(near)}." if near else ""))
 
 
@@ -230,7 +245,7 @@ def game_link(name: str) -> str:
     if not f.exists():
         f.write_text(json.dumps(GAMES, indent=2), encoding="utf-8")
     games = {k.lower(): v for k, v in json.loads(f.read_text(encoding="utf-8")).items()}
-    n = pick(list(games), name.strip().lower())
+    n = pick(list(games), real_name(name))
     if n is None:
         raise ValueError(f"No game called {name!r} in {f}. It has: {', '.join(games) or 'nothing yet'}.")
     if steam := games[n].get("steam"):

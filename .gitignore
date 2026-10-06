@@ -45,3 +45,4 @@ backend/storage/syllabus/
 backend/storage/textbooks/
 backend/storage/slides/
 backend/storage/lectures/
+backend/storage/backend.out

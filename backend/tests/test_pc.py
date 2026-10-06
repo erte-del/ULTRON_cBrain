@@ -64,7 +64,9 @@ class PcTest(unittest.TestCase):
         with mock.patch.object(agent, "ps", return_value=apps), mock.patch.object(agent.subprocess, "Popen") as popen:
             self.assertEqual(agent.open_app("chrome"), "Opened Google Chrome.")
             self.assertEqual(agent.open_app("unity hub"), "Opened Unity Hub.")
-            self.assertEqual(popen.call_count, 2)
+            (self.root / "nicknames.json").write_text('{"GC": "google chrome"}')
+            self.assertEqual(agent.open_app("gc"), "Opened Google Chrome.")
+            self.assertEqual(popen.call_count, 3)
             self.assertRaises(ValueError, agent.open_app, "photoshop")
 
     def test_open_app_falls_back_to_desktop_shortcuts(self):
@@ -73,8 +75,9 @@ class PcTest(unittest.TestCase):
         (desktop / "Rocket League®.url").write_text("[InternetShortcut]\nURL=com.epicgames.launcher://x")
         with mock.patch.object(agent, "ps", return_value="[]"), \
                 mock.patch.object(agent, "user_dirs", return_value={"Desktop": desktop}), \
+                mock.patch.dict(agent.os.environ, {"APPDATA": str(self.root / "none")}), \
                 mock.patch.object(agent.os, "startfile", create=True) as start:
-            self.assertEqual(agent.open_app("rocket league"), "Opened Rocket League® from the Desktop.")
+            self.assertEqual(agent.open_app("rocket league"), "Opened Rocket League®.")
             start.assert_called_once_with(desktop / "Rocket League®.url")
             self.assertRaises(ValueError, agent.open_app, "photoshop")
 
@@ -141,6 +144,7 @@ class PcTest(unittest.TestCase):
         (self.root / "games.json").write_text('{"Rocket League": {"epic": "Sugar"}, "CS2": {"steam": "730"}}')
         self.assertEqual(agent.game_link("rocket league"), epic)
         self.assertEqual(agent.game_link("cs2"), "steam://rungameid/730")
+        self.assertEqual(agent.game_link("rl"), epic)  # the default nicknames.json
         self.assertRaises(ValueError, agent.game_link, "halo")
         with mock.patch.object(agent.os, "startfile", create=True) as start:
             self.assertEqual(agent.launch("ms-settings:display"), "Opened ms-settings:display.")
