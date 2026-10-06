@@ -1,5 +1,5 @@
 // Ultron.app: Ultron in the menu bar. Opening it starts Ultron and opens the page;
-// the orb's menu opens the page again or quits (which stops Ultron).
+// the orb's menu opens the page again, restarts Ultron (picks up code changes) or quits (which stops Ultron).
 // It also owns the screen overlay: a small always-on-top window (ctrl+option+U, or "Look at
 // my screen" in the orb's menu) where you ask about what's on your screen.
 // Built by scripts/make_app.sh, which writes the project folder into Info.plist (UltronRoot).
@@ -159,6 +159,7 @@ final class App: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Open Ultron", action: #selector(openPage), keyEquivalent: "o").target = self
         menu.addItem(withTitle: "Look at my screen   ⌃⌥U", action: #selector(toggleOverlay), keyEquivalent: "").target = self
         menu.addItem(.separator())
+        menu.addItem(withTitle: "Restart Ultron", action: #selector(restart), keyEquivalent: "r").target = self
         menu.addItem(withTitle: "Quit Ultron", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
         installEditMenu()
@@ -187,6 +188,25 @@ final class App: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ note: Notification) {
         run("stop_ultron.sh")
+    }
+
+    /// Stops and starts the backend so it runs the latest code. The open page reconnects.
+    @objc func restart() {
+        item.button?.appearsDisabled = true  // dimmed orb while it restarts
+        DispatchQueue.global().async {
+            self.run("stop_ultron.sh")
+            let (ok, message) = self.run("start_ultron.sh", "--no-open")
+            DispatchQueue.main.async {
+                self.item.button?.appearsDisabled = false
+                guard !ok else { return }
+                NSApp.activate(ignoringOtherApps: true)
+                let alert = NSAlert()
+                alert.messageText = "Ultron couldn't restart"
+                alert.informativeText = message
+                alert.alertStyle = .warning
+                alert.runModal()
+            }
+        }
     }
 
     @objc func toggleOverlay() {
@@ -225,9 +245,10 @@ final class App: NSObject, NSApplicationDelegate {
 
     /// Runs one of our scripts and returns whether it worked, and what it said on stderr.
     @discardableResult
-    func run(_ script: String) -> (Bool, String) {
+    func run(_ script: String, _ arguments: String...) -> (Bool, String) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "\(root)/scripts/\(script)")
+        p.arguments = arguments
         let err = Pipe()
         p.standardError = err
         p.standardOutput = FileHandle.nullDevice

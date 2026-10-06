@@ -15,13 +15,14 @@ in a sandbox.
 Files never leave those folders: nothing is moved out of them, nothing is overwritten, and
 "delete" puts the file in the Trash. Ultron's own code is out of reach. Only documents open
 (no apps, scripts or installers, which matters most in Downloads), and apps only from the
-Applications folders.
+Applications folders and the Desktop.
 """
 
 import asyncio
 import base64
 import json
 import os
+import plistlib
 import re
 import sys
 import tempfile
@@ -44,11 +45,27 @@ LOCATION_APP = config.STORAGE_DIR / "UltronLocation.app"
 PYTHON_TIMEOUT_S = 60
 SHORTCUT_TIMEOUT_S = 120
 APP_DIRS = [Path("/Applications"), Path("/Applications/Utilities"), Path("/System/Applications"),
-            Path("/System/Applications/Utilities"), Path.home() / "Applications"]
+            Path("/System/Applications/Utilities"), Path.home() / "Applications", Path.home() / "Desktop"]
 # Files mac_change may open: documents only, so nothing in the folder can run as a program.
 DOCUMENTS = {"pdf", "txt", "md", "rtf", "csv", "tsv", "json", "xml", "log", "doc", "docx", "xls", "xlsx",
              "ppt", "pptx", "pages", "numbers", "key", "odt", "ods", "png", "jpg", "jpeg", "gif", "heic",
              "webp", "tiff", "bmp", "svg", "mp3", "m4a", "wav", "aac", "flac", "mp4", "mov", "m4v", "zip"}
+# Brings the app to the front and full-screens its first window once one shows up (~15 s max).
+FULL_SCREEN = """on run argv
+  set bid to item 1 of argv
+  tell application id bid to activate
+  tell application "System Events"
+    repeat 30 times
+      set ps to (processes whose bundle identifier is bid)
+      if ps is not {} and (count of windows of item 1 of ps) > 0 then
+        set value of attribute "AXFullScreen" of window 1 of item 1 of ps to true
+        return
+      end if
+      delay 0.5
+    end repeat
+  end tell
+  error "no window appeared"
+end run"""
 ACTIONS = ["open_app", "open_url", "open_file", "run_shortcut", "copy", "volume", "mute", "dark_mode",
            "move", "trash"]
 
@@ -294,7 +311,7 @@ async def mac_read(args: dict[str, Any]) -> dict[str, Any]:
 
 def find_app(name: str) -> Path | None:
     """'safari' -> Safari.app, 'unity' -> Unity Hub.app, 'chrome' -> Google Chrome.app: the exact name,
-    else the shortest name starting with it, else the shortest containing it. Only the Applications folders."""
+    else the shortest name starting with it, else the shortest containing it. Only the Applications folders and the Desktop."""
     want = name.strip().lower().removesuffix(".app")
     if not want or "/" in want:
         return None
@@ -304,6 +321,23 @@ def find_app(name: str) -> Path | None:
         if found:
             return found
     return None
+
+
+async def _full_screen(app: Path) -> str:
+    """Switches to the app and makes its window full screen. Returns a note if that didn't work;
+    the app is open either way."""
+    try:
+        with open(app / "Contents" / "Info.plist", "rb") as f:
+            bid = plistlib.load(f)["CFBundleIdentifier"]
+        code, _, err = await _run("osascript", "-e", FULL_SCREEN, bid, timeout=25)
+    except (OSError, KeyError, plistlib.InvalidFileException, RuntimeError) as e:
+        err, code = str(e), 1
+    if not code:
+        return " full screen"
+    if "assistive" in err or "-25211" in err or "-1719" in err:
+        return (" (not full screen: allow Ultron in System Settings → Privacy & Security → "
+                "Accessibility)")
+    return f" (couldn't make it full screen: {err.strip() or 'unknown error'})"
 
 
 def installed_apps() -> list[Path]:
@@ -387,7 +421,7 @@ async def mac_change(args: dict[str, Any]) -> dict[str, Any]:
                 return _text(f"No app called {name!r}. Installed apps: {', '.join(names)}. If one of these is "
                              "what the user meant, open it by that name; otherwise say it isn't installed.", True)
             await _out("open", "-a", str(app))
-            return _text(f"Opened {app.stem}.")
+            return _text(f"Opened {app.stem}{await _full_screen(app)}.")
         if action == "open_url":
             url = str(args.get("url") or "").strip()
             if not re.match(r"https?://[^\s/]", url):

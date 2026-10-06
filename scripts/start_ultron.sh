@@ -1,6 +1,7 @@
 #!/bin/bash
 # Start Ultron (if it isn't running yet) and open it in the browser.
 # Used by Ultron.app; you can also run it yourself: scripts/start_ultron.sh
+# --no-open skips the browser (Restart Ultron: the open page reconnects by itself).
 set -u
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -50,4 +51,4 @@ if ! running; then
   fi
 fi
 
-open "$URL"
+[ "${1:-}" = "--no-open" ] || open "$URL"
