@@ -60,6 +60,7 @@ class LibraryTest(unittest.TestCase):
         result = run(library3d.search_3d_library, query="porsche 911")
         self.assertIn("Nothing in the 3D library", text(result))
         self.assertIn("preview_3d", text(result))
+        self.assertIn("mcp__3dassets__search_assets", text(result))
 
     def test_only_close_is_not_an_exact_match(self):
         # asked for an office chair: the library only has "chair", which may not be what they mean
@@ -193,6 +194,24 @@ class AssetsDevTest(unittest.TestCase):
         result = run(library3d.show_3d_asset, url=self.url, title="Tree")
         self.assertTrue(result.get("is_error"))
         self.assertIn("preview_3d", text(result))
+
+    def test_quantized_glb_gets_its_real_size(self):
+        # how 3DAssets ships models: KHR_mesh_quantization, normalized int16 positions
+        import struct
+        pos = struct.pack("<9h", 32767, 0, 0, 0, 32767, 0, 0, 0, 0) + b"\0\0"
+        gltf = {"asset": {"version": "2.0"}, "extensionsUsed": ["KHR_mesh_quantization"],
+                "extensionsRequired": ["KHR_mesh_quantization"], "scene": 0,
+                "scenes": [{"nodes": [0]}], "nodes": [{"mesh": 0}],
+                "meshes": [{"primitives": [{"attributes": {"POSITION": 0}}]}],
+                "buffers": [{"byteLength": len(pos)}], "bufferViews": [{"buffer": 0, "byteLength": 18}],
+                "accessors": [{"bufferView": 0, "componentType": 5122, "normalized": True, "count": 3,
+                               "type": "VEC3", "min": [0, 0, 0], "max": [32767, 32767, 0]}]}
+        js = json.dumps(gltf).encode()
+        js += b" " * (-len(js) % 4)
+        body = struct.pack("<I4s", len(js), b"JSON") + js + struct.pack("<I4s", len(pos), b"BIN\0") + pos
+        glb = struct.pack("<4sII", b"glTF", 2, 12 + len(body)) + body
+        _, size = library3d._read_downloaded(glb)
+        self.assertEqual(size[:2], [1.0, 1.0])
 
     def test_search_tools_run_freely_but_account_changes_ask(self):
         self.assertEqual(registry.classify("mcp__3dassets__search_assets"), "read")

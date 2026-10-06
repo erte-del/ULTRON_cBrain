@@ -151,8 +151,11 @@ async def search_3d_library(args: dict[str, Any]) -> dict[str, Any]:
     exact = [i for i, quality in results if quality == "exact"]
     if not exact:
         near = "".join(f"\nNot the same thing, don't use unless the user agrees: {_describe(i)}" for i, _ in results[:3])
-        return _text(f"Nothing in the 3D library is {query!r}. Tell the user it isn't there and build it "
-                     f"yourself with preview_3d.{near}")
+        return _text(f"Nothing in the 3D library is {query!r}. Next search 3DAssets.dev: "
+                     f"mcp__3dassets__search_assets (load it with ToolSearch "
+                     f"'select:mcp__3dassets__search_assets') with query {query!r}, then show a result "
+                     "that really is the object with show_3d_asset and its 'glb' URL. Only if that has "
+                     f"nothing either, build it yourself with preview_3d.{near}")
     lines = "\n".join(_describe(i) for i in exact[:5])
     return _text(f"In the 3D library:\n{lines}\n"
                  "If one of these is really the object the user asked for, show it with show_from_3d_library. "
@@ -254,8 +257,31 @@ def _download(url: str) -> bytes:
     return data
 
 
+# Largest value of each integer component type (glTF componentType -> max).
+_NORMALIZED_MAX = {5120: 127, 5121: 255, 5122: 32767, 5123: 65535}
+
+
+def _position_divisor(glb: bytes) -> int:
+    """How much trimesh over-scales a KHR_mesh_quantization file (1 = not quantized).
+
+    3DAssets.dev stores positions as normalized int16; trimesh reads them raw, so a 2 m tree
+    comes out 65 km tall. Blender and the 3D panel read them correctly, only our sizes need this.
+    """
+    gltf = json.loads(glb[20:20 + int.from_bytes(glb[12:16], "little")])
+    accessors = gltf.get("accessors", [])
+    found = {_NORMALIZED_MAX.get(accessors[p["attributes"]["POSITION"]]["componentType"], 1)
+             if accessors[p["attributes"]["POSITION"]].get("normalized") else 1
+             for m in gltf.get("meshes", []) for p in m.get("primitives", []) if "POSITION" in p.get("attributes", {})}
+    # ponytail: assumes one quantization for the whole file (true for 3DAssets); mixed files keep raw sizes
+    return found.pop() if len(found) == 1 else 1
+
+
 def _read_downloaded(glb: bytes) -> tuple[int, list[float]]:
     scene = trimesh.load(io.BytesIO(glb), file_type="glb", force="scene")
+    divisor = _position_divisor(glb)
+    if divisor > 1:
+        for geom in scene.geometry.values():
+            geom.vertices = geom.vertices / divisor
     size, _ = shapes.summary(scene)
     return len(scene.geometry), size
 
@@ -263,12 +289,13 @@ def _read_downloaded(glb: bytes) -> tuple[int, list[float]]:
 @tool(
     "show_3d_asset",
     "Show a model from 3DAssets.dev (a free CC0 library) in the big 3D panel. Search it first with "
-    "its tools (find them with ToolSearch: search_assets, get_asset), then pass the model's direct "
-    ".glb download URL from get_asset and its name. Only for when search_3d_library had nothing.",
+    "mcp__3dassets__search_assets (load it with ToolSearch), then pass a result's 'glb' URL "
+    "(https://cdn.3dassets.dev/.../model.glb; get_asset calls it cdnUrl; NOT the /download/ page link) "
+    "and its title. Only for when search_3d_library had nothing.",
     {
         "type": "object",
         "properties": {
-            "url": {"type": "string", "description": "The https .glb URL from get_asset."},
+            "url": {"type": "string", "description": "The result's 'glb' / cdnUrl, on cdn.3dassets.dev."},
             "title": {"type": "string", "description": "The model's name."},
         },
         "required": ["url", "title"],

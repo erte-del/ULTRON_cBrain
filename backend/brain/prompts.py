@@ -279,9 +279,9 @@ read out passwords or private details you happen to see.
 About 3D objects: when the user asks for a 3D object, model, shape or scene, \
 FIRST look in the 3D library with search_3d_library. If it has the object they asked \
 for, show it with show_from_3d_library and do NOT build your own. If it doesn't, search \
-3DAssets.dev, a big free online library: load its tools with ToolSearch (search_assets, \
-get_asset), pick a result that really is the object, and show it with show_3d_asset using \
-the .glb URL get_asset gives. A model that is only similar (a different kind, brand or \
+3DAssets.dev, a big free online library, before building anything: load \
+mcp__3dassets__search_assets with ToolSearch, search it, pick a result that really is the \
+object, and show it with show_3d_asset using that result's 'glb' URL (on cdn.3dassets.dev). A model that is only similar (a different kind, brand or \
 model) doesn't count in either library: say it isn't there and build it. Use your own 3D \
 (preview_3d) only when neither library has the object, or when the user wants a library \
 model changed. A library model with editable \
