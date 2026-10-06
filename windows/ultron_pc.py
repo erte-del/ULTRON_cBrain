@@ -130,6 +130,8 @@ def status() -> str:
         sound = f"{round(sp.GetMasterVolumeLevelScalar() * 100)}%" + (", muted" if sp.GetMute() else "")
     except ImportError:
         sound = "unknown (py -m pip install pycaw on the PC)"
+    except Exception as e:  # comtypes COMError: no speakers
+        sound = f"unknown ({e})"
     import winreg
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, THEME_KEY) as k:
         light = winreg.QueryValueEx(k, "AppsUseLightTheme")[0]
@@ -143,12 +145,16 @@ def status() -> str:
 
 
 def open_app(name: str) -> str:
-    """By its Start menu name; Store apps too. Only what the Start menu lists."""
+    """By its Start menu name or part of it; Store apps too. Only what the Start menu lists."""
     apps = json.loads(ps("Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress") or "[]")
     apps = {a["Name"].lower(): a for a in ([apps] if isinstance(apps, dict) else apps)}
-    app = apps.get(name.strip().lower())
+    want = name.strip().lower()
+    # Like the Mac: 'chrome' -> Google Chrome. Exact, else shortest starting with it, else containing it.
+    names = sorted(apps, key=len)
+    app = next((apps[n] for match in (lambda n: n == want, lambda n: n.startswith(want), lambda n: want in n)
+                for n in names if want and match(n)), None)
     if app is None:
-        near = difflib.get_close_matches(name.strip().lower(), apps, n=5, cutoff=0.4)
+        near = difflib.get_close_matches(want, apps, n=5, cutoff=0.4)
         raise ValueError(f"No Start menu app called {name!r}." +
                          (f" Close: {', '.join(apps[n]['Name'] for n in near)}." if near else ""))
     subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + app["AppID"]])
@@ -262,10 +268,10 @@ def run(args: dict[str, Any]) -> tuple[str, bool]:
     if not code.strip():
         raise ValueError("run needs code.")
     if lang == "python":
-        cmd, stdin = [sys.executable, "-I", "-"], code
+        cmd, stdin = [sys.executable, "-I", "-X", "utf8", "-"], code
     elif lang == "powershell":
         import base64
-        encoded = base64.b64encode(code.encode("utf-16-le")).decode()
+        encoded = base64.b64encode(("[Console]::OutputEncoding=[Text.Encoding]::UTF8;" + code).encode("utf-16-le")).decode()
         cmd, stdin = ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
                       "-EncodedCommand", encoded], ""
     else:
@@ -296,8 +302,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             result = route(json.loads(self.rfile.read(size) or b"{}"))
             text, err = result if isinstance(result, tuple) else (result, False)
-        except (RuntimeError, OSError, ValueError, ImportError, subprocess.TimeoutExpired) as e:
-            text, err = str(e), True
+        except Exception as e:  # COMError, TypeError, ...: still an answer, not "the PC isn't reachable"
+            text, err = f"{type(e).__name__}: {e}" if not str(e) else str(e), True
         self.reply(200, text, err)
 
     def reply(self, code: int, text: str, is_error: bool) -> None:

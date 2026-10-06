@@ -51,6 +51,20 @@ class PcTest(unittest.TestCase):
         text, err = call(pc.pc_run, code="raise SystemExit(3)")
         self.assertTrue(err)
         self.assertTrue(call(pc.pc_run, code="x", lang="bash")[1])
+        self.assertEqual(call(pc.pc_run, code="print('şğü')"), ("şğü", False))
+
+    def test_pc_side_crash_is_an_answer(self):  # status needs Windows: here it fails, but answers
+        text, err = call(pc.pc_read, what="status")
+        self.assertTrue(err)
+        self.assertNotIn("isn't reachable", text)
+
+    def test_open_app_matches_part_of_the_name(self):
+        apps = '[{"Name": "Google Chrome", "AppID": "chrome"}, {"Name": "Unity Hub", "AppID": "unity"}]'
+        with mock.patch.object(agent, "ps", return_value=apps), mock.patch.object(agent.subprocess, "Popen") as popen:
+            self.assertEqual(agent.open_app("chrome"), "Opened Google Chrome.")
+            self.assertEqual(agent.open_app("unity hub"), "Opened Unity Hub.")
+            self.assertEqual(popen.call_count, 2)
+            self.assertRaises(ValueError, agent.open_app, "photoshop")
 
     def test_files_and_move_inside_the_fence(self):
         self.root.mkdir()
