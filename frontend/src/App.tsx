@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { flushSync } from 'react-dom'
 import './App.css'
 import Chat from './components/Chat'
 import Panel from './components/Panel'
@@ -9,41 +8,14 @@ import Stage, { Core } from './components/Stage'
 import TopBar from './components/TopBar'
 import { screenOverlaySupported, useScreenOverlay } from './screen/useScreenOverlay'
 import { useSwipePanes } from './useSwipePanes'
+import { morph } from './morph'
 import { useUltron } from './ws'
-import { makeFold } from './fold'
 
 const PANES = [['chat', 'CHAT'], ['stage', 'CANVAS'], ['status', 'STATUS']] as const
 const PANE_IDS = PANES.map(([id]) => id)
 
 // In voice mode, "go back to typing", "switch to texting", "text mode"... ends voice mode.
 const BACK_TO_TYPING = /\b(?:(?:back|switch|go|change)\s+(?:back\s+)?to\s+(?:typing|texting|text|keyboard)|(?:typing|texting|text)\s+mode)\b/i
-
-// Animate a layout change: the browser morphs every element with a view-transition-name
-// (App.css, "Voice mode") from where it was to where it ends up. `anim` picks how the
-// chat, log and terminal leave (1-3, App.css).
-let morphs = 0
-async function morph(change: () => void, to: 'voice' | 'text', anim = 1) {
-  if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return change()
-  const root = document.documentElement
-  const id = ++morphs
-  // Animation 3 folds the chat first (fold.ts); only where voice mode moves it (App.css).
-  const panel = document.querySelector<HTMLElement>('.comms-panel')
-  const fold = anim === 3 && panel && window.matchMedia('(min-width: 1201px) and (min-height: 501px)').matches
-  let leaf = fold && to === 'voice' ? makeFold(panel) : null
-  if (leaf) await leaf.swing(true)
-  root.dataset.morph = to
-  root.dataset.anim = String(anim)
-  const t = document.startViewTransition(() => {
-    flushSync(change)
-    leaf?.remove() // going to voice: the folded chat drops away
-    if (fold && to === 'text') leaf = makeFold(panel, true) // coming back: it rises folded
-  })
-  await t.finished.catch(() => {})
-  if (fold && to === 'text') await leaf?.swing(false).then(leaf.remove)
-  if (id !== morphs) return // a newer switch started: its settings stay
-  delete root.dataset.morph
-  delete root.dataset.anim
-}
 
 // "look at my screen" on its own (not a question about screens) opens the screen overlay.
 const LOOK_AT_SCREEN = /^\s*(?:ultron\W+)?(?:please\s+)?(?:(?:can|could) you\s+)?(?:look at|watch|see)\s+(?:my|the)\s+screen\W*$/i
@@ -55,17 +27,18 @@ export default function App() {
   const ultron = useUltron()
   const [pane, setPane] = useState<(typeof PANES)[number][0]>('chat')
   const [voiceOn, setVoiceOn] = useState(false) // UI only for now (Phase 5a)
-  // Each switch picks one of three animations at random (App.css, "Voice mode").
-  const setVoice = useCallback(
-    (on: boolean) => void morph(() => setVoiceOn(on), on ? 'voice' : 'text', 1 + Math.floor(Math.random() * 3)),
-    [],
-  )
+  // Each switch picks one of three animations at random (morph.ts): the fold (3) is 6
+  // points likelier than each of the others, 37.3% against 31.3% each.
+  const setVoice = useCallback((on: boolean) => {
+    const r = Math.random() * 100
+    morph(() => setVoiceOn(on), on ? 'voice' : 'text', r < 94 / 3 ? 1 : r < 188 / 3 ? 2 : 3)
+  }, [])
   // In voice mode a canvas takes the whole left side and the core drifts under the usage
   // panel; the tab switch is animated, so the tab on screen trails the real one by a frame.
   const [shownTab, setShownTab] = useState(ultron.stageTab)
   useEffect(() => {
     if (ultron.stageTab === shownTab) return
-    if (voiceOn) void morph(() => setShownTab(ultron.stageTab), 'voice')
+    if (voiceOn) morph(() => setShownTab(ultron.stageTab), 'voice')
     else setShownTab(ultron.stageTab)
   }, [ultron.stageTab, shownTab, voiceOn])
   const tab = voiceOn ? shownTab : ultron.stageTab
