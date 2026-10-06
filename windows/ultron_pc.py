@@ -2,7 +2,7 @@
 
   POST /read   {"what": "status" | "clipboard" | "files" | "content" | "name", "query", "folder", "path"}
                                                                              = mac_read
-  POST /change {"action": "open_app" | "open_url" | "launch_game" | "open_file" | "open_terminal" | "copy" |
+  POST /change {"action": "open_app" | "open_url" | "open_file" | "open_terminal" | "copy" |
                 "volume" | "mute" | "dark_mode" | "media" | "move" | "trash", ...}  = mac_change
   POST /run    {"code", "lang": "python" | "powershell"}                       = run_python
   -> {"text": "...", "is_error": bool}. Every call needs "Authorization: Bearer <token.txt>".
@@ -50,12 +50,10 @@ DOCUMENTS = {"pdf", "txt", "md", "rtf", "csv", "tsv", "json", "xml", "log", "doc
              "ppt", "pptx", "odt", "ods", "png", "jpg", "jpeg", "gif", "heic", "webp", "tiff", "bmp", "svg",
              "mp3", "m4a", "wav", "aac", "flac", "mp4", "mov", "m4v", "mkv", "zip"}
 SHORTCUTS = {".lnk", ".url"}  # you put them on the Desktop, so they open like apps
-ACTIONS = ["open_app", "open_url", "launch_game", "open_file", "open_terminal", "copy", "volume", "mute", "dark_mode", "media", "move", "trash"]
-# open_url: the web, plus launch links for Steam, Epic and Windows Settings. Never file:, javascript:, ...
-URL_SCHEMES = ("http://", "https://", "steam://", "com.epicgames.launcher://", "ms-settings:")
-URL_OK = re.compile(r"(?i)(https?|steam|com\.epicgames\.launcher)://[^\s/]\S*|ms-settings:\S+")
-GAMES_FILE = "games.json"  # in the Ultron folder, yours to edit: {"Rocket League": {"epic": "Sugar"}, ...}
-GAMES = {"Rocket League": {"epic": "Sugar"}}  # written there the first time
+ACTIONS = ["open_app", "open_url", "open_file", "open_terminal", "copy", "volume", "mute", "dark_mode", "media", "move", "trash"]
+# open_url: the web, plus Windows Settings. Never file:, javascript:, ... Apps and games open by name (open_app).
+URL_SCHEMES = ("http://", "https://", "ms-settings:")
+URL_OK = re.compile(r"(?i)https?://[^\s/]\S*|ms-settings:\S+")
 NICKNAMES_FILE = "nicknames.json"  # in the Ultron folder, yours to edit: {"rl": "rocket league", ...}
 NICKNAMES = {"rl": "rocket league", "cs": "counter-strike", "r6": "rainbow six", "lol": "league of legends",
              "league": "league of legends", "val": "valorant", "mc": "minecraft", "acc": "assetto corsa competizione"}
@@ -239,22 +237,6 @@ def open_app(name: str) -> str:
                      (f" Close: {', '.join(near)}." if near else ""))
 
 
-def game_link(name: str) -> str:
-    """Its launch link from games.json: a Steam app id, else an Epic app name."""
-    f = folder() / GAMES_FILE
-    if not f.exists():
-        f.write_text(json.dumps(GAMES, indent=2), encoding="utf-8")
-    games = {k.lower(): v for k, v in json.loads(f.read_text(encoding="utf-8")).items()}
-    n = pick(list(games), real_name(name))
-    if n is None:
-        raise ValueError(f"No game called {name!r} in {f}. It has: {', '.join(games) or 'nothing yet'}.")
-    if steam := games[n].get("steam"):
-        return f"steam://rungameid/{int(steam)}"
-    if epic := games[n].get("epic"):
-        return f"com.epicgames.launcher://apps/{epic}?action=launch&silent=true"
-    raise ValueError(f"{n!r} in {f} needs a \"steam\" app id or an \"epic\" app name.")
-
-
 def launch(url: str) -> str:
     if not URL_OK.fullmatch(url):
         raise ValueError(f"Only {', '.join(URL_SCHEMES)} addresses can be opened.")
@@ -324,8 +306,6 @@ def change(args: dict[str, Any]) -> str:
         return open_app(name)
     if action == "open_url":
         return launch(str(args.get("url") or "").strip())
-    if action == "launch_game":
-        return launch(game_link(name))
     if action == "open_file":
         p = allowed(path)
         if p.is_dir():

@@ -29,7 +29,7 @@ from .homework import _text
 from .uploads import IMAGES, READABLE, jpeg_of, text_of
 
 TIMEOUT_S = 75  # the PC stops a run after 60 s
-ACTIONS = ["open_app", "open_url", "launch_game", "open_file", "open_terminal", "copy", "volume", "mute", "dark_mode", "media", "move", "trash"]
+ACTIONS = ["open_app", "open_url", "open_file", "open_terminal", "copy", "volume", "mute", "dark_mode", "media", "move", "trash"]
 
 
 def _post(path: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -85,22 +85,18 @@ def leaves_folder(args: dict[str, Any]) -> bool:
 
 
 def opens_link(args: dict[str, Any]) -> bool:
-    """A pc_change open_url that isn't a plain web address (steam://, ms-settings:): it asks first.
-    launch_game doesn't: it only opens games the user listed in games.json."""
+    """A pc_change open_url that isn't a plain web address (ms-settings:): it asks first."""
     url = str(args.get("url") or "").strip().lower()
     return args.get("action") == "open_url" and not url.startswith(("http://", "https://"))
 
 
-# One Start-Process line that opens a game launcher link or an app by bare name (no path, dot,
-# dash or arguments, so it can't pass flags or run a file it just wrote).
-_LAUNCH_LINE = re.compile(
-    r"""start-process\s+(?:-filepath\s+)?(["']?)(steam://rungameid/\d+"""
-    r"""|com\.epicgames\.launcher://apps/[\w%]+\?action=launch(?:&silent=true)?|\w[\w ]*)\1""",
-    re.IGNORECASE)
+# One Start-Process line that opens an app by bare name (no path, dot, dash or arguments, so it
+# can't pass flags or run a file it just wrote).
+_LAUNCH_LINE = re.compile(r"""start-process\s+(?:-filepath\s+)?(["']?)(\w[\w ]*)\1""", re.IGNORECASE)
 
 
 def only_launches(args: dict[str, Any]) -> bool:
-    """A pc_run whose PowerShell is nothing but Start-Process lines opening apps or games: no card."""
+    """A pc_run whose PowerShell is nothing but Start-Process lines opening apps: no card."""
     if args.get("lang") != "powershell":
         return False
     lines = [ln.strip() for ln in str(args.get("code") or "").splitlines() if ln.strip()]
@@ -148,10 +144,10 @@ async def pc_read(args: dict[str, Any]) -> dict[str, Any]:
 
 @tool(
     "pc_change",
-    "Do something on the user's Windows PC. action: 'open_app' (the Start menu name or part of it, e.g. 'chrome', "
-    "else a Start Menu or Desktop shortcut's name, which covers installed Steam/Epic/Riot games; nicknames like 'rl' work via nicknames.json in the PC's Ultron folder), 'open_url' (http or https; also steam://, "
-    "com.epicgames.launcher:// and ms-settings: links, which ask the user first), 'launch_game' (name: a game "
-    "in games.json in the PC's Ultron folder, e.g. 'rocket league'; started through Steam or Epic), 'open_file' (path: a document or a .lnk/.url shortcut; a folder opens in Explorer), "
+    "Do something on the user's Windows PC. action: 'open_app' (name: any app or game, e.g. 'chrome' or "
+    "'rocket league': the Start menu name or part of it, else a Start Menu or Desktop shortcut's name, which "
+    "covers installed Steam/Epic/Riot games; nicknames like 'rl' work via nicknames.json in the PC's Ultron "
+    "folder), 'open_url' (http or https; also ms-settings: links, which ask the user first), 'open_file' (path: a document or a .lnk/.url shortcut; a folder opens in Explorer), "
     "'open_terminal' (a terminal window on the PC's screen, for the user to type in), "
     "'copy' (text to the PC's clipboard), 'volume' (level 0-100), 'mute' (on), 'dark_mode' (on), "
     "'media' (name: play_pause, next or previous, for whatever is playing, e.g. Spotify), 'move' "
@@ -185,9 +181,8 @@ async def pc_change(args: dict[str, Any]) -> dict[str, Any]:
     "'powershell'. It runs as the user, NOT sandboxed, in the Output subfolder of the PC's Ultron folder "
     "(its files are ../name), and is stopped after 60 seconds. Print the results. The user approves "
     "every run. For data work that doesn't need the PC, use run_python on the Mac instead. "
-    "Never use it to open an app, game, file or link: pc_change does those without asking (launch_game "
-    "for games; it's fine if the game is already running). If you still must, PowerShell that is only "
-    "Start-Process lines with a steam:// or Epic launch link or a bare app name runs without asking.",
+    "Never use it to open an app, game, file or link: pc_change does those without asking (open_app "
+    "for apps and games; it's fine if one is already running). Never use Steam ids or launcher links.",
     {
         "type": "object",
         "properties": {"code": {"type": "string"}, "lang": {"type": "string", "enum": ["python", "powershell"]}},

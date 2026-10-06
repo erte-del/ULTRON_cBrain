@@ -78,7 +78,8 @@ class PcTest(unittest.TestCase):
                 mock.patch.dict(agent.os.environ, {"APPDATA": str(self.root / "none")}), \
                 mock.patch.object(agent.os, "startfile", create=True) as start:
             self.assertEqual(agent.open_app("rocket league"), "Opened Rocket League®.")
-            start.assert_called_once_with(desktop / "Rocket League®.url")
+            self.assertEqual(agent.open_app("rl"), "Opened Rocket League®.")  # the default nicknames.json
+            start.assert_called_with(desktop / "Rocket League®.url")
             self.assertRaises(ValueError, agent.open_app, "photoshop")
 
     def test_files_and_move_inside_the_fence(self):
@@ -119,33 +120,27 @@ class PcTest(unittest.TestCase):
     def test_bad_input(self):
         self.assertTrue(call(pc.pc_change, action="open_url", url="file:///C:/Windows")[1])
         self.assertTrue(call(pc.pc_change, action="format_disk")[1])
-        for url in ["javascript:alert(1)", "ms-settings-x:", "steam:// x", "steam://", "STEAMx://a", "https:///x"]:
+        for url in ["javascript:alert(1)", "ms-settings-x:", "steam:// x", "steam://", "STEAMx://a", "https:///x",
+                    "steam://rungameid/252950", "com.epicgames.launcher://apps/Sugar?action=launch"]:
             self.assertRaises(ValueError, agent.launch, url)
 
     def test_pc_run_that_only_launches_doesnt_ask(self):
         asks = lambda code, lang="powershell": registry.needs_ok("mcp__ultron__pc_run", {"code": code, "lang": lang})
-        self.assertFalse(asks('Start-Process "com.epicgames.launcher://apps/Sugar?action=launch&silent=true"'))
-        self.assertFalse(asks("start-process steam://rungameid/252950\n\nStart-Process -FilePath 'chrome'"))
+        self.assertFalse(asks("start-process discord\n\nStart-Process -FilePath 'chrome'"))
         self.assertFalse(asks('Start-Process "Rocket League"'))
         for code in ["Start-Process chrome -ArgumentList x", "Start-Process .\\evil.exe", "Start-Process chrome; rm x",
                      'Start-Process "steam://rungameid/1" | Out-Null', "Start-Process powershell -c x",
                      "Get-Process", "Start-Process chrome\nRemove-Item ~ -Recurse", "", 'Start-Process "a`"b"',
-                     "Start-Process \"chrome' ", "Start-Process ms-settings:display"]:
+                     "Start-Process \"chrome' ", "Start-Process ms-settings:display",
+                     "Start-Process steam://rungameid/252950"]:
             self.assertTrue(asks(code), code)
         self.assertTrue(asks("Start-Process chrome", "python"))
 
     def test_launch_links(self):
         ok = lambda **a: registry.needs_ok("mcp__ultron__pc_change", a)
         self.assertFalse(ok(action="open_url", url="https://example.com"))
-        self.assertTrue(ok(action="open_url", url="steam://rungameid/252950"))
-        self.assertFalse(ok(action="launch_game", name="rocket league"))
-        epic = "com.epicgames.launcher://apps/Sugar?action=launch&silent=true"
-        self.assertEqual(agent.game_link("rocket"), epic)  # writes the default games.json
-        (self.root / "games.json").write_text('{"Rocket League": {"epic": "Sugar"}, "CS2": {"steam": "730"}}')
-        self.assertEqual(agent.game_link("rocket league"), epic)
-        self.assertEqual(agent.game_link("cs2"), "steam://rungameid/730")
-        self.assertEqual(agent.game_link("rl"), epic)  # the default nicknames.json
-        self.assertRaises(ValueError, agent.game_link, "halo")
+        self.assertTrue(ok(action="open_url", url="ms-settings:display"))
+        self.assertTrue(call(pc.pc_change, action="launch_game", name="rocket league")[1])  # open_app now
         with mock.patch.object(agent.os, "startfile", create=True) as start:
             self.assertEqual(agent.launch("ms-settings:display"), "Opened ms-settings:display.")
             start.assert_called_once_with("ms-settings:display")
