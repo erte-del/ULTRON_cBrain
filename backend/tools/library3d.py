@@ -1,5 +1,8 @@
 """The 3D library: ready-made models Ultron shows before it builds anything itself.
 
+Two sources: the local folder below, and 3DAssets.dev (searched through its MCP server, see
+registry.mcp_servers; show_3d_asset downloads the chosen .glb).
+
     library3d/
         office_chair.glb      a finished model: drop the file in and it's found
         office_chair.json     optional: {"title", "aliases", "tags", "category", "spec"}
@@ -19,16 +22,18 @@ import io
 import json
 import logging
 import re
+from urllib.parse import urlparse
 from dataclasses import dataclass, field
 from typing import Any
 
+import httpx
 import trimesh
 from claude_agent_sdk import tool
 
 import config
 from storage import model_store
 
-from . import shapes
+from . import shapes, web
 from .models3d import LIBRARY_SPEC_KEY, _show, _text, render_views
 
 log = logging.getLogger("ultron.3d.library")
@@ -191,13 +196,20 @@ async def show_from_3d_library(args: dict[str, Any]) -> dict[str, Any]:
         log.exception("Could not load library model %s", item.id)
         return _text(f"Could not open {item.id} from the library ({e}). Build it yourself with preview_3d.", is_error=True)
 
-    rec = model_store.create(item.title)
-    await asyncio.to_thread(model_store.add_version, rec, spec, glb, "from the 3D library", parts, size, source)
+    return await _present(item.title, spec, glb, parts, size, source,
+                          fixed=item.has_glb and not item.spec, origin="the 3D library")
+
+
+async def _present(title: str, spec: dict[str, Any], glb: bytes, parts: int, size: list[float],
+                   source: str, fixed: bool, origin: str) -> dict[str, Any]:
+    """Put a ready-made model in the 3D panel and tell Claude what it can do next."""
+    rec = model_store.create(title)
+    await asyncio.to_thread(model_store.add_version, rec, spec, glb, f"from {origin}", parts, size, source)
     await _show(rec)
     w, h, d = size
-    lines = [f"{rec.id} '{item.title}' from the 3D library is showing in the 3D panel: {w} × {h} × {d} m."]
+    lines = [f"{rec.id} '{title}' from {origin} is showing in the 3D panel: {w} × {h} × {d} m."]
     content: list[dict[str, Any]] = []
-    if item.has_glb and not item.spec:
+    if fixed:
         lines.append(
             "It's a finished model, so its parts can't be edited. If the user wants a change, rebuild it "
             f"as your own version: preview_3d with model_id {rec.id} and a full 'spec' (the views attached "
@@ -209,7 +221,69 @@ async def show_from_3d_library(args: dict[str, Any]) -> dict[str, Any]:
     else:
         lines.append(f"A change is a small edit: preview_3d with model_id {rec.id} and update_parts / add_parts / "
                      "remove_parts (get_3d_spec shows the part names).")
-    lines.append("Tell the user briefly it came from the library, and ask if they want anything changed. "
+    lines.append(f"Tell the user briefly it came from {origin}, and ask if they want anything changed. "
                  "No need to check views: it's already finished. When they're happy, offer the file types "
                  f"({', '.join('.' + f for f in model_store.FORMATS)}); export_3d makes the file.")
     return {"content": [{"type": "text", "text": "\n".join(lines)}, *content]}
+
+
+# ---- 3DAssets.dev ---------------------------------------------------------------------
+
+MAX_ASSET_BYTES = 50 * 1024 * 1024
+
+
+def _allowed_host(url: str) -> bool:
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and any(host == h or host.endswith("." + h) for h in config.ASSETS_3D_HOSTS)
+
+
+def _download(url: str) -> bytes:
+    """The file at url, refusing redirects and anything over MAX_ASSET_BYTES."""
+    data = bytearray()
+    with httpx.stream("GET", url, timeout=60, follow_redirects=False) as r:
+        r.raise_for_status()
+        for chunk in r.iter_bytes():
+            data += chunk
+            if len(data) > MAX_ASSET_BYTES:
+                raise ValueError(f"bigger than {MAX_ASSET_BYTES // 2**20} MB")
+    return bytes(data)
+
+
+def _read_downloaded(glb: bytes) -> tuple[int, list[float]]:
+    scene = trimesh.load(io.BytesIO(glb), file_type="glb", force="scene")
+    size, _ = shapes.summary(scene)
+    return len(scene.geometry), size
+
+
+@tool(
+    "show_3d_asset",
+    "Show a model from 3DAssets.dev (a free CC0 library) in the big 3D panel. Search it first with "
+    "its tools (find them with ToolSearch: search_assets, get_asset), then pass the model's direct "
+    ".glb download URL from get_asset and its name. Only for when search_3d_library had nothing.",
+    {
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "The https .glb URL from get_asset."},
+            "title": {"type": "string", "description": "The model's name."},
+        },
+        "required": ["url", "title"],
+    },
+)
+async def show_3d_asset(args: dict[str, Any]) -> dict[str, Any]:
+    url, title = str(args.get("url", "")), str(args.get("title") or "3D model")[:80]
+    if not _allowed_host(url):
+        return _text(f"Not downloaded: only https links on {', '.join(config.ASSETS_3D_HOSTS)} are allowed "
+                     "(JARVIS_3DASSETS_HOSTS in .env lists them).", is_error=True)
+    ok, reason = await web.is_public_url(url)
+    if not ok:
+        return _text(f"Not downloaded: {reason}.", is_error=True)
+    try:
+        glb = await asyncio.to_thread(_download, url)
+        parts, size = await asyncio.to_thread(_read_downloaded, glb)
+    except Exception as e:  # network, size, not a .glb
+        log.warning("Could not get 3DAssets model %s", url, exc_info=True)
+        return _text(f"Could not get that model ({type(e).__name__}: {e}). Try another result, or build "
+                     "it yourself with preview_3d.", is_error=True)
+    spec = {"parts": [], LIBRARY_SPEC_KEY: url}
+    return await _present(title, spec, glb, parts, size, "library", fixed=True, origin="3DAssets.dev")

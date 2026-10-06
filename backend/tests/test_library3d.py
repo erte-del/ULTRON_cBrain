@@ -13,6 +13,7 @@ import trimesh
 import config
 from storage import model_store
 from tools import library3d, models3d, shapes
+from tools import registry
 from tools.registry import TOOLS
 
 from test_models3d import CHAIR
@@ -115,6 +116,70 @@ class LibraryTest(unittest.TestCase):
         kinds = {t.tool.name: t.kind for t in TOOLS}
         self.assertEqual(kinds["search_3d_library"], "read")
         self.assertEqual(kinds["show_from_3d_library"], "read")
+
+
+class AssetsDevTest(unittest.TestCase):
+    """3DAssets.dev: allowed hosts, download, and the tool gate. (No real network.)"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old = model_store.MODELS_DIR, library3d._download
+        model_store.MODELS_DIR = Path(self.tmp.name)
+        self.glb = trimesh.creation.box([0.5, 1.0, 0.25]).export(file_type="glb")
+        self.fetched = []
+        library3d._download = lambda url: self.fetched.append(url) or self.glb
+        self.url = "https://3dassets.dev/cdn/models/tree.glb"
+
+    def tearDown(self):
+        model_store.MODELS_DIR, library3d._download = self.old
+        self.tmp.cleanup()
+
+    def test_shows_a_downloaded_model_as_a_finished_library_model(self):
+        result = run(library3d.show_3d_asset, url=self.url, title="Tree")
+        self.assertFalse(result.get("is_error"), result)
+        self.assertEqual(self.fetched, [self.url])
+        rec = model_store.load("mdl_001")
+        self.assertEqual((rec.title, rec.versions[0].source, rec.versions[0].size), ("Tree", "library", [0.5, 1.0, 0.25]))
+        self.assertIn("3DAssets.dev", text(result))
+        self.assertEqual(model_store.file_path("mdl_001", "v1_preview.glb").read_bytes(), self.glb)
+
+    def test_only_https_links_on_allowed_hosts(self):
+        for url in ["http://3dassets.dev/a.glb", "https://evil.example/a.glb", "https://3dassets.dev.evil.example/a.glb",
+                    "https://127.0.0.1/a.glb", "file:///etc/passwd", ""]:
+            result = run(library3d.show_3d_asset, url=url, title="x")
+            self.assertTrue(result.get("is_error"), url)
+        self.assertEqual(self.fetched, [])
+        self.assertFalse(Path(self.tmp.name, "mdl_001").exists())
+
+    def test_cdn_subdomains_of_an_allowed_host_work(self):
+        self.assertTrue(library3d._allowed_host("https://cdn.3dassets.dev/x.glb"))
+
+    def test_a_failed_download_is_explained(self):
+        def boom(url):
+            raise ValueError("bigger than 50 MB")
+        library3d._download = boom
+        result = run(library3d.show_3d_asset, url=self.url, title="Tree")
+        self.assertTrue(result.get("is_error"))
+        self.assertIn("preview_3d", text(result))
+
+    def test_search_tools_run_freely_but_account_changes_ask(self):
+        self.assertEqual(registry.classify("mcp__3dassets__search_assets"), "read")
+        self.assertEqual(registry.classify("mcp__3dassets__get_asset"), "read")
+        for name in ("create_account", "submit_asset_from_url", "update_asset", "get_upload_url"):
+            self.assertEqual(registry.classify(f"mcp__3dassets__{name}"), "act", name)
+        self.assertIn("mcp__3dassets__search_assets", registry.auto_allowed())
+        self.assertNotIn("mcp__3dassets__create_account", registry.auto_allowed())
+        self.assertEqual(registry.classify("mcp__ultron__show_3d_asset"), "read")
+
+    def test_the_mcp_server_is_connected_unless_turned_off(self):
+        self.assertEqual(registry.mcp_servers()["3dassets"], {"type": "http", "url": "https://3dassets.dev/mcp"})
+        old = config.ASSETS_3D_MCP_URL
+        config.ASSETS_3D_MCP_URL = ""
+        try:
+            self.assertNotIn("3dassets", registry.mcp_servers())
+            self.assertFalse(any("3dassets" in n for n in registry.auto_allowed()))
+        finally:
+            config.ASSETS_3D_MCP_URL = old
 
 
 class SeedLibraryTest(unittest.TestCase):

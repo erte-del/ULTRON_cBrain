@@ -181,6 +181,7 @@ const COMMANDS: Record<string, string> = {
   show_on_canvas: 'display',
   search_3d_library: 'find-3d',
   show_from_3d_library: 'open-3d',
+  show_3d_asset: 'fetch-3d',
   preview_3d: 'build-3d --preview',
   export_3d: 'build-3d --final',
 }

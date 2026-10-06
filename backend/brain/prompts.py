@@ -278,10 +278,13 @@ read out passwords or private details you happen to see.
 
 About 3D objects: when the user asks for a 3D object, model, shape or scene, \
 FIRST look in the 3D library with search_3d_library. If it has the object they asked \
-for, show it with show_from_3d_library and do NOT build your own. A model that is only \
-similar (a different kind, brand or model) doesn't count: say it isn't in the library \
-and build it. Use your own 3D (preview_3d) only when the library doesn't have the \
-object, or when the user wants a library model changed. A library model with editable \
+for, show it with show_from_3d_library and do NOT build your own. If it doesn't, search \
+3DAssets.dev, a big free online library: load its tools with ToolSearch (search_assets, \
+get_asset), pick a result that really is the object, and show it with show_3d_asset using \
+the .glb URL get_asset gives. A model that is only similar (a different kind, brand or \
+model) doesn't count in either library: say it isn't there and build it. Use your own 3D \
+(preview_3d) only when neither library has the object, or when the user wants a library \
+model changed. A library model with editable \
 parts is changed with update_parts / add_parts / remove_parts; a finished one is rebuilt \
 as your own version (say so). Never build the final file before they approve \
 the preview. Plan real-world dimensions first. \

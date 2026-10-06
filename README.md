@@ -139,7 +139,12 @@ only look things up.
 - **3D library.** Ask for a 3D object and Ultron looks in `backend/library3d/` first. If
   a ready-made model of that thing is there it shows it in the 3D panel and builds nothing.
   Only when it isn't there (or only something similar is), or when you ask for a change,
-  does Ultron use its own 3D builder (below). Add models by dropping a `.glb` file into the
+  does Ultron use its own 3D builder (below). If your own folder doesn't have it, Ultron
+  next searches [3DAssets.dev](https://3dassets.dev), a free online library of CC0 `.glb`
+  models (no key needed), through its public MCP server, and downloads the one you want.
+  Downloads only come from the hosts in `JARVIS_3DASSETS_HOSTS` (default `3dassets.dev`);
+  set `JARVIS_3DASSETS_MCP` empty to turn the online library off. Downloaded models are
+  finished files, so a change to one is rebuilt by Ultron from simple shapes. Add models by dropping a `.glb` file into the
   folder; an optional `name.json` next to it adds a title, `aliases` and `tags` for
   searching. A `.json` with a `spec` (Ultron's shape format) works without any file, and
   those models can be changed part by part. A plain `.glb` can't be edited, so a change
