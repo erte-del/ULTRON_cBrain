@@ -91,6 +91,22 @@ def opens_link(args: dict[str, Any]) -> bool:
     return args.get("action") == "open_url" and not url.startswith(("http://", "https://"))
 
 
+# One Start-Process line that opens a game launcher link or an app by bare name (no path, dot,
+# dash or arguments, so it can't pass flags or run a file it just wrote).
+_LAUNCH_LINE = re.compile(
+    r"""start-process\s+(?:-filepath\s+)?(["']?)(steam://rungameid/\d+"""
+    r"""|com\.epicgames\.launcher://apps/[\w%]+\?action=launch(?:&silent=true)?|\w[\w ]*)\1""",
+    re.IGNORECASE)
+
+
+def only_launches(args: dict[str, Any]) -> bool:
+    """A pc_run whose PowerShell is nothing but Start-Process lines opening apps or games: no card."""
+    if args.get("lang") != "powershell":
+        return False
+    lines = [ln.strip() for ln in str(args.get("code") or "").splitlines() if ln.strip()]
+    return bool(lines) and all(_LAUNCH_LINE.fullmatch(ln) for ln in lines)
+
+
 @tool(
     "pc_read",
     "Read things on the user's Windows PC. what: 'status' (battery, volume, dark mode, Wi-Fi), "
@@ -168,7 +184,10 @@ async def pc_change(args: dict[str, Any]) -> dict[str, Any]:
     "Run code on the user's Windows PC. lang 'python' (whatever the PC's Python has installed) or "
     "'powershell'. It runs as the user, NOT sandboxed, in the Output subfolder of the PC's Ultron folder "
     "(its files are ../name), and is stopped after 60 seconds. Print the results. The user approves "
-    "every run. For data work that doesn't need the PC, use run_python on the Mac instead.",
+    "every run. For data work that doesn't need the PC, use run_python on the Mac instead. "
+    "Never use it to open an app, game, file or link: pc_change does those without asking (launch_game "
+    "for games; it's fine if the game is already running). If you still must, PowerShell that is only "
+    "Start-Process lines with a steam:// or Epic launch link or a bare app name runs without asking.",
     {
         "type": "object",
         "properties": {"code": {"type": "string"}, "lang": {"type": "string", "enum": ["python", "powershell"]}},

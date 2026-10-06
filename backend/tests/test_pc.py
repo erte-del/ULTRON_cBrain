@@ -119,6 +119,18 @@ class PcTest(unittest.TestCase):
         for url in ["javascript:alert(1)", "ms-settings-x:", "steam:// x", "steam://", "STEAMx://a", "https:///x"]:
             self.assertRaises(ValueError, agent.launch, url)
 
+    def test_pc_run_that_only_launches_doesnt_ask(self):
+        asks = lambda code, lang="powershell": registry.needs_ok("mcp__ultron__pc_run", {"code": code, "lang": lang})
+        self.assertFalse(asks('Start-Process "com.epicgames.launcher://apps/Sugar?action=launch&silent=true"'))
+        self.assertFalse(asks("start-process steam://rungameid/252950\n\nStart-Process -FilePath 'chrome'"))
+        self.assertFalse(asks('Start-Process "Rocket League"'))
+        for code in ["Start-Process chrome -ArgumentList x", "Start-Process .\\evil.exe", "Start-Process chrome; rm x",
+                     'Start-Process "steam://rungameid/1" | Out-Null', "Start-Process powershell -c x",
+                     "Get-Process", "Start-Process chrome\nRemove-Item ~ -Recurse", "", 'Start-Process "a`"b"',
+                     "Start-Process \"chrome' ", "Start-Process ms-settings:display"]:
+            self.assertTrue(asks(code), code)
+        self.assertTrue(asks("Start-Process chrome", "python"))
+
     def test_launch_links(self):
         ok = lambda **a: registry.needs_ok("mcp__ultron__pc_change", a)
         self.assertFalse(ok(action="open_url", url="https://example.com"))
