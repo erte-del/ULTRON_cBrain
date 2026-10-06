@@ -276,11 +276,11 @@ async def mac_read(args: dict[str, Any]) -> dict[str, Any]:
     try:
         if what == "status":
             if phone_status:  # they're on the phone: its readings first, the Mac's after
-                return _text(f"The user's phone (they're on it):\n{phone_status}\nVolume and the Wi-Fi "
-                             f"network's name can't be read from the phone.\n\nThis Mac:\n{await _status()}")
+                return _text(f"The device the user is on (phone or PC browser):\n{phone_status}\nVolume and "
+                             f"the Wi-Fi network's name can't be read from there.\n\nThis Mac:\n{await _status()}")
             return _text(await _status())
         if what == "location":
-            found = {**await locator(), "from": "the user's phone" if phone_here else "this Mac"}
+            found = {**await locator(), "from": "the device the user is on" if phone_here else "this Mac"}
             return _text(json.dumps(found, ensure_ascii=False))
         if what == "clipboard":
             text = await _out("pbpaste")

@@ -38,7 +38,7 @@ from .memory import forget, recall, remember
 from .notes import read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
-from .pc import pc_change, pc_read, pc_run
+from .pc import leaves_folder as leaves_pc_folder, pc_change, pc_read, pc_run
 from .phone import phone_taxi, phone_volume
 from .library3d import search_3d_library, show_3d_asset, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
@@ -144,7 +144,8 @@ TOOLS: list[UltronTool] = [
     UltronTool(mac_change, "act"),
     # Sandboxed: no network or other programs, writes only in Ultron's Output folder.
     UltronTool(run_python, "act"),
-    # The Windows PC, same rules as this Mac: reading is free, changes stay in its Ultron folder.
+    # The Windows PC, same rules as this Mac: reading is free, moving or trashing outside its
+    # Ultron folder asks (needs_ok).
     UltronTool(pc_read, "read"),
     UltronTool(pc_change, "act"),
     # Not sandboxed on Windows: always asks (ASK_TOOLS).
@@ -225,6 +226,8 @@ def needs_ok(name: str, tool_input: dict[str, Any]) -> bool:
         return True
     own = name.removeprefix(PREFIX)
     if own == "mac_change" and mac.leaves_folder(tool_input):
+        return True
+    if own == "pc_change" and leaves_pc_folder(tool_input):
         return True
     if name.startswith(PREFIX) and any(t.tool.name == own for t in TOOLS):
         return own in ASK_TOOLS

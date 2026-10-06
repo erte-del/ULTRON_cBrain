@@ -80,6 +80,28 @@ class PcTest(unittest.TestCase):
         self.assertTrue(call(pc.pc_change, action="move", path="b.txt", to="../b.txt")[1])  # no escape
         self.assertTrue((self.root / "b.txt").exists())
 
+    def test_user_folders_content_and_approval(self):
+        desktop = self.root.parent / "Desktop"
+        desktop.mkdir()
+        (desktop / "notes.txt").write_text("hello from the PC")
+        with mock.patch.object(agent, "user_dirs", return_value={"Desktop": desktop}):
+            text, err = call(pc.pc_read, what="files", query="notes", folder="Desktop")
+            self.assertIn("notes.txt", text)
+            path = str(desktop / "notes.txt")
+            self.assertIn("hello from the PC", call(pc.pc_read, what="content", path=path)[0])
+            move = {"action": "move", "path": path, "to": "notes.txt"}
+            self.assertTrue(registry.needs_ok("mcp__ultron__pc_change", move))
+            self.assertFalse(registry.needs_ok("mcp__ultron__pc_change", {"action": "move", "path": "a", "to": "b/c"}))
+            self.assertTrue(pc.leaves_folder({"action": "trash", "path": "x\\..\\..\\Desktop\\y"}))
+            # the PC itself refuses outside its folder unless pc_change says the user approved
+            self.assertFalse(call(pc.pc_change, action="move", path=path, to="notes.txt")[1])  # approved
+            self.assertRaises(ValueError, agent.move, "notes.txt", str(desktop / "n.txt"))  # not approved
+            self.assertTrue((self.root / "notes.txt").exists())
+        from tools.spotify import phone_of
+        devices = [{"id": "m", "type": "Computer", "name": "MacBook"}, {"id": "p", "type": "Computer", "name": "DESKTOP-1"}]
+        self.assertEqual(phone_of(devices, "desktop-1")["id"], "p")
+        self.assertIsNone(phone_of(devices, "other"))
+
     def test_bad_input(self):
         self.assertTrue(call(pc.pc_change, action="open_url", url="file:///C:/Windows")[1])
         self.assertTrue(call(pc.pc_change, action="format_disk")[1])

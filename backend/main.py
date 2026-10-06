@@ -189,11 +189,13 @@ async def spotify_callback(state: str = "", code: str = "", error: str = "") -> 
 
 def device_of(ws: WebSocket) -> str:
     """Which device a tab is on, for Ultron's per-message [Device: ...] note. Local origins
-    are this Mac; the Tailscale address is the user's phone (or another computer)."""
+    are this Mac; the Tailscale address is the user's phone or their Windows PC."""
     if ws.headers.get("origin") in terminal.LOCAL_ORIGINS:
         return "this Mac"
     ua = ws.headers.get("user-agent", "")
-    return "the user's Android phone" if "Android" in ua or "Mobile" in ua else "another computer, not this Mac"
+    if "Android" in ua or "Mobile" in ua:
+        return "the user's Android phone"
+    return "the user's Windows PC" if "Windows" in ua else "another computer, not this Mac"
 
 
 def phone_location(raw: object) -> list[float] | None:
@@ -236,8 +238,8 @@ async def run_turn(
 ) -> None:
     """Answer one user message and stream the reply to the browser."""
     await send(events.status("thinking"))
-    if here:  # maps and mac_read location start from the phone, not the Mac
-        device += f", at {here[0]:.5f},{here[1]:.5f} (its GPS)"
+    if here:  # maps and mac_read location start from the phone (or PC), not the Mac
+        device += f", at {here[0]:.5f},{here[1]:.5f} (its location)"
     mac.phone_here, mac.phone_status = here, status
     try:
         # aclosing: if sending fails (browser gone), end the brain turn right away.

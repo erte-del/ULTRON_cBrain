@@ -7,7 +7,9 @@ so Ultron adds two tools of its own:
                           no Premium. The connector's search finds the spotify: URIs.
                           With device=phone it drives the Spotify app on the user's phone
                           through the Web API (Spotify Connect) instead: needs Premium,
-                          the login below, and Spotify open on the phone.
+                          the login below, and Spotify open on the phone. device=pc does the
+                          same for the Spotify app on the user's Windows PC (found by its
+                          computer name).
   spotify_playlist_tracks the songs in one of your playlists, via Spotify's Web API.
                           Needs SPOTIFY_CLIENT_ID in .env and a one-time login (Ultron
                           shows the link). Since February 2026 Spotify only gives the
@@ -31,6 +33,7 @@ from claude_agent_sdk import tool
 
 import config
 from .canvas import show_table, show_text
+from .pc import pc_name
 
 # --- Playback (AppleScript) ---
 
@@ -82,11 +85,12 @@ def _text(text: str, is_error: bool = False) -> dict[str, Any]:
 
 @tool(
     "spotify_control",
-    "Control Spotify on this Mac, or with device=phone on the user's phone. action=play needs uri: a spotify: URI (track, "
+    "Control Spotify on this Mac, or with device=phone on the user's phone, or device=pc on their Windows PC. "
+    "action=play needs uri: a spotify: URI (track, "
     "album, playlist, artist, episode) or open.spotify.com link, e.g. the 'uri' of a "
     "Spotify connector search result. Other actions: pause, resume, next, previous, "
     "volume (with volume 0-100), shuffle (with on true/false; leave on out to toggle). "
-    "Returns what's playing now. device=phone fails if Spotify isn't open on the phone.",
+    "Returns what's playing now. device=phone or pc fails if Spotify isn't open there.",
     {
         "type": "object",
         "properties": {
@@ -94,7 +98,7 @@ def _text(text: str, is_error: bool = False) -> dict[str, Any]:
             "uri": {"type": "string", "description": "For play: what to play."},
             "volume": {"type": "integer", "minimum": 0, "maximum": 100},
             "on": {"type": "boolean", "description": "For shuffle: true or false. Omit to toggle."},
-            "device": {"type": "string", "enum": ["mac", "phone"], "description": "Where to play. Default mac."},
+            "device": {"type": "string", "enum": ["mac", "phone", "pc"], "description": "Where to play. Default mac."},
         },
         "required": ["action"],
     },
@@ -108,6 +112,11 @@ async def spotify_control(args: dict[str, Any]) -> dict[str, Any]:
         return _text(f"Unknown action {action!r}", True)
     if args.get("device") == "phone":
         return await _phone_control(action, uri, args)
+    if args.get("device") == "pc":
+        try:
+            return await _phone_control(action, uri, args, computer=await pc_name())
+        except RuntimeError as e:
+            return _text(f"Spotify on the PC: {e}", True)
     if action == "play":
         body = f'play track "{uri}"\n{NOW_PLAYING}'
     elif action == "volume":
@@ -311,11 +320,15 @@ async def spotify_playlist_tracks(args: dict[str, Any]) -> dict[str, Any]:
     return _text(f"{len(result['rows'])} songs{more}, shown on the canvas as {card}.\n" + "\n".join(result["lines"]))
 
 
-# --- Playback on the phone (Web API, Spotify Connect) ---
+# --- Playback on the phone or the PC (Web API, Spotify Connect) ---
 
 
-def phone_of(devices: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """The phone among Spotify's devices: the active one if several."""
+def phone_of(devices: list[dict[str, Any]], computer: str | None = None) -> dict[str, Any] | None:
+    """The phone among Spotify's devices (the active one if several), or with computer, the
+    computer of that name."""
+    if computer:
+        return next((d for d in devices if d.get("type") == "Computer" and d.get("id")
+                     and str(d.get("name", "")).casefold() == computer.casefold()), None)
     phones = [d for d in devices if d.get("type") == "Smartphone" and d.get("id")]
     return next((d for d in phones if d.get("is_active")), phones[0] if phones else None)
 
@@ -325,9 +338,10 @@ def play_body(uri: str) -> dict[str, Any]:
     return {"uris": [uri]} if uri.split(":")[1] in ("track", "episode") else {"context_uri": uri}
 
 
-def _phone(token: str, action: str, uri: str | None, args: dict[str, Any]) -> str:
-    """Blocking: do one action on the phone's Spotify. Returns what happened."""
-    phone = phone_of(_get(token, "/me/player/devices").get("devices") or [])
+def _phone(token: str, action: str, uri: str | None, args: dict[str, Any], computer: str | None = None) -> str:
+    """Blocking: do one action on the phone's (or that computer's) Spotify. Returns what happened,
+    or "" if it isn't among Spotify's devices."""
+    phone = phone_of(_get(token, "/me/player/devices").get("devices") or [], computer)
     if not phone:
         return ""
     q, name = {"device_id": phone["id"]}, phone.get("name", "the phone")
@@ -351,19 +365,20 @@ def _phone(token: str, action: str, uri: str | None, args: dict[str, Any]) -> st
     return f"Done: {action} on {name}."
 
 
-async def _phone_control(action: str, uri: str | None, args: dict[str, Any]) -> dict[str, Any]:
+async def _phone_control(action: str, uri: str | None, args: dict[str, Any], computer: str | None = None) -> dict[str, Any]:
+    where = f"the PC ({computer})" if computer else "the phone"
     if not CLIENT_ID:
-        return _text("Spotify on the phone isn't set up: SPOTIFY_CLIENT_ID is missing from .env (see .env.example).", True)
+        return _text(f"Spotify on {where} isn't set up: SPOTIFY_CLIENT_ID is missing from .env (see .env.example).", True)
     try:
         token = await asyncio.to_thread(_access_token)
         if not token or not PLAYBACK_SCOPES <= set(_load_token().get("scope", "").split()):
             card = await show_text("Connect Spotify", f"[Log in to Spotify]({login_url()}) on the Mac, then ask me again.")
             return _text(
-                f"Spotify needs a one-time login to control the phone. A login link is on the canvas ({card}); "
+                f"Spotify needs a one-time login to control {where}. A login link is on the canvas ({card}); "
                 "it only works when opened on the Mac. Meanwhile, give the user the open.spotify.com link.",
                 True,
             )
-        out = await asyncio.to_thread(_phone, token, action, uri, args)
+        out = await asyncio.to_thread(_phone, token, action, uri, args, computer)
     except HTTPError as e:
         if e.code == 403:
             return _text("Spotify refused: controlling playback needs Premium.", True)
@@ -372,7 +387,7 @@ async def _phone_control(action: str, uri: str | None, args: dict[str, Any]) -> 
         return _text(f"Couldn't reach Spotify: {e}", True)
     if not out:
         return _text(
-            "The phone isn't showing up in Spotify: ask the user to open Spotify on their phone, "
+            f"{where[0].upper()}{where[1:]} isn't showing up in Spotify: ask the user to open Spotify there, "
             "and give them the open.spotify.com link meanwhile.",
             True,
         )

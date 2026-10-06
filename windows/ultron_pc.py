@@ -1,14 +1,16 @@
 """Ultron on a Windows PC: the same reads and changes as mac_read / mac_change, over Tailscale.
 
-  POST /read   {"what": "status" | "clipboard" | "files", "query"}             = mac_read
+  POST /read   {"what": "status" | "clipboard" | "files" | "content" | "name", "query", "folder", "path"}
+                                                                             = mac_read
   POST /change {"action": "open_app" | "open_url" | "open_file" | "open_terminal" | "copy" |
                 "volume" | "mute" | "dark_mode" | "media" | "move" | "trash", ...}  = mac_change
   POST /run    {"code", "lang": "python" | "powershell"}                       = run_python
   -> {"text": "...", "is_error": bool}. Every call needs "Authorization: Bearer <token.txt>".
 
 It listens on 127.0.0.1 only; `tailscale serve` passes your own devices through to it over
-HTTPS. Nothing reaches the public internet. Files never leave ULTRON_PC_FOLDER, nothing is
-overwritten, "trash" goes to the Recycle Bin, only documents open, and apps only from the Start menu.
+HTTPS. Nothing reaches the public internet. Files: ULTRON_PC_FOLDER plus your Desktop, Documents
+and Downloads; nothing leaves them, a move or trash outside ULTRON_PC_FOLDER needs Ultron's
+approval flag (the Mac asks you first), nothing is overwritten, "trash" goes to the Recycle Bin, only documents open, and apps only from the Start menu.
 /run is NOT sandboxed (Windows has no sandbox-exec): it runs as you, in the folder's Output
 subfolder, killed after 60 s. Ultron asks you before every /run.
 
@@ -17,11 +19,13 @@ Updates: every start (logon, or Stop/Start-ScheduledTask Ultron) git-pulls this 
 the new code. Offline or local edits: it keeps running the code it has.
 """
 
+import base64
 import ctypes
 import difflib
 import hmac
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -37,6 +41,9 @@ FOLDER = Path(os.getenv("ULTRON_PC_FOLDER", "").strip() or Path.home() / "Ultron
 MAX_CHARS = 20_000
 MAX_FILES = 50
 MAX_BODY = 1_000_000
+MAX_READ = 20_000_000  # bytes sent back for "content"; the Mac pulls the text out
+# Your folders, by their Windows names (they may live in OneDrive).
+SHELL_FOLDERS = {"Desktop": "Desktop", "Documents": "Personal", "Downloads": "{374DE290-123F-4565-9164-39C4925E467B}"}
 RUN_TIMEOUT_S = 60
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 DOCUMENTS = {"pdf", "txt", "md", "rtf", "csv", "tsv", "json", "xml", "log", "doc", "docx", "xls", "xlsx",
@@ -66,43 +73,77 @@ def folder() -> Path:
     return FOLDER.resolve()
 
 
-def in_folder(path: str) -> Path:
-    root = folder()
-    full = (root / Path(path.strip()).expanduser()).resolve()  # also follows links out
-    if not full.is_relative_to(root):
-        raise ValueError(f"{path!r} is outside Ultron's folder ({root}).")
+def user_dirs() -> dict[str, Path]:
+    """Your Desktop, Documents and Downloads, wherever Windows keeps them."""
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                            r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders") as k:
+            return {n: Path(os.path.expandvars(winreg.QueryValueEx(k, v)[0])) for n, v in SHELL_FOLDERS.items()}
+    except (ImportError, OSError):  # not Windows (tests), or a value is missing
+        return {n: Path.home() / n for n in SHELL_FOLDERS}
+
+
+def roots() -> dict[str, Path]:
+    """Ultron's folder first, then yours."""
+    return {"ultron": folder(), **{n: d.resolve() for n, d in user_dirs().items() if d.is_dir()}}
+
+
+def allowed(path: str, outside_ok: bool = True) -> Path:
+    """Relative paths are in Ultron's folder; '~/Desktop/x' or a full path must be in one of yours.
+    With outside_ok False, only Ultron's folder."""
+    full = (folder() / Path(path.strip()).expanduser()).resolve()  # also follows links out
+    ok = list(roots().values()) if outside_ok else [folder()]
+    if full.is_relative_to(REPO) or not any(full.is_relative_to(r) for r in ok):
+        where = ", ".join(map(str, ok))
+        raise ValueError(f"{path!r} is outside the folders Ultron may use here ({where})." +
+                         ("" if outside_ok else " Use a ~/ path so the user is asked first."))
     return full
 
 
-def rel(p: Path) -> str:
-    return p.relative_to(folder()).as_posix() or "."
+def show(p: Path) -> str:
+    """Relative in Ultron's folder, else ~/Desktop/x."""
+    if p.is_relative_to(folder()):
+        return p.relative_to(folder()).as_posix() or "."
+    return "~/" + p.relative_to(Path.home()).as_posix() if p.is_relative_to(Path.home()) else str(p)
 
 
-def find_files(query: str) -> list[dict[str, Any]]:
-    root, words, found = folder(), query.lower().split(), []
-    for p in root.rglob("*"):
-        r = p.relative_to(root)
-        if any(part.startswith(".") for part in r.parts) or not all(w in r.as_posix().lower() for w in words):
+def find_files(query: str, where: str = "all") -> list[dict[str, Any]]:
+    """Every word of the query in the path, newest first. With no query, your folders list only
+    their top level (like the Mac)."""
+    words, found = query.lower().split(), []
+    for name, root in roots().items():
+        if where not in ("all", name):
             continue
-        st = p.stat()
-        found.append({"path": r.as_posix() + ("/" if p.is_dir() else ""), "size": st.st_size,
-                      "modified": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="minutes")})
+        # ponytail: walks the whole folder on every search (no Spotlight here); use Windows Search if slow.
+        for p in root.rglob("*") if name == "ultron" or words else root.iterdir():
+            r = p.relative_to(root)
+            if any(part.startswith(".") for part in r.parts) or not all(w in r.as_posix().lower() for w in words):
+                continue
+            if p.is_relative_to(REPO):
+                continue
+            try:
+                st = p.stat()
+            except OSError:
+                continue
+            found.append({"path": show(p) + ("/" if p.is_dir() else ""), "size": st.st_size,
+                          "modified": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="minutes")})
     return sorted(found, key=lambda f: f["modified"], reverse=True)
 
 
-def move(path: str, to: str) -> str:
-    src, dest = in_folder(path), in_folder(to)
-    if src == folder():
-        raise ValueError("Ultron's folder itself can't be moved.")
+def move(path: str, to: str, outside_ok: bool = False) -> str:
+    src, dest = allowed(path, outside_ok), allowed(to, outside_ok)
+    if src in roots().values():
+        raise ValueError(f"{show(src)} itself can't be moved.")
     if not src.exists():
-        raise ValueError(f"{path!r} doesn't exist in Ultron's folder.")
+        raise ValueError(f"{path!r} doesn't exist.")
     if dest.is_dir():
         dest = dest / src.name
     if dest.exists():
-        raise ValueError(f"{rel(dest)!r} already exists; nothing is ever overwritten. Pick another name.")
+        raise ValueError(f"{show(dest)!r} already exists; nothing is ever overwritten. Pick another name.")
     dest.parent.mkdir(parents=True, exist_ok=True)
     src.rename(dest)
-    return f"Moved {rel(src)} → {rel(dest)}."
+    return f"Moved {show(src)} → {show(dest)}."
 
 
 # --- Windows bits --------------------------------------------------------------------
@@ -177,38 +218,50 @@ def dark_mode(on: bool) -> None:
     ctypes.windll.user32.SendMessageTimeoutW(0xFFFF, 0x1A, 0, "ImmersiveColorSet", 2, 1000, None)
 
 
-def trash(path: str) -> str:
-    p = in_folder(path)
-    if p == folder() or not p.exists():
-        raise ValueError(f"{path!r} isn't a file or folder in Ultron's folder.")
+def trash(path: str, outside_ok: bool = False) -> str:
+    p = allowed(path, outside_ok)
+    if p in roots().values() or not p.exists():
+        raise ValueError(f"{path!r} isn't a file or folder Ultron can trash.")
     # The path goes in on stdin, never into the script text.
     ps("$p=[Console]::In.ReadToEnd(); Add-Type -AssemblyName Microsoft.VisualBasic; "
        "if (Test-Path -LiteralPath $p -PathType Container) "
        "{[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p,'OnlyErrorDialogs','SendToRecycleBin')} "
        "else {[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p,'OnlyErrorDialogs','SendToRecycleBin')}",
        stdin=str(p))
-    return f"Moved {rel(p)} to the Recycle Bin (it can be restored from there)."
+    return f"Moved {show(p)} to the Recycle Bin (it can be restored from there)."
 
 
 # --- the two calls -------------------------------------------------------------------
 
-def read(args: dict[str, Any]) -> str:
+def read(args: dict[str, Any]) -> str | dict[str, Any]:
     what = args.get("what")
     if what == "status":
         return status()
     if what == "clipboard":
         return ps("Get-Clipboard -Raw")[:MAX_CHARS] or "The clipboard is empty or isn't text."
     if what == "files":
-        found = find_files(str(args.get("query") or ""))
+        where = str(args.get("folder") or "all")
+        found = find_files(str(args.get("query") or ""), where)
         more = f" (newest {MAX_FILES} of {len(found)})" if len(found) > MAX_FILES else ""
-        return f"In {folder()}{more}: " + json.dumps(found[:MAX_FILES]) if found else f"Nothing matches in {folder()}."
-    raise ValueError(f"what must be one of status, clipboard, files (got {what!r}).")
+        return f"Found{more}: " + json.dumps(found[:MAX_FILES], ensure_ascii=False) if found else \
+            f"Nothing matches in {'any folder' if where == 'all' else where}."
+    if what == "content":  # the bytes: the Mac reads PDFs, Office files and images
+        p = allowed(str(args.get("path") or ""))
+        if not p.is_file():
+            raise ValueError(f"{args.get('path')!r} isn't a file.")
+        if p.stat().st_size > MAX_READ:
+            raise ValueError(f"{show(p)} is over {MAX_READ // 1_000_000} MB; too big to read.")
+        return {"text": show(p), "data": base64.b64encode(p.read_bytes()).decode()}
+    if what == "name":  # Spotify calls the PC by this name
+        return platform.node()
+    raise ValueError(f"what must be one of status, clipboard, files, content (got {what!r}).")
 
 
 def change(args: dict[str, Any]) -> str:
     action = args.get("action")
     name, path, text = str(args.get("name") or ""), str(args.get("path") or ""), str(args.get("text") or "")
     on = bool(args.get("on", True))
+    outside_ok = args.get("outside_ok") is True  # set by the Mac after the user approved
     if action == "open_app":
         return open_app(name)
     if action == "open_url":
@@ -218,18 +271,18 @@ def change(args: dict[str, Any]) -> str:
         os.startfile(url)
         return f"Opened {url} in the browser."
     if action == "open_file":
-        p = in_folder(path)
+        p = allowed(path)
         if p.is_dir():
             os.startfile(p)  # a folder opens in Explorer
-            return f"Opened {rel(p)} in Explorer."
+            return f"Opened {show(p)} in Explorer."
         if not p.is_file():
-            raise ValueError(f"{path!r} doesn't exist in Ultron's folder.")
+            raise ValueError(f"{path!r} doesn't exist.")
         if p.suffix.lower().lstrip(".") not in DOCUMENTS:
             show_in_explorer(p)
             raise ValueError(f"Ultron only opens documents, not {p.suffix or 'files without a type'}; "
-                             f"showed {rel(p)} in Explorer instead.")
+                             f"showed {show(p)} in Explorer instead.")
         os.startfile(p)
-        return f"Opened {rel(p)}."
+        return f"Opened {show(p)}."
     if action == "open_terminal":  # a window on the PC's screen; what runs in it is up to you
         try:
             subprocess.Popen(["wt.exe", "-d", str(folder())])
@@ -259,9 +312,9 @@ def change(args: dict[str, Any]) -> str:
         ctypes.windll.user32.keybd_event(key, 0, 2, 0)
         return f"Pressed {name.replace('_', '/')}."
     if action == "move":
-        return move(path, str(args.get("to") or ""))
+        return move(path, str(args.get("to") or ""), outside_ok)
     if action == "trash":
-        return trash(path)
+        return trash(path, outside_ok)
     raise ValueError(f"action must be one of {', '.join(ACTIONS)} (got {action!r}).")
 
 
@@ -331,14 +384,17 @@ class Handler(BaseHTTPRequestHandler):
         if route is None or size > MAX_BODY:
             return self.reply(404 if route is None else 413, "No such call.", True)
         try:
-            result = route(json.loads(self.rfile.read(size) or b"{}"))
+            result, extra = route(json.loads(self.rfile.read(size) or b"{}")), {}
+            if isinstance(result, dict):  # {"text", "data"}: a file's bytes
+                extra = result
+                result = extra.pop("text")
             text, err = result if isinstance(result, tuple) else (result, False)
         except Exception as e:  # COMError, TypeError, ...: still an answer, not "the PC isn't reachable"
-            text, err = f"{type(e).__name__}: {e}" if not str(e) else str(e), True
-        self.reply(200, text, err)
+            text, err, extra = f"{type(e).__name__}: {e}" if not str(e) else str(e), True, {}
+        self.reply(200, text, err, **extra)
 
-    def reply(self, code: int, text: str, is_error: bool) -> None:
-        body = json.dumps({"text": text, "is_error": is_error}, ensure_ascii=False).encode()
+    def reply(self, code: int, text: str, is_error: bool, **extra: Any) -> None:
+        body = json.dumps({"text": text, "is_error": is_error, **extra}, ensure_ascii=False).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))

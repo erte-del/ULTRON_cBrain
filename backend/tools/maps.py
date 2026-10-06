@@ -8,10 +8,12 @@ another place), nearest first.
 
 import json
 from typing import Any
+from urllib.parse import urlencode
 
 from claude_agent_sdk import tool
 
 from .homework import _text
+from . import mac
 from .mac import locator
 
 MODES = ["driving", "walking", "transit"]
@@ -23,8 +25,8 @@ MODES = ["driving", "walking", "transit"]
     "user, or near another place, nearest first, with address, distance, phone and website. action "
     "'directions': travel time and distance to a place or address (from the user's location unless "
     "'from' is given), by mode driving (default, with traffic), walking or transit; give depart_at "
-    "or arrive_by (ISO 8601 with the UTC offset) for a later trip. Returns depart/arrive times and an "
-    "Apple Maps link.",
+    "or arrive_by (ISO 8601 with the UTC offset) for a later trip. Returns depart/arrive times, an "
+    "Apple Maps link and a Google Maps link (for the PC or the phone).",
     {
         "type": "object",
         "properties": {
@@ -56,4 +58,14 @@ async def maps(args: dict[str, Any]) -> dict[str, Any]:
         found = await locator(action, params)
     except (RuntimeError, OSError, ValueError) as e:
         return _text(f"maps: {e}", True)
+    if action == "directions":
+        found["google_maps_link"] = google_link(args)
     return _text(json.dumps(found, ensure_ascii=False))
+
+
+def google_link(args: dict[str, Any]) -> str:
+    """The same trip in Google Maps; without 'from' it starts where the user is."""
+    origin = args.get("from") or (",".join(map(str, mac.phone_here)) if mac.phone_here else None)
+    q = {"api": 1, **({"origin": origin} if origin else {}), "destination": args["to"],
+         "travelmode": args.get("mode") or "driving"}
+    return "https://www.google.com/maps/dir/?" + urlencode(q)

@@ -63,7 +63,7 @@ class DeviceTest(unittest.IsolatedAsyncioTestCase):
                 out = (await mac.mac_read.handler({"what": "status"}))["content"][0]["text"]
             finally:
                 mac.phone_status = None
-            self.assertTrue(out.startswith("The user's phone (they're on it):\nBattery: 82%, charging"))
+            self.assertTrue(out.startswith("The device the user is on (phone or PC browser):\nBattery: 82%, charging"))
             self.assertIn("This Mac:\nBattery: 50%", out)
             on_mac = (await mac.mac_read.handler({"what": "status"}))["content"][0]["text"]
         self.assertEqual(on_mac, "Battery: 50%")
