@@ -1,0 +1,98 @@
+{
+ "title": "Wooden chair",
+ "category": "furniture",
+ "aliases": [
+  "dining chair",
+  "kitchen chair"
+ ],
+ "tags": [
+  "seat",
+  "furniture"
+ ],
+ "spec": {
+  "parts": [
+   {
+    "name": "seat",
+    "shape": "box",
+    "size": [
+     0.45,
+     0.05,
+     0.45
+    ],
+    "position": [
+     0,
+     0.45,
+     0
+    ],
+    "color": "saddlebrown"
+   },
+   {
+    "name": "back",
+    "shape": "box",
+    "size": [
+     0.45,
+     0.45,
+     0.04
+    ],
+    "position": [
+     0,
+     0.7,
+     -0.2
+    ],
+    "color": "saddlebrown"
+   },
+   {
+    "name": "leg1",
+    "shape": "cylinder",
+    "radius": 0.02,
+    "height": 0.45,
+    "position": [
+     0.2,
+     0.225,
+     0.2
+    ],
+    "material": "metal",
+    "color": "#888"
+   },
+   {
+    "name": "leg2",
+    "shape": "cylinder",
+    "radius": 0.02,
+    "height": 0.45,
+    "position": [
+     -0.2,
+     0.225,
+     0.2
+    ],
+    "material": "metal",
+    "color": "#888"
+   },
+   {
+    "name": "leg3",
+    "shape": "cylinder",
+    "radius": 0.02,
+    "height": 0.45,
+    "position": [
+     0.2,
+     0.225,
+     -0.2
+    ],
+    "material": "metal",
+    "color": "#888"
+   },
+   {
+    "name": "leg4",
+    "shape": "cylinder",
+    "radius": 0.02,
+    "height": 0.45,
+    "position": [
+     -0.2,
+     0.225,
+     -0.2
+    ],
+    "material": "metal",
+    "color": "#888"
+   }
+  ]
+ }
+}

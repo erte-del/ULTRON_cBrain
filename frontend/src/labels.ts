@@ -32,6 +32,12 @@ export function toolLabel({ name, detail, label }: ActiveTool): string {
     case 'image_undo':
     case 'revert_3d':
       return 'Going back a version…'
+    case 'search_3d_library':
+      return 'Looking in the 3D library…'
+    case 'show_3d_asset':
+      return 'Downloading the 3D model…'
+    case 'show_from_3d_library':
+      return 'Opening the 3D model…'
     case 'preview_3d':
       return 'Building the 3D preview…'
     case 'get_3d_spec':

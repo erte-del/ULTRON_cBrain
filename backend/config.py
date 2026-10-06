@@ -35,6 +35,13 @@ VAULT_DIR = Path(_VAULT).expanduser() if _VAULT else None
 # The one folder Ultron may find, open, move, rename and trash files in, and where its
 # sandboxed Python reads from (results go to its Output subfolder).
 FILES_DIR = Path(os.getenv("JARVIS_FILES_DIR", "").strip() or "~/Jarvis Files").expanduser()
+# Ready-made 3D models Ultron looks in first (tools/library3d.py). Drop .glb files in here.
+LIBRARY_3D_DIR = Path(os.getenv("JARVIS_3D_LIBRARY", "").strip() or BACKEND_DIR / "library3d").expanduser()
+# 3DAssets.dev: a free online library of CC0 .glb models. Ultron searches it through its public
+# MCP server (no key needed to read) and downloads the .glb from one of these hosts only.
+# Empty URL = don't use it.
+ASSETS_3D_MCP_URL = os.getenv("JARVIS_3DASSETS_MCP", "https://3dassets.dev/mcp").strip()
+ASSETS_3D_HOSTS = [h.strip().lower() for h in os.getenv("JARVIS_3DASSETS_HOSTS", "3dassets.dev").split(",") if h.strip()]
 BLENDER_PATH = os.getenv("BLENDER_PATH", "/Applications/Blender.app/Contents/MacOS/Blender")
 # Local video generation (Wan 2.1 through mlx-video). scripts/setup_video.sh puts its
 # own Python and the model weights here.

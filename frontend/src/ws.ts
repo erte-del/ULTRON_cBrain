@@ -152,7 +152,7 @@ export interface ImageCardData {
 export interface Model3DData {
   model_id: string
   current: number
-  versions: { version: number; note: string; parts: number; size: [number, number, number]; preview_url: string }[]
+  versions: { version: number; note: string; parts: number; size: [number, number, number]; source: string; preview_url: string }[]
   exports: { version: number; format: string; url: string; name: string }[]
 }
 

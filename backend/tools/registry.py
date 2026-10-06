@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import claude_agent_sdk
+import config
 from claude_agent_sdk import HookMatcher, SdkMcpTool, create_sdk_mcp_server
 
 from storage import job_store, memory_store
@@ -38,6 +39,7 @@ from .notes import read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
 from .phone import phone_taxi, phone_volume
+from .library3d import search_3d_library, show_3d_asset, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
 from .spotify import spotify_control, spotify_playlist_tracks
 from .slides import lectures, make_slides, open_slides
@@ -76,6 +78,11 @@ TOOLS: list[UltronTool] = [
     # AI images are made on this Mac in seconds and only add Ultron's own copies.
     UltronTool(generate_image, "read"),
     UltronTool(image_ai_edit, "read"),
+    # The 3D library only reads ready-made models and puts a copy in the 3D panel.
+    UltronTool(search_3d_library, "read"),
+    UltronTool(show_from_3d_library, "read"),
+    # Downloads one .glb from an allowed 3DAssets.dev host into Ultron's own copies.
+    UltronTool(show_3d_asset, "read"),
     # 3D previews only change Ultron's own copies. The final file needs your approval.
     UltronTool(preview_3d, "read"),
     UltronTool(revert_3d, "read"),
@@ -153,6 +160,13 @@ PEOPLE_WORDS = {"send", "reply", "forward", "share", "invite", "respond", "broad
 QUIET_CONNECTORS = {"Gmail", "Google_Calendar", "Google_Drive", "TickTick", "Spotify", "Claude_Docs",
                     "Canva"}
 
+# 3DAssets.dev's public MCP server (config.ASSETS_3D_MCP_URL). Looking things up is free; its
+# other tools (create_account, submit_*, uploads, update_asset, my_*) change an account, so they ask.
+ASSETS_SERVER = "3dassets"
+ASSETS_PREFIX = f"mcp__{ASSETS_SERVER}__"
+ASSETS_READ_TOOLS = ["search_assets", "search_packs", "get_pack", "get_asset", "get_asset_usage",
+                     "list_demos", "get_demo", "list_categories", "list_tags", "list_licenses", "list_ai_models"]
+
 # Friendlier titles for confirmation cards.
 TITLES = {
     "export_3d": "Build the final 3D file",
@@ -182,6 +196,8 @@ def classify(name: str) -> str:
     """'read' (runs freely) or 'act' (asks you first) for any tool name Claude Code uses."""
     if name in BUILTIN_READ_TOOLS:
         return "read"
+    if name.startswith(ASSETS_PREFIX):
+        return "read" if name.removeprefix(ASSETS_PREFIX) in ASSETS_READ_TOOLS else "act"
     for t in TOOLS:
         if t.full_name == name:
             return t.kind
@@ -248,12 +264,16 @@ def mcp_servers() -> dict[str, Any]:
     """The in-process MCP server that exposes Ultron's tools to Claude Code."""
     with _always_load():
         server = create_sdk_mcp_server(SERVER_NAME, tools=[t.tool for t in TOOLS])
-    return {SERVER_NAME: server}
+    servers: dict[str, Any] = {SERVER_NAME: server}
+    if config.ASSETS_3D_MCP_URL:
+        servers[ASSETS_SERVER] = {"type": "http", "url": config.ASSETS_3D_MCP_URL}
+    return servers
 
 
 def auto_allowed() -> list[str]:
     """Tools that run without asking: all 'read' tools."""
-    return BUILTIN_READ_TOOLS + [t.full_name for t in TOOLS if t.kind == "read"]
+    assets = [ASSETS_PREFIX + n for n in ASSETS_READ_TOOLS] if config.ASSETS_3D_MCP_URL else []
+    return BUILTIN_READ_TOOLS + assets + [t.full_name for t in TOOLS if t.kind == "read"]
 
 
 def short_name(name: str) -> str:

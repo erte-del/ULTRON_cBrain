@@ -1,6 +1,6 @@
 """3D objects: fast previews, changes through chat, final file only after approval. (Phase 4d)
 
-Flow (JARVIS_BUILD_PROMPT.md, section 7b):
+Flow (JARVIS_BUILD_PROMPT.md, section 7b). Ready-made models come first: see library3d.py.
   preview_3d  -> low-detail preview in the big 3D panel (new version every change).
                  Claude also gets 4 rendered views and a list of floating parts, so it
                  can check its own work and fix mistakes before replying.
@@ -36,6 +36,8 @@ log = logging.getLogger("ultron.3d")
 EXPORT_SCRIPT = Path(__file__).with_name("blender_export_script.py")
 RENDER_SCRIPT = Path(__file__).with_name("blender_render_script.py")
 BLENDER_TIMEOUT_S = 180
+# A fixed (.glb only) model from the 3D library has no parts, just this marker in its spec.
+LIBRARY_SPEC_KEY = "library"
 RENDER_TIMEOUT_S = 60
 VIEWS = [("three_quarter", "3/4 front"), ("side", "side (front is right)"),
          ("front", "front"), ("top", "top (front is right)")]
@@ -188,7 +190,13 @@ async def preview_3d(args: dict[str, Any]) -> dict[str, Any]:
         if args.get("spec") is not None:
             spec = args["spec"]
         elif changes and rec is not None:
-            spec = shapes.apply_changes(model_store.spec(rec), **changes)
+            current = model_store.spec(rec)
+            if not current.get("parts") and LIBRARY_SPEC_KEY in current:
+                return _text(
+                    f"Preview not made: {rec.id} is a finished model from the 3D library, so its parts can't "
+                    "be edited one by one. Rebuild it with your own full 'spec' (same model_id) including the "
+                    "change, using the views you got when you showed it as the reference.", is_error=True)
+            spec = shapes.apply_changes(current, **changes)
         else:
             return _text("Preview not made: pass a full 'spec', or a model_id with "
                          "update_parts / add_parts / remove_parts.", is_error=True)
@@ -281,10 +289,14 @@ async def get_3d_spec(args: dict[str, Any]) -> dict[str, Any]:
 
 async def build_final(rec: model_store.ModelRecord, version: int, fmt: str) -> str:
     """Build the detailed model and export it. Returns the stored file name."""
-    parts = shapes.validate(model_store.spec(rec, version))
-    scene = await asyncio.to_thread(shapes.build_scene, parts, "final")
-    glb = await asyncio.to_thread(shapes.to_glb, scene)
+    spec = model_store.spec(rec, version)
     folder = model_store.folder(rec.id)
+    if not spec.get("parts") and LIBRARY_SPEC_KEY in spec:  # a finished library model: convert its file as it is
+        glb = (folder / f"v{version}_preview.glb").read_bytes()
+    else:
+        parts = shapes.validate(spec)
+        scene = await asyncio.to_thread(shapes.build_scene, parts, "final")
+        glb = await asyncio.to_thread(shapes.to_glb, scene)
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         src = tmp_dir / "model.glb"
