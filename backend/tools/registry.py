@@ -23,7 +23,7 @@ from claude_agent_sdk import HookMatcher, SdkMcpTool, create_sdk_mcp_server
 
 from storage import job_store, memory_store
 
-from . import connectors, important, web
+from . import connectors, important, mac, web
 from .amazon import amazon_change, amazon_read
 from .canvas import open_terminal, read_terminal, show_on_canvas
 from .contacts import find_contact
@@ -137,8 +137,9 @@ TOOLS: list[UltronTool] = [
     # Adding only adds protection; lifting it asks (see ASK_TOOLS).
     UltronTool(mark_important, "act"),
     UltronTool(unmark_important, "act"),
-    # This Mac: reading is free. Changes stay on this Mac and inside Ultron's folder, so no card
-    # (files you marked important still ask); scheduled jobs can't use them.
+    # This Mac: reading is free. Changes stay on this Mac, so no card inside Ultron's folder;
+    # moving or trashing your own files outside it asks (needs_ok), and so do files you marked
+    # important. Scheduled jobs can't use them.
     UltronTool(mac_read, "read"),
     UltronTool(mac_change, "act"),
     # Sandboxed: no network or other programs, writes only in Ultron's Output folder.
@@ -223,6 +224,8 @@ def needs_ok(name: str, tool_input: dict[str, Any]) -> bool:
     if _touches_important(tool_input):
         return True
     own = name.removeprefix(PREFIX)
+    if own == "mac_change" and mac.leaves_folder(tool_input):
+        return True
     if name.startswith(PREFIX) and any(t.tool.name == own for t in TOOLS):
         return own in ASK_TOOLS
     parsed = connectors.parse(name)

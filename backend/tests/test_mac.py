@@ -23,9 +23,12 @@ class MacTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name).resolve() / "Ultron"
-        patch = mock.patch.object(config, "FILES_DIR", self.root)
-        patch.start()
-        self.addCleanup(patch.stop)
+        self.downloads = Path(tmp.name).resolve() / "Downloads"
+        self.downloads.mkdir()
+        for patch in [mock.patch.object(config, "FILES_DIR", self.root),
+                      mock.patch.object(config, "ALLOWED_DIRS", [self.downloads])]:
+            patch.start()
+            self.addCleanup(patch.stop)
         self.calls = []
 
         async def fake_run(*cmd, **kw):
@@ -40,14 +43,47 @@ class MacTest(unittest.TestCase):
         self.assertEqual(registry.classify("mcp__ultron__run_python"), "act")
         self.assertFalse(registry.needs_ok("mcp__ultron__mac_change", {"action": "trash", "path": "a.txt"}))
 
-    def test_paths_stay_in_the_folder(self):
+    def test_paths_stay_in_the_allowed_folders(self):
         self.root.mkdir()
         (self.root.parent / "secret.txt").write_text("x")
         (self.root / "link").symlink_to(self.root.parent)
-        for bad in ["../secret.txt", str(self.root.parent / "secret.txt"), "~/.zshrc", "link/secret.txt"]:
+        (self.downloads / "out").symlink_to(self.root.parent)
+        for bad in ["../secret.txt", str(self.root.parent / "secret.txt"), "~/.zshrc", "link/secret.txt",
+                    str(self.downloads / "out/secret.txt"), str(config.ROOT_DIR / "backend/config.py")]:
             with self.assertRaises(ValueError, msg=bad):
-                mac.in_folder(bad)
-        self.assertEqual(mac.in_folder(str(self.root / "a.txt")), self.root / "a.txt")
+                mac.allowed_path(bad)
+        self.assertEqual(mac.allowed_path(str(self.root / "a.txt")), self.root / "a.txt")
+        self.assertEqual(mac.allowed_path(str(self.downloads / "a.pdf")), self.downloads / "a.pdf")
+
+    def test_changes_outside_ultrons_folder_ask_first(self):
+        ok = lambda **args: registry.needs_ok("mcp__ultron__mac_change", args)
+        self.assertFalse(ok(action="move", path="a.pdf", to="School/a.pdf"))
+        self.assertTrue(ok(action="move", path=str(self.downloads / "a.pdf"), to="School"))
+        self.assertTrue(ok(action="move", path="a.pdf", to=str(self.downloads)))
+        self.assertTrue(ok(action="trash", path=str(self.downloads / "a.pdf")))
+        self.assertFalse(ok(action="open_file", path=str(self.downloads / "a.pdf")))  # opening is free
+
+    def test_moves_between_your_folders_and_finds_with_spotlight(self):
+        self.root.mkdir()
+        (self.downloads / "Chem notes.pdf").write_text("a")
+        self.assertIn("Chem notes.pdf", mac.move(str(self.downloads / "Chem notes.pdf"), "School/Chem notes.pdf"))
+        self.assertTrue((self.root / "School/Chem notes.pdf").exists())
+        with self.assertRaises(ValueError):
+            mac.move(str(self.downloads), "School")  # the folder itself stays put
+        (self.downloads / "Chem lab.pdf").write_text("b")
+        (self.downloads / "Maths.pdf").write_text("c")
+
+        async def spotlight(*cmd, **kw):  # what mdfind would answer, plus a file it hasn't dropped yet
+            self.calls.append(cmd)
+            return 0, f"{self.downloads}/Chem lab.pdf\n{self.downloads}/Chem gone.pdf\n", ""
+        with mock.patch.object(mac, "_run", spotlight):
+            found = asyncio.run(mac.find_files('chem "pdf', "Downloads"))
+        self.assertEqual([f["path"] for f in found], [str(self.downloads / "Chem lab.pdf")])
+        self.assertIn('kMDItemFSName == "*chem*"cd || kMDItemFSName == "*pdf*"cd', self.calls[0])
+        listed = asyncio.run(mac.find_files("", "all"))  # no query: the top of Downloads, all of Ultron's
+        self.assertEqual({f["path"] for f in listed},
+                         {"School/", "School/Chem notes.pdf", str(self.downloads / "Chem lab.pdf"),
+                          str(self.downloads / "Maths.pdf")})
 
     def test_move_renames_into_folders_and_never_overwrites(self):
         self.root.mkdir()
@@ -62,6 +98,22 @@ class MacTest(unittest.TestCase):
         self.assertTrue(result["is_error"])
         self.assertEqual((self.root / "2026/March/a.pdf").read_text(), "a")
         self.assertTrue(call(mac.mac_change, action="move", path="b.pdf", to="../b.pdf")["is_error"])
+
+    def test_reads_whats_inside_files(self):
+        import subprocess
+        (self.downloads / "notes.txt").write_text("Le Chatelier shifts equilibrium")
+        subprocess.run(["textutil", "-convert", "docx", str(self.downloads / "notes.txt")], check=True)
+        import openpyxl
+        book = openpyxl.Workbook()
+        book.active.append(["Le Chatelier", None, 3])
+        book.save(self.downloads / "notes.xlsx")
+        (self.downloads / "app.bin").write_bytes(b"\0\1\2")
+        read = lambda path: call(mac.mac_read, what="content", path=str(path))
+        for name in ["notes.txt", "notes.docx", "notes.xlsx"]:
+            self.assertIn("Le Chatelier", read(self.downloads / name)["content"][0]["text"], name)
+        self.assertTrue(read(self.downloads / "app.bin")["is_error"])
+        self.assertTrue(read(config.ROOT_DIR / ".env.example")["is_error"])  # Ultron's code is off limits
+        self.assertFalse(registry.needs_ok("mcp__ultron__mac_read", {"what": "content", "path": "x"}))
 
     def test_only_documents_web_pages_and_real_apps_open(self):
         self.root.mkdir()

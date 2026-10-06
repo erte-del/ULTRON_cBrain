@@ -1,23 +1,27 @@
-"""This Mac: Shortcuts, apps, URLs, the clipboard, a few settings, one folder of files,
-and Python in a sandbox.
+"""This Mac: Shortcuts, apps, URLs, the clipboard, a few settings, your files, and Python
+in a sandbox.
 
   mac_read   (read) battery / volume / dark mode / Wi-Fi, location, the clipboard, your Shortcuts,
-             and the files in Ultron's folder (JARVIS_FILES_DIR, default ~/Jarvis Files).
+             and files in Ultron's folder (JARVIS_FILES_DIR, default ~/Jarvis Files) and in
+             config.ALLOWED_DIRS (Desktop, Documents, Downloads; searched with Spotlight).
   mac_change (act)  opens apps, web pages and files, runs a Shortcut, copies to the
              clipboard, sets volume / mute / dark mode, and moves, renames or trashes
-             files in the folder. No card (nothing here reaches other people); files
-             you marked important still ask (registry.needs_ok).
+             files. No card inside Ultron's folder; a move or trash that touches anything
+             outside it asks first, and so do files you marked important (registry.needs_ok).
   run_python (act)  Python for data work (CSV analysis, quick scripts) in a macOS sandbox:
              no network, no other programs or apps, reads only Ultron's folder, writes
              only its Output subfolder.
 
-Files never leave the folder: nothing is moved out of it, nothing is overwritten, and
-"delete" puts the file in the Trash. Only documents open (no apps, scripts or installers
-from the folder), and apps only from the Applications folders.
+Files never leave those folders: nothing is moved out of them, nothing is overwritten, and
+"delete" puts the file in the Trash. Ultron's own code is out of reach. Only documents open
+(no apps, scripts or installers, which matters most in Downloads), and apps only from the
+Applications folders.
 """
 
 import asyncio
+import base64
 import json
+import os
 import re
 import sys
 import tempfile
@@ -26,10 +30,12 @@ from pathlib import Path
 from typing import Any
 
 from claude_agent_sdk import tool
+from pypdf.errors import PdfReadError
 
 import config
 
 from .homework import _text
+from .uploads import IMAGES, IWORK, READABLE, jpeg_of, text_of
 
 MAX_CHARS = 20_000
 MAX_FILES = 50
@@ -91,17 +97,45 @@ def _folder() -> Path:
     return config.FILES_DIR.resolve()
 
 
-def in_folder(path: str) -> Path:
-    """The file a path names inside Ultron's folder. ValueError if it's anywhere else."""
-    root = _folder()
-    full = (root / Path(path.strip()).expanduser()).resolve()  # also follows symlinks out
-    if not full.is_relative_to(root):
-        raise ValueError(f"{path!r} is outside Ultron's folder ({root}).")
+def _roots() -> list[Path]:
+    """Ultron's folder first, then the allowed folders of yours."""
+    return [_folder(), *(d.resolve() for d in config.ALLOWED_DIRS)]
+
+
+def allowed_path(path: str) -> Path:
+    """The file a path names: relative paths are in Ultron's folder, '~/Downloads/x.pdf' or a
+    full path must be inside an allowed folder. ValueError for anywhere else."""
+    full = (_folder() / Path(path.strip()).expanduser()).resolve()  # also follows symlinks out
+    if full.is_relative_to(config.ROOT_DIR) or not any(full.is_relative_to(r) for r in _roots()):
+        raise ValueError(f"{path!r} is outside the folders Ultron may use ({', '.join(map(_show, _roots()))}).")
     return full
 
 
-def _rel(p: Path) -> str:
-    return p.relative_to(_folder()).as_posix() or "."
+def leaves_folder(args: dict[str, Any]) -> bool:
+    """A mac_change move or trash that touches anything outside Ultron's folder: it asks first."""
+    if args.get("action") not in ("move", "trash"):
+        return False
+    for key in ("path", "to"):
+        try:
+            if not allowed_path(str(args.get(key) or "")).is_relative_to(_folder()):
+                return True
+        except ValueError:
+            pass  # mac_change refuses it anyway
+    return False
+
+
+def _show(p: Path) -> str:
+    """How Ultron names a path: relative in its own folder, else ~/Downloads/x.pdf."""
+    if p.is_relative_to(_folder()):
+        return p.relative_to(_folder()).as_posix() or "."
+    return "~/" + p.relative_to(Path.home()).as_posix() if p.is_relative_to(Path.home()) else str(p)
+
+
+def _why(e: Exception) -> str:
+    if isinstance(e, PermissionError):
+        return (f"macOS didn't let Ultron into {e.filename or 'that folder'}. Turn it on in System "
+                "Settings → Privacy & Security → Files & Folders → Ultron.")
+    return str(e)
 
 
 # --- reading -------------------------------------------------------------------------
@@ -156,18 +190,42 @@ async def _status() -> str:
     ])
 
 
-def find_files(query: str) -> list[dict[str, Any]]:
-    """Files and folders in Ultron's folder whose path has every word of the query, newest first."""
-    root = _folder()
-    words = query.lower().split()
+def _folder_name(root: Path) -> str:
+    return "ultron" if root == _folder() else root.name
+
+
+async def find_files(query: str, folder: str = "all") -> list[dict[str, Any]]:
+    """Files and folders whose path (inside the folder searched) has every word of the query,
+    newest first. Ultron's folder is walked; yours are asked of Spotlight, and with no query
+    only their top level is listed."""
+    words = re.sub(r'["\\*]', "", query.lower()).split()  # nothing that breaks a Spotlight query
     found = []
-    for p in root.rglob("*"):
-        rel = p.relative_to(root)
-        if any(part.startswith(".") for part in rel.parts) or not all(w in rel.as_posix().lower() for w in words):
+    for root in _roots():
+        if folder not in ("all", _folder_name(root)):
             continue
-        st = p.stat()
-        found.append({"path": rel.as_posix() + ("/" if p.is_dir() else ""), "size": st.st_size,
-                      "modified": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="minutes")})
+        if root == _folder():
+            paths = root.rglob("*")
+        else:
+            os.scandir(root).close()  # PermissionError if macOS hasn't let Ultron in
+            if words:
+                # ponytail: Spotlight only; a folder it doesn't index finds nothing. Fall back to
+                # rglob if that ever bites.
+                spotlight = " || ".join(f'kMDItemFSName == "*{w}*"cd' for w in words)
+                paths = map(Path, (await _out("mdfind", "-onlyin", str(root), spotlight)).splitlines())
+            else:
+                paths = root.iterdir()
+        for p in paths:
+            if not p.is_relative_to(root) or p.is_relative_to(config.ROOT_DIR):
+                continue
+            rel = p.relative_to(root)
+            if any(part.startswith(".") for part in rel.parts) or not all(w in rel.as_posix().lower() for w in words):
+                continue
+            try:
+                st = p.stat()
+            except FileNotFoundError:
+                continue  # Spotlight hasn't caught up with a deleted file
+            found.append({"path": _show(p) + ("/" if p.is_dir() else ""), "size": st.st_size,
+                          "modified": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="minutes")})
     return sorted(found, key=lambda f: f["modified"], reverse=True)
 
 
@@ -178,13 +236,20 @@ def find_files(query: str) -> list[dict[str, Any]]:
     "the user is: their phone's GPS when they're on it, else this Mac's; latitude, longitude, place name, "
     "time zone; for weather, directions, things nearby), 'clipboard' "
     "(the text copied right now), 'shortcuts' (the user's Shortcuts, to run with mac_change), or "
-    "'files' (files in Ultron's folder whose path has every word of query; empty query lists them all). "
-    "To look inside files, use run_python.",
+    f"'content' (what's inside the file at path: {READABLE}; images come back as a picture), or "
+    "'files' (files whose name or folder has every word of query, newest first, in Ultron's folder and "
+    "the user's Desktop, Documents and Downloads; folder narrows it to one; an empty query lists all of "
+    "Ultron's folder but only the top level of the others). Paths come back ready for mac_change: "
+    "plain for Ultron's folder, '~/Downloads/...' for the others. For sums over a CSV in Ultron's "
+    "folder, use run_python.",
     {
         "type": "object",
         "properties": {
-            "what": {"type": "string", "enum": ["status", "location", "clipboard", "shortcuts", "files"]},
+            "what": {"type": "string", "enum": ["status", "location", "clipboard", "shortcuts", "files", "content"]},
+            "path": {"type": "string", "description": "For content: a path mac_read what=files gave."},
             "query": {"type": "string", "description": "For files: words in the name or folder."},
+            "folder": {"type": "string", "enum": ["all", "ultron", *(d.name for d in config.ALLOWED_DIRS)],
+                       "description": "For files: where to look (default all)."},
         },
         "required": ["what"],
     },
@@ -207,13 +272,22 @@ async def mac_read(args: dict[str, Any]) -> dict[str, Any]:
             names = await _out("shortcuts", "list")
             return _text(names or "The user has no Shortcuts.")
         if what == "files":
-            found = find_files(str(args.get("query") or ""))
+            folder = str(args.get("folder") or "all")
+            found = await find_files(str(args.get("query") or ""), folder)
             more = f" (newest {MAX_FILES} of {len(found)})" if len(found) > MAX_FILES else ""
-            return _text(f"In {_folder()}{more}: " + json.dumps(found[:MAX_FILES]) if found else
-                         f"Nothing matches in {_folder()}.")
-    except (RuntimeError, OSError) as e:
-        return _text(f"mac_read: {e}", True)
-    return _text(f"mac_read: what must be one of status, location, clipboard, shortcuts, files (got {what!r}).", True)
+            return _text(f"Found{more}: " + json.dumps(found[:MAX_FILES], ensure_ascii=False) if found else
+                         f"Nothing matches in {'any folder' if folder == 'all' else folder}.")
+        if what == "content":
+            p = allowed_path(str(args.get("path") or ""))
+            if not (p.is_file() or p.suffix.lower() in IWORK and p.exists()):  # old iWork files are folders
+                return _text(f"mac_read: {args.get('path')!r} isn't a file.", True)
+            if p.suffix.lower() in IMAGES and (jpeg := await asyncio.to_thread(jpeg_of, p)):
+                return {"content": [{"type": "text", "text": f"{_show(p)}:"},
+                                    {"type": "image", "data": base64.b64encode(jpeg).decode(), "mimeType": "image/jpeg"}]}
+            return _text(f"{_show(p)}:\n\n{await asyncio.to_thread(text_of, p)}")
+    except (RuntimeError, OSError, ValueError, PdfReadError) as e:
+        return _text(f"mac_read: {_why(e)}", True)
+    return _text(f"mac_read: what must be one of status, location, clipboard, shortcuts, files, content (got {what!r}).", True)
 
 
 # --- changing ------------------------------------------------------------------------
@@ -247,38 +321,39 @@ async def _shortcut(name: str, text: str) -> str:
 
 
 def move(path: str, to: str) -> str:
-    src, dest = in_folder(path), in_folder(to)
-    if src == _folder():
-        raise ValueError("Ultron's folder itself can't be moved.")
+    src, dest = allowed_path(path), allowed_path(to)
+    if src in _roots():
+        raise ValueError(f"{_show(src)} itself can't be moved.")
     if not src.exists():
-        raise ValueError(f"{path!r} doesn't exist in Ultron's folder.")
+        raise ValueError(f"{path!r} doesn't exist.")
     if dest.is_dir():
         dest = dest / src.name  # "move it into Invoices"
     if dest.exists():
-        raise ValueError(f"{_rel(dest)!r} already exists; nothing is ever overwritten. Pick another name.")
+        raise ValueError(f"{_show(dest)!r} already exists; nothing is ever overwritten. Pick another name.")
     dest.parent.mkdir(parents=True, exist_ok=True)
     src.rename(dest)
-    return f"Moved {_rel(src)} → {_rel(dest)}."
+    return f"Moved {_show(src)} → {_show(dest)}."
 
 
 async def _trash(path: str) -> str:
-    p = in_folder(path)
-    if p == _folder() or not p.exists():
-        raise ValueError(f"{path!r} isn't a file or folder in Ultron's folder.")
+    p = allowed_path(path)
+    if p in _roots() or not p.exists():
+        raise ValueError(f"{path!r} isn't a file or folder Ultron can trash.")
     await _out("osascript", "-e", "on run argv", "-e",
                'tell application "Finder" to delete (POSIX file (item 1 of argv) as alias)', "-e", "end run", str(p))
-    return f"Moved {_rel(p)} to the Trash (it can be put back from there)."
+    return f"Moved {_show(p)} to the Trash (it can be put back from there)."
 
 
 @tool(
     "mac_change",
     "Do something on this Mac. action: 'open_app' (name), 'open_url' (url, http or https), "
-    "'open_file' (path: a document in Ultron's folder opens in its app, a folder shows in Finder), "
+    "'open_file' (path: a document opens in its app, a folder shows in Finder), "
     "'run_shortcut' (name, optional text as its input), 'copy' (text to the clipboard), "
     "'volume' (level 0-100), 'mute' (on), 'dark_mode' (on), 'move' (path → to, also renames; "
-    "into a folder if 'to' is one), 'trash' (path, to the Trash). Paths are relative to Ultron's folder; "
-    "nothing can be moved out of it or overwritten. For Do Not Disturb or Focus, run a Shortcut "
-    "that sets it.",
+    "into a folder if 'to' is one), 'trash' (path, to the Trash). Paths are relative to Ultron's folder, "
+    "or '~/Desktop/...', '~/Documents/...', '~/Downloads/...' for the user's own; nothing else is "
+    "reachable and nothing is overwritten. Moving or trashing outside Ultron's folder asks the user "
+    "first. For Do Not Disturb or Focus, run a Shortcut that sets it.",
     {
         "type": "object",
         "properties": {
@@ -311,18 +386,18 @@ async def mac_change(args: dict[str, Any]) -> dict[str, Any]:
             await _out("open", url)
             return _text(f"Opened {url} in the browser.")
         if action == "open_file":
-            p = in_folder(path)
+            p = allowed_path(path)
             if p.is_dir():
                 await _out("open", "-R", str(p))  # shows it in Finder; never launches a bundle
-                return _text(f"Showed {_rel(p)} in Finder.")
+                return _text(f"Showed {_show(p)} in Finder.")
             if not p.is_file():
-                return _text(f"{path!r} doesn't exist in Ultron's folder.", True)
+                return _text(f"{path!r} doesn't exist.", True)
             if p.suffix.lower().lstrip(".") not in DOCUMENTS:
                 await _out("open", "-R", str(p))
                 return _text(f"Ultron only opens documents, not {p.suffix or 'files without a type'}; "
-                             f"showed {_rel(p)} in Finder instead.", True)
+                             f"showed {_show(p)} in Finder instead.", True)
             await _out("open", str(p))
-            return _text(f"Opened {_rel(p)}.")
+            return _text(f"Opened {_show(p)}.")
         if action == "run_shortcut":
             return _text(await _shortcut(name, text))
         if action == "copy":
@@ -346,7 +421,7 @@ async def mac_change(args: dict[str, Any]) -> dict[str, Any]:
         if action == "trash":
             return _text(await _trash(path))
     except (RuntimeError, OSError, ValueError) as e:
-        return _text(f"mac_change: {e}", True)
+        return _text(f"mac_change: {_why(e)}", True)
     return _text(f"mac_change: action must be one of {', '.join(ACTIONS)} (got {action!r}).", True)
 
 

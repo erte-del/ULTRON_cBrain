@@ -32,9 +32,13 @@ AMAZON_URL = (os.getenv("JARVIS_AMAZON_URL", "").strip() or "https://www.amazon.
 # Your Obsidian vault: the folder Ultron searches, reads and (with your approval) writes notes in.
 _VAULT = os.getenv("JARVIS_VAULT", "").strip()
 VAULT_DIR = Path(_VAULT).expanduser() if _VAULT else None
-# The one folder Ultron may find, open, move, rename and trash files in, and where its
-# sandboxed Python reads from (results go to its Output subfolder).
+# Ultron's own folder: it changes files here without asking, and its
+# sandboxed Python reads from here (results go to its Output subfolder).
 FILES_DIR = Path(os.getenv("JARVIS_FILES_DIR", "").strip() or "~/Jarvis Files").expanduser()
+# Your folders Ultron may also search and open files in, and (with your approval) move, rename
+# and trash them. The rest of the disk is out of reach, and so is Ultron's own code (ROOT_DIR).
+# macOS must allow it: System Settings → Privacy & Security → Files & Folders → Ultron.
+ALLOWED_DIRS = [Path.home() / d for d in ("Desktop", "Documents", "Downloads")]
 # Ready-made 3D models Ultron looks in first (tools/library3d.py). Drop .glb files in here.
 LIBRARY_3D_DIR = Path(os.getenv("JARVIS_3D_LIBRARY", "").strip() or BACKEND_DIR / "library3d").expanduser()
 # 3DAssets.dev: a free online library of CC0 .glb models. Ultron searches it through its public
