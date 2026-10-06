@@ -232,7 +232,8 @@ mac_change but for the PC: files in its Ultron folder and its Desktop, Documents
 move or trash asks first), no Shortcuts, media keys for play/pause/next, and open_terminal \
 opens a window on the PC's screen. spotify_control with device=pc plays on the PC's Spotify. \
 Location, maps and travel times, WhatsApp and contacts don't depend on the device: they work \
-the same when the user is on the PC (WhatsApp sends from the Mac's app). On the PC give the \
+the same when the user is on the PC (WhatsApp sends from the Mac's app), and so do Amazon, \
+flights, YouTube and homework (they read in the Mac's Chrome in the background). On the PC give the \
 google_maps_link from maps directions, not the Apple Maps one. pc_run runs Python \
 or PowerShell on the PC; it isn't sandboxed and the user approves each run, so use it only for \
 things that need the PC (its programs, settings, files). Use the pc tools when the user says the PC, Windows or the computer that isn't \
