@@ -7,6 +7,7 @@ so anything can be joined with anything.
     python reel.py cut     in.mp4 out.mp4 --start 2 --end 9.5
     python reel.py join    out.mp4 a.mp4 b.mp4 c.mp4
     python reel.py caption in.mp4 out.mp4 --text "Hello" [--at top|middle|bottom] [--start 0 --end 3]
+    python reel.py music   in.mp4 out.mp4 --track song.mp3 [--volume 0.25] [--replace]
     python reel.py export  in.mp4 out.mp4
     python reel.py check   out.mp4
 """
@@ -24,8 +25,8 @@ MIN_S, MAX_S = 3, 15 * 60  # what the Graph API accepts for a Reel
 FONT = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
 FONT_SIZE = 72
 WRAP = 22  # characters per caption line at FONT_SIZE on a 1080 px frame
-ENCODE = ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
-          "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart"]
+AUDIO = ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart"]
+ENCODE = ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", *AUDIO]
 FIT = (f"scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,"
        f"setsar=1,fps={FPS},format=yuv420p")
 
@@ -93,6 +94,21 @@ def caption(src: str, out: str, text: str, at: str = "bottom",
         ffmpeg("-i", fitted, "-vf", draw, *ENCODE, out)
 
 
+def music(src: str, out: str, track: str, volume: float = 0.25, replace: bool = False) -> None:
+    """Lay a track under the video: looped or trimmed to the video's length, faded in and out.
+    By default the clip's own sound stays on top; replace=True drops it."""
+    with tempfile.TemporaryDirectory() as tmp:
+        fitted = str(Path(tmp) / "fitted.mp4")
+        export(src, fitted)
+        seconds = probe(fitted)["seconds"]
+        fade_out = max(seconds - 2, 0)
+        bed = (f"[1:a]atrim=0:{seconds},asetpts=PTS-STARTPTS,volume={volume},"
+               f"afade=t=in:d=1,afade=t=out:st={fade_out}:d=2,aresample=48000,aformat=channel_layouts=stereo")
+        mix = f"{bed}[a]" if replace else f"{bed}[m];[0:a][m]amix=inputs=2:duration=first:normalize=0[a]"
+        ffmpeg("-i", fitted, "-stream_loop", "-1", "-i", track, "-filter_complex", mix,
+               "-map", "0:v", "-map", "[a]", "-c:v", "copy", *AUDIO, "-t", str(seconds), out)
+
+
 def check(path: str) -> list[str]:
     """What would stop the Graph API from taking this file as a Reel. Empty list = fine."""
     info = probe(path)
@@ -123,6 +139,10 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("src"); t.add_argument("out"); t.add_argument("--text", required=True)
     t.add_argument("--at", choices=["top", "middle", "bottom"], default="bottom")
     t.add_argument("--start", type=float); t.add_argument("--end", type=float)
+    m = sub.add_parser("music")
+    m.add_argument("src"); m.add_argument("out"); m.add_argument("--track", required=True)
+    m.add_argument("--volume", type=float, default=0.25)
+    m.add_argument("--replace", action="store_true", help="drop the clip's own sound")
     e = sub.add_parser("export")
     e.add_argument("src"); e.add_argument("out")
     k = sub.add_parser("check")
@@ -136,6 +156,8 @@ def main(argv: list[str] | None = None) -> int:
             join(a.out, a.clips)
         elif a.cmd == "caption":
             caption(a.src, a.out, a.text, a.at, a.start, a.end)
+        elif a.cmd == "music":
+            music(a.src, a.out, a.track, a.volume, a.replace)
         elif a.cmd == "export":
             export(a.src, a.out)
         problems = check(a.out if a.cmd != "check" else a.src)
