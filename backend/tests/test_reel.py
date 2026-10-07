@@ -71,6 +71,37 @@ class ReelTest(unittest.TestCase):
         mean_db = float(level.split("mean_volume:")[1].split("dB")[0])
         self.assertLess(mean_db, -40)
 
+    def level(self, path: str, start: float, seconds: float, freq: int) -> float:
+        """Mean loudness (dB) of one frequency band in a stretch of the file."""
+        err = subprocess.run(["ffmpeg", "-ss", str(start), "-t", str(seconds), "-i", path,
+                              "-af", f"bandpass=f={freq}:w=50,volumedetect", "-f", "null", "-"],
+                             capture_output=True, text=True).stderr
+        return float(err.split("mean_volume:")[1].split("dB")[0])
+
+    def test_voice_ducks_the_sound_under_it(self):
+        # Clip's own 440 Hz tone is the "music"; a 1000 Hz tone from 1.5 s to 2.5 s is the "voice".
+        reel.voice(self.wide, self.out("v.mp4"), self.make_track(1, freq=1000), at=1.5)
+        out = self.out("v.mp4")
+        self.assertEqual(reel.check(out), [])
+        before = self.level(out, 0.3, 1.0, 440)
+        during = self.level(out, 1.8, 0.5, 440)
+        after = self.level(out, 3.2, 0.6, 440)
+        self.assertLess(during, before - 10)  # music pushed down while the voice speaks
+        self.assertGreater(after, during + 6)  # and comes back once it stops
+        self.assertGreater(self.level(out, 1.8, 0.5, 1000), during)  # voice is on top
+
+    def test_voice_longer_than_the_clip_holds_the_last_frame(self):
+        reel.voice(self.mute, self.out("long.mp4"), self.make_track(3, freq=1000), at=1)
+        self.assertAlmostEqual(reel.probe(self.out("long.mp4"))["seconds"], 4, delta=0.15)
+        self.assertEqual(reel.check(self.out("long.mp4")), [])
+
+    @unittest.skipUnless(shutil.which("say"), "needs macOS say")
+    def test_voice_with_real_speech(self):
+        speech = self.dir / "line.aiff"
+        subprocess.run(["say", "-o", str(speech), "Hello, I am Ultron."], check=True)
+        reel.voice(self.wide, self.out("say.mp4"), str(speech), at=0.5)
+        self.assertEqual(reel.check(self.out("say.mp4")), [])
+
     def test_check_flags_problems(self):
         problems = reel.check(self.mute)
         self.assertTrue(any("size" in p for p in problems))

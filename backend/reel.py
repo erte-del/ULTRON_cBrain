@@ -8,6 +8,7 @@ so anything can be joined with anything.
     python reel.py join    out.mp4 a.mp4 b.mp4 c.mp4
     python reel.py caption in.mp4 out.mp4 --text "Hello" [--at top|middle|bottom] [--start 0 --end 3]
     python reel.py music   in.mp4 out.mp4 --track song.mp3 [--volume 0.25] [--replace]
+    python reel.py voice   in.mp4 out.mp4 --speech line.wav [--at 1.5] [--volume 1]
     python reel.py export  in.mp4 out.mp4
     python reel.py check   out.mp4
 """
@@ -109,6 +110,31 @@ def music(src: str, out: str, track: str, volume: float = 0.25, replace: bool = 
                "-map", "0:v", "-map", "[a]", "-c:v", "copy", *AUDIO, "-t", str(seconds), out)
 
 
+STEREO = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
+# Ducking: whenever the voice is louder than THRESHOLD, everything under it is pushed down by
+# up to RATIO. ponytail: fixed settings tuned on test tones; tune by ear once Ultron has a real voice.
+DUCK = "sidechaincompress=threshold=0.02:ratio=10:attack=10:release=350"
+
+
+def voice(src: str, out: str, speech: str, at: float = 0.0, volume: float = 1.0) -> None:
+    """Lay a voiceover on the video starting at `at` seconds, ducking the sound under it.
+    If the voice runs past the end, the last frame is held until it finishes."""
+    with tempfile.TemporaryDirectory() as tmp:
+        fitted = str(Path(tmp) / "fitted.mp4")
+        export(src, fitted)
+        video_s = probe(fitted)["seconds"]
+        total = max(video_s, at + probe(speech)["seconds"])
+        graph = ";".join([
+            f"[0:v]tpad=stop_mode=clone:stop_duration={total - video_s}[v]",
+            f"[1:a]{STEREO},volume={volume},adelay={int(at * 1000)}:all=1,apad,asplit=2[sc][vo]",
+            f"[0:a]{STEREO},apad[bed]",
+            f"[bed][sc]{DUCK}[ducked]",
+            f"[ducked][vo]amix=inputs=2:duration=first:normalize=0[a]",
+        ])
+        ffmpeg("-i", fitted, "-i", speech, "-filter_complex", graph, "-map", "[v]", "-map", "[a]",
+               *ENCODE, "-t", str(total), out)
+
+
 def check(path: str) -> list[str]:
     """What would stop the Graph API from taking this file as a Reel. Empty list = fine."""
     info = probe(path)
@@ -143,6 +169,9 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("src"); m.add_argument("out"); m.add_argument("--track", required=True)
     m.add_argument("--volume", type=float, default=0.25)
     m.add_argument("--replace", action="store_true", help="drop the clip's own sound")
+    v = sub.add_parser("voice")
+    v.add_argument("src"); v.add_argument("out"); v.add_argument("--speech", required=True)
+    v.add_argument("--at", type=float, default=0.0); v.add_argument("--volume", type=float, default=1.0)
     e = sub.add_parser("export")
     e.add_argument("src"); e.add_argument("out")
     k = sub.add_parser("check")
@@ -158,6 +187,8 @@ def main(argv: list[str] | None = None) -> int:
             caption(a.src, a.out, a.text, a.at, a.start, a.end)
         elif a.cmd == "music":
             music(a.src, a.out, a.track, a.volume, a.replace)
+        elif a.cmd == "voice":
+            voice(a.src, a.out, a.speech, a.at, a.volume)
         elif a.cmd == "export":
             export(a.src, a.out)
         problems = check(a.out if a.cmd != "check" else a.src)
