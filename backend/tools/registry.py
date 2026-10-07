@@ -54,7 +54,7 @@ from .textbook import textbook
 from .uploads import read_upload
 from .video import generate_video
 from .whatsapp import whatsapp_send
-from .youtube import youtube
+from .youtube import watch_short, youtube
 
 SERVER_NAME = "ultron"
 PREFIX = f"mcp__{SERVER_NAME}__"  # how Claude Code names tools from this server
@@ -174,8 +174,9 @@ TOOLS: list[UltronTool] = [
     UltronTool(maps, "read"),
     # Google Flights: only searches, can't book.
     UltronTool(flights, "read"),
-    # YouTube: only searches.
+    # YouTube: only searches. watch_short downloads one Short into a temp folder it deletes.
     UltronTool(youtube, "read"),
+    UltronTool(watch_short, "read"),
 ]
 
 # In chat, an 'act' tool asks you first only when it reaches other people or touches
