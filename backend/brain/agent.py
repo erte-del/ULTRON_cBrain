@@ -80,7 +80,7 @@ class Ultron:
         return events.usage_update(usage.snapshot(self.brain.provider, self.brain.context_tokens))
 
     async def wrap_up(self) -> None:
-        """Write the finished conversation's note in the vault (memory/Conversations)."""
+        """Write the finished conversation's note in the vault (Ultron/memory/Conversations)."""
         transcript, started = "\n\n".join(self.transcript)[-TRANSCRIPT_CHARS:], self.started
         self.transcript = []
         if not transcript:

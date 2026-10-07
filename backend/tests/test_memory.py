@@ -90,11 +90,11 @@ class MemoryTest(unittest.TestCase):
         memory_store.add("Lives in Dubai.", "facts")
         second = memory_store.add("Likes F1.", "preferences")
         memory_store.delete(second["id"])
-        self.assertIn("- Lives in Dubai.", (self.vault / "memory" / "Facts.md").read_text())
-        self.assertNotIn("F1", (self.vault / "memory" / "Preferences.md").read_text())
+        self.assertIn("- Lives in Dubai.", (self.vault / "Ultron" / "memory" / "Facts.md").read_text())
+        self.assertNotIn("F1", (self.vault / "Ultron" / "memory" / "Preferences.md").read_text())
 
         path = memory_store.save_conversation("Revision: plan / SAT?", "Made a revision plan.\nwifi password is kedi1\n\nAbout him: tired.", 0)
-        self.assertTrue(path.startswith("memory/Conversations/1970-01-01 "), path)
+        self.assertTrue(path.startswith("Ultron/memory/Conversations/1970-01-01 "), path)
         self.assertTrue(path.endswith(" Revision plan SAT.md"), path)  # no / ? : in file names
         memory_store.save_conversation("Later", "Talked about F1.")
         block = memory_store.conversations_block()
@@ -109,7 +109,7 @@ class MemoryTest(unittest.TestCase):
                                    "- [secrets] Nope.\n- [facts] His wifi password is kedi1234\nnothing else")
         self.assertEqual([m["text"] for m in saved], ["Deniz is his cousin in Izmir."])
         self.assertEqual(saved[0]["source"], "conversation")
-        self.assertIn("Deniz", (self.vault / "memory" / "People.md").read_text())
+        self.assertIn("Deniz", (self.vault / "Ultron" / "memory" / "People.md").read_text())
         self.assertEqual(memory_store.learn("Remember: nothing"), [])
 
 if __name__ == "__main__":

@@ -6,8 +6,8 @@ starts (`prompt_block`); the rest it finds with the recall tool.
 
 Anything that looks like a password, card number or key is refused (`secret_in`).
 
-With a vault set (JARVIS_VAULT), every change is also copied to memory/<Category>.md there,
-and each finished conversation gets a short note in memory/Conversations/ (`save_conversation`).
+With a vault set (JARVIS_VAULT), every change is also copied to Ultron/memory/<Category>.md there,
+and each finished conversation gets a short note in Ultron/memory/Conversations/ (`save_conversation`).
 The newest of those notes go into the system prompt too (`conversations_block`).
 """
 
@@ -29,7 +29,7 @@ MAX_CHARS = 500  # one memory is a note, not a document
 PROMPT_CHARS = 1500
 # How much of the recent conversation notes goes into the system prompt.
 CONVERSATIONS_CHARS = 1500
-VAULT_FOLDER = "memory"
+VAULT_FOLDER = "Ultron/memory"  # in the vault
 
 _lock = threading.Lock()
 
