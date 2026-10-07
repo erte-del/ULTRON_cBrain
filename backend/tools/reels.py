@@ -2,10 +2,13 @@
 
 Reads clips, music and voice files from anywhere on this Mac, and only ever writes into
 Ultron's own folder: JARVIS_FILES_DIR/Instagram. Every result is a Reel-ready .mp4.
-A voice line can come from a file or from text, spoken with macOS `say` for now.
+A voice line can come from a file or from text. Text is spoken by Kokoro and word captions are
+timed by Whisper, both local through mlx-audio (scripts/setup_voice.sh); without that setup,
+text is spoken with macOS `say` and there are no word captions.
 """
 
 import asyncio
+import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -16,8 +19,51 @@ from claude_agent_sdk import tool
 import config
 import reel
 
-OPS = ["cut", "join", "caption", "music", "voice", "export"]
+OPS = ["cut", "join", "frames", "caption", "words", "music", "voice", "export"]
 SAY_TIMEOUT_S = 60
+VOICE_DIR = config.STORAGE_DIR / "voice"
+WHISPER = VOICE_DIR / "whisper-large-v3-turbo"
+KOKORO = "mlx-community/Kokoro-82M-bf16"
+# a = American, b = British; m = male, f = female.
+SPEAKERS = ["am_michael", "am_adam", "am_fenrir", "am_puck", "af_heart", "af_bella", "bm_george", "bm_lewis", "bf_emma"]
+MODEL_TIMEOUT_S = 600
+
+
+def _voice_python() -> Path:
+    return VOICE_DIR / ".venv" / "bin" / "python"
+
+
+def _run(cmd: list[str]) -> None:
+    run = subprocess.run(cmd, capture_output=True, text=True, timeout=MODEL_TIMEOUT_S)
+    if run.returncode:
+        raise RuntimeError((run.stderr.strip().splitlines() or ["the voice model failed"])[-1])
+
+
+def speak(text: str, tmp: Path, speaker: str = "am_michael") -> Path:
+    """The line as an audio file: Kokoro if it's set up, else macOS say."""
+    if not _voice_python().exists():
+        out = tmp / "line.aiff"
+        subprocess.run(["say", "-o", str(out), "--", text], check=True, timeout=SAY_TIMEOUT_S)
+        return out
+    if speaker not in SPEAKERS:
+        raise ValueError(f"speaker must be one of {', '.join(SPEAKERS)}")
+    _run([str(_voice_python()), "-m", "mlx_audio.tts.generate", "--model", KOKORO, "--voice", speaker,
+          "--lang_code", speaker[0], f"--text={text}", "--output_path", str(tmp), "--file_prefix", "line",
+          "--join_audio"])
+    return tmp / "line.wav"
+
+
+def transcribe(src: str, tmp: Path) -> list[dict[str, Any]]:
+    """Every spoken word in the video with its start and end second, from Whisper."""
+    if not (WHISPER / "weights.safetensors").exists() or not _voice_python().exists():
+        raise ValueError("Word captions need the voice setup: the user runs scripts/setup_voice.sh once")
+    wav = tmp / "speech.wav"
+    reel.ffmpeg("-i", src, "-vn", "-ac", "1", "-ar", "16000", str(wav))
+    _run([str(_voice_python()), "-m", "mlx_audio.stt.generate", "--model", str(WHISPER), "--audio", str(wav),
+          "--output-path", str(tmp / "words"), "--format", "json", "--gen-kwargs", '{"word_timestamps": true}'])
+    found = json.loads((tmp / "words.json").read_text())
+    return [{"word": w["word"], "start": w["start"], "end": w["end"]}
+            for seg in found.get("segments") or [] for w in seg.get("words") or []]
 
 
 def out_dir() -> Path:
@@ -44,11 +90,17 @@ def edit(args: dict[str, Any]) -> Path:
     op = args.get("op")
     if op not in OPS:
         raise ValueError(f"op must be one of {', '.join(OPS)}")
+    name = Path(str(args.get("output") or "reel")).stem or "reel"  # a name only: never leaves the folder
+    out = str(out_dir() / f"{name}.mp4")
+    if op == "frames":
+        folder = Path(str((args.get("inputs") or [""])[0])).expanduser()
+        if not folder.is_dir():
+            raise ValueError(f"No folder of frames at {folder}")
+        reel.frames(str(folder), out, float(args.get("fps") or reel.FPS))
+        return Path(out)
     inputs = [_file(p, "video") for p in args.get("inputs") or []]
     if not inputs:
         raise ValueError("Give at least one input video")
-    name = Path(str(args.get("output") or "reel")).stem or "reel"  # a name only: never leaves the folder
-    out = str(out_dir() / f"{name}.mp4")
     src = inputs[0]
     if op == "cut":
         reel.cut(src, out, float(args["start"]), float(args["end"]))
@@ -58,14 +110,19 @@ def edit(args: dict[str, Any]) -> Path:
         if not str(args.get("text") or "").strip():
             raise ValueError("caption needs text")
         reel.caption(src, out, args["text"], args.get("position") or "bottom", args.get("start"), args.get("end"))
+    elif op == "words":
+        with tempfile.TemporaryDirectory() as tmp:
+            timed = transcribe(src, Path(tmp))
+            if not timed:
+                raise ValueError("No speech found in this video to caption")
+            reel.words(src, out, timed, args.get("position") or "bottom")
     elif op == "music":
         reel.music(src, out, _file(args.get("track"), "music"), float(args.get("volume", 0.25)),
                    bool(args.get("replace")))
     elif op == "voice":
         with tempfile.TemporaryDirectory() as tmp:
             if args.get("say"):
-                speech = str(Path(tmp) / "line.aiff")
-                subprocess.run(["say", "-o", speech, "--", str(args["say"])], check=True, timeout=SAY_TIMEOUT_S)
+                speech = str(speak(str(args["say"]), Path(tmp), args.get("speaker") or "am_michael"))
             else:
                 speech = _file(args.get("speech"), "voice")
             reel.voice(src, out, speech, float(args.get("at", 0)), float(args.get("volume", 1.0)))
@@ -78,10 +135,13 @@ def edit(args: dict[str, Any]) -> Path:
     "reel_edit",
     "Edit a video for Ultron's Instagram. Each call makes one Reel-ready .mp4 (1080x1920, 9:16) in "
     "Ultron's Instagram folder and returns its path; chain calls to build a Reel step by step "
-    "(e.g. join clips, then music, then voice, then caption). Ops: cut (inputs[0], start, end), "
-    "join (all inputs in order), caption (text, position, optional start/end), music (track, "
-    "volume, replace), voice (say: text to speak, or speech: an audio file; at: start second; "
-    "music under it is lowered automatically), export (any video -> Reel format).",
+    "(e.g. join clips, then music, then voice, then words). Ops: cut (inputs[0], start, end), "
+    "join (all inputs in order), frames (inputs[0] is a folder of 1080x1920 frames drawn with "
+    "run_python, played in name order at fps: kinetic text, charts, counters, logo reveals), caption (text, position, optional start/end), words (captions "
+    "of everything said in the video, word by word in sync with the speech, the current word "
+    "highlighted; add them after the voice), music (track, volume, replace), voice (say: text "
+    "to speak, in a natural voice chosen with speaker; or speech: an audio file; at: start "
+    "second; music under it is lowered automatically), export (any video -> Reel format).",
     {
         "type": "object",
         "properties": {
@@ -96,8 +156,11 @@ def edit(args: dict[str, Any]) -> Path:
             "volume": {"type": "number", "description": "Music (default 0.25) or voice (default 1) volume."},
             "replace": {"type": "boolean", "description": "Music only: drop the clip's own sound."},
             "say": {"type": "string", "description": "Voice: the words to speak."},
+            "speaker": {"type": "string", "enum": SPEAKERS,
+                        "description": "Voice for say (am/af American, bm/bf British; m male, f female). Default am_michael."},
             "speech": {"type": "string", "description": "Voice: an audio file instead of say."},
             "at": {"type": "number", "description": "Voice: second the line starts."},
+            "fps": {"type": "number", "description": "Frames: frames per second (default 30)."},
         },
         "required": ["op", "inputs", "output"],
     },

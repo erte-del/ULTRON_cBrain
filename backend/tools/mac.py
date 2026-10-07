@@ -8,9 +8,10 @@ in a sandbox.
              clipboard, sets volume / mute / dark mode, and moves, renames or trashes
              files. No card inside Ultron's folder; a move or trash that touches anything
              outside it asks first, and so do files you marked important (registry.needs_ok).
-  run_python (act)  Python for data work (CSV analysis, quick scripts) in a macOS sandbox:
-             no network, no other programs or apps, reads only Ultron's folder, writes
-             only its Output subfolder.
+  run_python (act)  Python for data work (CSV analysis, quick scripts) and drawing frames
+             (Pillow, numpy) in a macOS sandbox: no network, no other programs or apps,
+             reads only Ultron's folder and the backend's installed packages, writes only
+             its Output subfolder.
 
 Files never leave those folders: nothing is moved out of them, nothing is overwritten, and
 "delete" puts the file in the Trash. Ultron's own code is out of reach. Only documents open
@@ -25,6 +26,7 @@ import os
 import plistlib
 import re
 import sys
+import sysconfig
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -42,7 +44,7 @@ MAX_CHARS = 20_000
 MAX_FILES = 50
 # Built by scripts/setup_location.sh: macOS only gives Location to an app bundle.
 LOCATION_APP = config.STORAGE_DIR / "UltronLocation.app"
-PYTHON_TIMEOUT_S = 60
+PYTHON_TIMEOUT_S = 180  # long enough to draw a 15 s animation frame by frame
 SHORTCUT_TIMEOUT_S = 120
 APP_DIRS = [Path("/Applications"), Path("/Applications/Utilities"), Path("/System/Applications"),
             Path("/System/Applications/Utilities"), Path.home() / "Applications", Path.home() / "Desktop"]
@@ -81,7 +83,7 @@ PROFILE = """(version 1)
 (deny file-write*)
 (allow file-write* (subpath {output}) (literal "/dev/null"))
 (deny file-read* (subpath {home}) (subpath "/Volumes") (subpath "/private/var/folders"))
-(allow file-read* (subpath {folder}) (subpath {base}))
+(allow file-read* (subpath {folder}) (subpath {base}) (subpath {packages}))
 """
 
 
@@ -470,14 +472,17 @@ async def mac_change(args: dict[str, Any]) -> dict[str, Any]:
 
 # --- sandboxed Python ----------------------------------------------------------------
 
+PACKAGES = Path(sysconfig.get_paths()["purelib"])  # the backend venv's: Pillow, numpy
+
+
 def _sb(path: Path) -> str:
     return json.dumps(str(path.resolve()))  # an SBPL string
 
 
 @tool(
     "run_python",
-    "Run Python 3 (standard library only: csv, json, statistics, math, re, datetime, ...) for data "
-    "work: analysing a CSV, totals, conversions, quick scripts. It runs in a sandbox: no internet, "
+    "Run Python 3 (standard library, plus Pillow and numpy) for data work (analysing a CSV, totals, "
+    "conversions, quick scripts) and for drawing animation frames for reel_edit's frames op. It runs in a sandbox: no internet, "
     "can't start other programs, can only read files in Ultron's folder (as ../name.csv), and can only "
     "write in its Output subfolder, which is the working directory. Print the results; at most "
     f"{PYTHON_TIMEOUT_S} seconds. Find files first with mac_read what=files.",
@@ -492,10 +497,12 @@ async def run_python(args: dict[str, Any]) -> dict[str, Any]:
     output.mkdir(exist_ok=True)
     python = Path(sys._base_executable).resolve()  # not the venv: it lives in your home
     profile = PROFILE.format(python=_sb(python), output=_sb(output), home=_sb(Path.home()),
-                             folder=_sb(folder), base=_sb(Path(sys.base_prefix)))
-    env = {"PATH": "/usr/bin:/bin", "HOME": str(folder), "TMPDIR": str(output), "LANG": "en_US.UTF-8"}
+                             folder=_sb(folder), base=_sb(Path(sys.base_prefix)), packages=_sb(PACKAGES))
+    # PYTHONPATH (not the venv's site machinery) adds the packages without running their .pth files.
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(folder), "TMPDIR": str(output), "LANG": "en_US.UTF-8",
+           "PYTHONPATH": str(PACKAGES)}
     try:
-        exit_code, out, err = await _run("/usr/bin/sandbox-exec", "-p", profile, str(python), "-I", "-",
+        exit_code, out, err = await _run("/usr/bin/sandbox-exec", "-p", profile, str(python), "-s", "-P", "-",
                                          stdin=code.encode(), timeout=PYTHON_TIMEOUT_S, cwd=output, env=env)
     except (RuntimeError, OSError) as e:
         return _text(f"run_python: {e}", True)

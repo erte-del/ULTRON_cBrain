@@ -19,9 +19,11 @@ class ReelEditTest(unittest.TestCase):
     def setUp(self):
         self.dir = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.dir)
-        patch = mock.patch.object(reels.config, "FILES_DIR", self.dir / "files")
-        patch.start()
-        self.addCleanup(patch.stop)
+        for patch in (mock.patch.object(reels.config, "FILES_DIR", self.dir / "files"),
+                      mock.patch.object(reels, "VOICE_DIR", self.dir / "voice"),  # not set up: macOS say
+                      mock.patch.object(reels, "WHISPER", self.dir / "voice" / "whisper")):
+            patch.start()
+            self.addCleanup(patch.stop)
         self.clip = str(self.dir / "clip.mp4")
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=640x360:duration=4",
                         "-f", "lavfi", "-i", "sine=duration=4", "-pix_fmt", "yuv420p", self.clip], check=True)
@@ -48,6 +50,36 @@ class ReelEditTest(unittest.TestCase):
         result, text = self.run_tool(op="voice", inputs=[self.clip], output="spoken", say="Hello, I am Ultron.")
         self.assertNotIn("is_error", result)
         self.assertIn("ready for Instagram", text)
+
+    def test_words_captions_follow_the_transcript(self):
+        timed = [{"word": " Hello", "start": 0.2, "end": 0.6}, {"word": " there.", "start": 0.6, "end": 1.0}]
+        with mock.patch.object(reels, "transcribe", return_value=timed):
+            result, text = self.run_tool(op="words", inputs=[self.clip], output="worded")
+        self.assertNotIn("is_error", result)
+        self.assertIn("ready for Instagram", text)
+        with mock.patch.object(reels, "transcribe", return_value=[]):
+            result, text = self.run_tool(op="words", inputs=[self.clip], output="silent")
+        self.assertIn("No speech", text)
+
+    def test_words_and_voices_need_the_setup(self):
+        result, text = self.run_tool(op="words", inputs=[self.clip], output="x")
+        self.assertIn("setup_voice.sh", text)
+        py = reels._voice_python()
+        py.parent.mkdir(parents=True)
+        py.touch()
+        with self.assertRaises(ValueError):
+            reels.speak("hi", self.dir, "darth_vader")
+
+    def test_frames_folder_becomes_a_reel(self):
+        folder = self.dir / "frames"
+        folder.mkdir()
+        for i in range(60):
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", f"color=c=0x{i * 4:02x}0000:s=1080x1920",
+                            "-frames:v", "1", str(folder / f"f{i:03d}.png")], check=True)
+        _, text = self.run_tool(op="frames", inputs=[str(folder)], output="drawn", fps=20)
+        self.assertIn("(3.0 s), ready for Instagram", text)
+        result, _ = self.run_tool(op="frames", inputs=[self.clip], output="x")  # a file, not a folder
+        self.assertTrue(result.get("is_error"))
 
     def test_bad_input_is_an_error_not_a_crash(self):
         result, text = self.run_tool(op="cut", inputs=[str(self.dir / "missing.mp4")], output="x", start=0, end=1)

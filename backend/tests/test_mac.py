@@ -188,6 +188,8 @@ class MacTest(unittest.TestCase):
         outside.write_text("secret")
         code = f"""
 import csv, statistics, subprocess, urllib.request
+from PIL import Image
+Image.new("RGB", (4, 4), "red").save("dot.png")
 print("mean", statistics.mean(int(r["b"]) for r in csv.DictReader(open("../data.csv"))))
 open("result.txt", "w").write("ok")
 for label, f in [("read", lambda: open({str(outside)!r}).read()), ("write", lambda: open("../x.txt", "w")),
@@ -202,6 +204,7 @@ for label, f in [("read", lambda: open({str(outside)!r}).read()), ("write", lamb
         self.assertIn("mean 3", text)
         self.assertNotIn("ALLOWED", text)
         self.assertEqual((self.root / "Output/result.txt").read_text(), "ok")
+        self.assertTrue((self.root / "Output/dot.png").exists())  # Pillow is there for drawing frames
         self.assertFalse((self.root / "x.txt").exists())
 
 

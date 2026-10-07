@@ -123,5 +123,24 @@ class ReelTest(unittest.TestCase):
             reel.cut(self.wide, self.out("x.mp4"), 3, 1)
 
 
+class WordsTest(unittest.TestCase):
+    def w(self, word, start, end):
+        return {"word": word, "start": start, "end": end}
+
+    def test_chunks_break_at_three_words_pauses_and_sentence_ends(self):
+        ws = [self.w("one", 0, .3), self.w("two", .3, .6), self.w("three", .6, .9), self.w("four", .9, 1.2),
+              self.w("end.", 1.2, 1.5), self.w("new", 1.5, 1.8), self.w("later", 3, 3.3)]
+        self.assertEqual([[x["word"] for x in c] for c in reel.chunks(ws)],
+                         [["one", "two", "three"], ["four", "end."], ["new"], ["later"]])
+
+    def test_ass_highlights_one_word_per_line_and_escapes_braces(self):
+        ws = [self.w(" Hi", 0, .4), self.w(" {you}", .4, .8), self.w(" later", 5, 5.5)]
+        events = [l for l in reel.ass(ws).splitlines() if l.startswith("Dialogue")]
+        self.assertEqual(len(events), 3)
+        self.assertTrue(all(l.count(r"\c&H00FFFF&") == 1 for l in events))
+        self.assertNotIn("{you}", reel.ass(ws))
+        self.assertIn("0:00:00.40,0:00:00.80", events[1])  # last word of a line ends on its own when the next is far
+
+
 if __name__ == "__main__":
     unittest.main()

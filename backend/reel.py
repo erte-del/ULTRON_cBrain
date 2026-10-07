@@ -9,6 +9,8 @@ so anything can be joined with anything.
     python reel.py caption in.mp4 out.mp4 --text "Hello" [--at top|middle|bottom] [--start 0 --end 3]
     python reel.py music   in.mp4 out.mp4 --track song.mp3 [--volume 0.25] [--replace]
     python reel.py voice   in.mp4 out.mp4 --speech line.wav [--at 1.5] [--volume 1]
+    python reel.py words   in.mp4 out.mp4 --words words.json [--at top|middle|bottom]
+    python reel.py frames  frames_folder out.mp4 [--fps 30]
     python reel.py export  in.mp4 out.mp4
     python reel.py check   out.mp4
 """
@@ -62,6 +64,22 @@ def join(out: str, clips: list[str]) -> None:
     pairs = "".join(f"[v{i}][a{i}]" for i in range(len(clips)))
     parts.append(f"{pairs}concat=n={len(clips)}:v=1:a=1[v][a]")
     ffmpeg(*inputs, "-filter_complex", ";".join(parts), "-map", "[v]", "-map", "[a]", *ENCODE, out)
+
+
+def frames(folder: str, out: str, fps: float = FPS) -> None:
+    """Play a folder of drawn frames (.png or .jpg, in name order) as a video, silent."""
+    imgs = sorted(p for p in Path(folder).iterdir() if p.suffix.lower() in (".png", ".jpg", ".jpeg"))
+    if not imgs:
+        raise ValueError(f"no .png or .jpg frames in {folder}")
+    ext = imgs[0].suffix.lower()
+    with tempfile.TemporaryDirectory() as tmp:
+        # numbered links: FFmpeg's own patterns break on odd names and mixed numbering
+        for i, img in enumerate(p for p in imgs if p.suffix.lower() == ext):
+            (Path(tmp) / f"{i:06d}{ext}").symlink_to(img.resolve())
+        part = str(Path(tmp) / "part.mp4")
+        ffmpeg("-framerate", str(fps), "-i", str(Path(tmp) / f"%06d{ext}"), "-c:v", "libx264", "-crf", "16",
+               "-pix_fmt", "yuv420p", "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", part)
+        join(out, [part])
 
 
 def export(src: str, out: str) -> None:
@@ -135,6 +153,62 @@ def voice(src: str, out: str, speech: str, at: float = 0.0, volume: float = 1.0)
                *ENCODE, "-t", str(total), out)
 
 
+CHUNK = 3  # words on screen at once
+PAUSE_S = 0.6  # a gap this long starts a new chunk
+ASS_Y = {"top": (8, 230), "middle": (5, 0), "bottom": (2, 420)}  # (alignment, vertical margin)
+
+
+def _ass_time(t: float) -> str:
+    cs = round(max(t, 0) * 100)
+    return f"{cs // 360000}:{cs // 6000 % 60:02d}:{cs // 100 % 60:02d}.{cs % 100:02d}"
+
+
+def chunks(words: list[dict]) -> list[list[dict]]:
+    """Group timed words into short on-screen lines: CHUNK words, or fewer at a pause or sentence end."""
+    out: list[list[dict]] = []
+    for w in words:
+        if out and len(out[-1]) < CHUNK and w["start"] - out[-1][-1]["end"] < PAUSE_S \
+                and not out[-1][-1]["word"].rstrip().endswith((".", "!", "?")):
+            out[-1].append(w)
+        else:
+            out.append([w])
+    return out
+
+
+def ass(words: list[dict], at: str = "bottom") -> str:
+    """Word-by-word captions: each line stays up while it's spoken, the current word in yellow."""
+    align, margin = ASS_Y[at]
+    head = ("[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 0\n\n"
+            "[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, "
+            "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV\n"
+            f"Style: Word,Arial Black,92,&H00FFFFFF,&H00000000,&H80000000,1,1,7,3,{align},80,80,{margin}\n\n"
+            "[Events]\nFormat: Layer, Start, End, Style, Text\n")
+    clean = lambda w: w["word"].strip().replace("\\", "").replace("{", "(").replace("}", ")")
+    lines = []
+    groups = chunks(words)
+    for g, group in enumerate(groups):
+        after = groups[g + 1][0]["start"] if g + 1 < len(groups) else 1e9
+        for i, w in enumerate(group):
+            # the last word holds until the next line if that comes soon, so lines don't flicker
+            end = group[i + 1]["start"] if i + 1 < len(group) else (after if after - w["end"] < PAUSE_S else w["end"])
+            text = " ".join(r"{\c&H00FFFF&\fscx112\fscy112}" + clean(x) + r"{\r}" if x is w else clean(x)
+                            for x in group)
+            lines.append(f"Dialogue: 0,{_ass_time(w['start'])},{_ass_time(max(end, w['start'] + 0.05))},Word,{text}")
+    return head + "\n".join(lines) + "\n"
+
+
+def words(src: str, out: str, timed: list[dict], at: str = "bottom") -> None:
+    """Burn word-synced captions (from a transcript with per-word start/end seconds) into the video."""
+    if not timed:
+        raise ValueError("no words to caption")
+    with tempfile.TemporaryDirectory() as tmp:
+        sub = Path(tmp) / "words.ass"
+        sub.write_text(ass(timed, at))
+        fitted = str(Path(tmp) / "fitted.mp4")
+        export(src, fitted)
+        ffmpeg("-i", fitted, "-vf", f"ass={sub}", *ENCODE, out)
+
+
 def check(path: str) -> list[str]:
     """What would stop the Graph API from taking this file as a Reel. Empty list = fine."""
     info = probe(path)
@@ -172,6 +246,11 @@ def main(argv: list[str] | None = None) -> int:
     v = sub.add_parser("voice")
     v.add_argument("src"); v.add_argument("out"); v.add_argument("--speech", required=True)
     v.add_argument("--at", type=float, default=0.0); v.add_argument("--volume", type=float, default=1.0)
+    w = sub.add_parser("words")
+    w.add_argument("src"); w.add_argument("out"); w.add_argument("--words", required=True, help="JSON list of {word, start, end}")
+    w.add_argument("--at", choices=["top", "middle", "bottom"], default="bottom")
+    f = sub.add_parser("frames")
+    f.add_argument("src"); f.add_argument("out"); f.add_argument("--fps", type=float, default=FPS)
     e = sub.add_parser("export")
     e.add_argument("src"); e.add_argument("out")
     k = sub.add_parser("check")
@@ -189,6 +268,10 @@ def main(argv: list[str] | None = None) -> int:
             music(a.src, a.out, a.track, a.volume, a.replace)
         elif a.cmd == "voice":
             voice(a.src, a.out, a.speech, a.at, a.volume)
+        elif a.cmd == "words":
+            words(a.src, a.out, json.loads(Path(a.words).read_text()), a.at)
+        elif a.cmd == "frames":
+            frames(a.src, a.out, a.fps)
         elif a.cmd == "export":
             export(a.src, a.out)
         problems = check(a.out if a.cmd != "check" else a.src)

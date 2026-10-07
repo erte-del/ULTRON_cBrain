@@ -17,6 +17,7 @@ backend/storage/models/
 backend/storage/uploads/
 backend/storage/videos/
 backend/storage/wan/
+backend/storage/voice/
 backend/storage/flux/
 backend/storage/UltronLocation.app/
 backend/storage/ultron.log
