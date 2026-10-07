@@ -26,6 +26,11 @@ if [ ! -f "$WHISPER/weights.safetensors" ]; then
     mv "$WHISPER/$f.part" "$WHISPER/$f"
   done
 fi
+# mlx-community's copy has no tokenizer; mlx-audio loads it from the same folder.
+for f in preprocessor_config.json tokenizer.json tokenizer_config.json vocab.json merges.txt \
+         added_tokens.json special_tokens_map.json normalizer.json; do
+  [ -f "$WHISPER/$f" ] || curl -fL --retry 5 -o "$WHISPER/$f" "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/main/$f"
+done
 
 echo "== Downloading the voice (Kokoro 82M, ~330 MB)"
 "$PY" -c "from huggingface_hub import snapshot_download as d; d('mlx-community/Kokoro-82M-bf16')"
