@@ -41,6 +41,7 @@ from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
 from .pc import leaves_folder as leaves_pc_folder, only_launches, opens_link, pc_change, pc_read, pc_run
 from .phone import phone_taxi, phone_volume
+from .reels import reel_edit
 from .library3d import search_3d_library, show_3d_asset, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
 from .spotify import spotify_control, spotify_playlist_tracks
@@ -123,6 +124,8 @@ TOOLS: list[UltronTool] = [
     UltronTool(whatsapp_send, "act"),
     # Instagram: the preview only shows the Reel on the canvas; posting is public, so it always asks.
     UltronTool(instagram_preview, "read"),
+    # Only writes new .mp4s into Ultron's own Instagram folder.
+    UltronTool(reel_edit, "read"),
     UltronTool(instagram_post, "act"),
     # Only ever texts you: the chat is fixed in .env.
     UltronTool(text_me, "read"),
