@@ -3,6 +3,7 @@
 """
 
 import asyncio
+import json
 import shutil
 import subprocess
 import tempfile
@@ -85,6 +86,30 @@ class ReelEditTest(unittest.TestCase):
                 out = reels.speak("hi", self.dir, name)
             self.assertEqual(out.name, "treated.wav")
             self.assertGreater(reel.probe(str(out))["seconds"], 1.5)
+
+    def test_turkish_goes_to_piper_and_captions_ask_for_turkish(self):
+        with self.assertRaises(ValueError):  # not set up yet
+            reels.speak("Merhaba", self.dir, "tr_dfki")
+        py = reels._voice_python()
+        py.parent.mkdir(parents=True)
+        py.touch()
+        (reels.VOICE_DIR / "piper").mkdir()
+        (reels.VOICE_DIR / "piper" / reels.PIPER["tr_dfki"]).touch()
+        calls = []
+        with mock.patch.object(reels, "_run", lambda cmd, stdin=None: calls.append((cmd, stdin))):
+            out = reels.speak("Merhaba, ben Ultron.", self.dir, "tr_dfki")
+        cmd, stdin = calls[0]
+        self.assertIn("piper", cmd)
+        self.assertEqual(stdin, "Merhaba, ben Ultron.")  # the text never becomes an argument
+        self.assertEqual(out, self.dir / "line.wav")
+
+        (reels.WHISPER).mkdir(parents=True)
+        (reels.WHISPER / "weights.safetensors").touch()
+        def fake_whisper(cmd, stdin=None):
+            self.assertEqual(json.loads(cmd[-1])["language"], "tr")
+            (self.dir / "words.json").write_text('{"segments": []}')
+        with mock.patch.object(reels, "_run", fake_whisper):
+            self.assertEqual(reels.transcribe(str(self.clip), self.dir, "tr"), [])
 
     def test_every_voice_has_a_description(self):
         self.assertTrue(set(reels.EFFECTS) <= set(reels.VOICES))

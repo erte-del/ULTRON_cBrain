@@ -2,9 +2,9 @@
 
 Reads clips, music and voice files from anywhere on this Mac, and only ever writes into
 Ultron's own folder: JARVIS_FILES_DIR/Instagram. Every result is a Reel-ready .mp4.
-A voice line can come from a file or from text. Text is spoken by Kokoro and word captions are
-timed by Whisper, both local through mlx-audio (scripts/setup_voice.sh); without that setup,
-text is spoken with macOS `say` and there are no word captions.
+A voice line can come from a file or from text. Text is spoken by Kokoro (English) or Piper
+(Turkish) and word captions are timed by Whisper, all local (scripts/setup_voice.sh); without
+that setup, English text is spoken with macOS `say` and there are no word captions.
 """
 
 import asyncio
@@ -24,6 +24,8 @@ SAY_TIMEOUT_S = 60
 VOICE_DIR = config.STORAGE_DIR / "voice"
 WHISPER = VOICE_DIR / "whisper-large-v3-turbo"
 KOKORO = "mlx-community/Kokoro-82M-bf16"
+# Piper voices: speaker name -> model file in VOICE_DIR/piper. Piper's only Turkish voice.
+PIPER = {"tr_dfki": "tr_TR-dfki-medium.onnx"}
 # Kokoro voices (a = American, b = British; m = male, f = female). The descriptions come from
 # measuring one sample line per voice: pitch, how much it moves, and pace; nobody listened.
 VOICES = {
@@ -45,6 +47,8 @@ VOICES = {
     "bm_lewis_deep": "bm_lewis made about 12% deeper with more bass: heavier and more imposing.",
     "bm_lewis_synthetic": "bm_lewis deeper, with a quiet copy an octave below and a short metallic echo: clearly an AI.",
     "bm_lewis_robotic": "bm_lewis deeper, with a slow shimmer and a short echo: the most machine-like.",
+    "tr_dfki": "Turkish man, low (about 105 Hz), clear and neutral. The only voice that speaks Turkish: "
+               "use it for Turkish text, never the English voices.",
 }
 # Treated voices: (Kokoro voice, FFmpeg filter on its 24 kHz output).
 EFFECTS = {
@@ -62,14 +66,20 @@ def _voice_python() -> Path:
     return VOICE_DIR / ".venv" / "bin" / "python"
 
 
-def _run(cmd: list[str]) -> None:
-    run = subprocess.run(cmd, capture_output=True, text=True, timeout=MODEL_TIMEOUT_S)
+def _run(cmd: list[str], stdin: str | None = None) -> None:
+    run = subprocess.run(cmd, input=stdin, capture_output=True, text=True, timeout=MODEL_TIMEOUT_S)
     if run.returncode:
         raise RuntimeError((run.stderr.strip().splitlines() or ["the voice model failed"])[-1])
 
 
 def speak(text: str, tmp: Path, speaker: str | None) -> Path:
-    """The line as an audio file: Kokoro in the chosen voice if it's set up, else macOS say."""
+    """The line as an audio file: Kokoro or Piper in the chosen voice if it's set up, else macOS say."""
+    if speaker in PIPER:
+        model = VOICE_DIR / "piper" / PIPER[speaker]
+        if not model.exists() or not _voice_python().exists():
+            raise ValueError("The Turkish voice needs the voice setup: the user runs scripts/setup_voice.sh once")
+        _run([str(_voice_python()), "-m", "piper", "-m", str(model), "-f", str(tmp / "line.wav")], stdin=text)
+        return tmp / "line.wav"
     if not _voice_python().exists():
         out = tmp / "line.aiff"
         subprocess.run(["say", "-o", str(out), "--", text], check=True, timeout=SAY_TIMEOUT_S)
@@ -86,14 +96,15 @@ def speak(text: str, tmp: Path, speaker: str | None) -> Path:
     return tmp / "treated.wav"
 
 
-def transcribe(src: str, tmp: Path) -> list[dict[str, Any]]:
-    """Every spoken word in the video with its start and end second, from Whisper."""
+def transcribe(src: str, tmp: Path, language: str = "en") -> list[dict[str, Any]]:
+    """Every spoken word in the video with its start and end second, from Whisper. Without the
+    right language, Whisper turns Turkish speech into English words."""
     if not (WHISPER / "weights.safetensors").exists() or not _voice_python().exists():
         raise ValueError("Word captions need the voice setup: the user runs scripts/setup_voice.sh once")
     wav = tmp / "speech.wav"
     reel.ffmpeg("-i", src, "-vn", "-ac", "1", "-ar", "16000", str(wav))
     _run([str(_voice_python()), "-m", "mlx_audio.stt.generate", "--model", str(WHISPER), "--audio", str(wav),
-          "--output-path", str(tmp / "words"), "--format", "json", "--gen-kwargs", '{"word_timestamps": true}'])
+          "--output-path", str(tmp / "words"), "--format", "json", "--gen-kwargs", json.dumps({"word_timestamps": True, "language": language})])
     found = json.loads((tmp / "words.json").read_text())
     return [{"word": w["word"], "start": w["start"], "end": w["end"]}
             for seg in found.get("segments") or [] for w in seg.get("words") or []]
@@ -145,7 +156,7 @@ def edit(args: dict[str, Any]) -> Path:
         reel.caption(src, out, args["text"], args.get("position") or "bottom", args.get("start"), args.get("end"))
     elif op == "words":
         with tempfile.TemporaryDirectory() as tmp:
-            timed = transcribe(src, Path(tmp))
+            timed = transcribe(src, Path(tmp), args.get("language") or "en")
             if not timed:
                 raise ValueError("No speech found in this video to caption")
             reel.words(src, out, timed, args.get("position") or "bottom")
@@ -172,7 +183,7 @@ def edit(args: dict[str, Any]) -> Path:
     "join (all inputs in order), frames (inputs[0] is a folder of 1080x1920 frames drawn with "
     "run_python, played in name order at fps: kinetic text, charts, counters, logo reveals), caption (text, position, optional start/end), words (captions "
     "of everything said in the video, word by word in sync with the speech, the current word "
-    "highlighted; add them after the voice), music (track, volume, replace), voice (say: text "
+    "highlighted; add them after the voice; language: tr for Turkish speech), music (track, volume, replace), voice (say: text "
     "to speak, with speaker: the voice to use, required; or speech: an audio file; at: start "
     "second; music under it is lowered automatically), export (any video -> Reel format).",
     {
@@ -193,6 +204,8 @@ def edit(args: dict[str, Any]) -> Path:
                         "description": "Voice for say, required, no default: pick one that suits the Reel. "
                                        + " ".join(f"{k}: {v}" for k, v in VOICES.items())},
             "speech": {"type": "string", "description": "Voice: an audio file instead of say."},
+            "language": {"type": "string", "enum": ["en", "tr"],
+                         "description": "Words: the language spoken in the video (default en)."},
             "at": {"type": "number", "description": "Voice: second the line starts."},
             "fps": {"type": "number", "description": "Frames: frames per second (default 30)."},
         },
