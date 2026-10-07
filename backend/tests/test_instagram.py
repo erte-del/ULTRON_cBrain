@@ -168,5 +168,30 @@ class TokenTest(unittest.TestCase):
         self.assertEqual(instagram.token(), "newer")
 
 
+class StatsTest(unittest.TestCase):
+    def fake(self, method, path, **params):
+        if path == "me":
+            return {"username": "ai.ultron.120", "followers_count": 12, "media_count": 2}
+        if path == "me/media":
+            return {"data": [{"id": "r1", "caption": "x" * 200, "media_product_type": "REELS"},
+                             {"id": "r2", "caption": "new", "media_product_type": "REELS"}]}
+        if path == "r1/insights":
+            return {"data": [{"name": "views", "values": [{"value": 340}]},
+                             {"name": "ig_reels_avg_watch_time", "values": [{"value": 4250}]}]}
+        raise RuntimeError("Instagram: insights not ready")
+
+    def test_stats_lists_posts_with_their_numbers(self):
+        with mock.patch.object(instagram, "_graph", self.fake):
+            s = instagram.stats()
+        self.assertEqual((s["followers"], s["posts"]), (12, 2))
+        first, second = s["latest"]
+        self.assertEqual((first["views"], first["avg_watch_s"], len(first["caption"])), (340, 4.2, 80))
+        self.assertNotIn("id", first)
+        self.assertIn("not ready", second["insights"])  # one post's error doesn't sink the rest
+
+    def test_stats_is_a_read_tool(self):
+        self.assertEqual(registry.classify("mcp__ultron__instagram_stats"), "read")
+
+
 if __name__ == "__main__":
     unittest.main()

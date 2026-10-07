@@ -31,7 +31,7 @@ from .expert import ask_expert
 from .flights import flights
 from .homework import check_homework
 from .imagegen import generate_image, image_ai_edit
-from .instagram import instagram_post, instagram_preview
+from .instagram import instagram_post, instagram_preview, instagram_stats
 from .jobs import change_job, list_jobs, schedule_job
 from .mac import mac_change, mac_read, run_python
 from .maps import maps
@@ -125,6 +125,7 @@ TOOLS: list[UltronTool] = [
     UltronTool(whatsapp_send, "act"),
     # Instagram: the preview only shows the Reel on the canvas; posting is public, so it always asks.
     UltronTool(instagram_preview, "read"),
+    UltronTool(instagram_stats, "read"),
     # Only writes new .mp4s into Ultron's own Instagram folder.
     UltronTool(reel_edit, "read"),
     # Licensed stock clips and music: searching changes nothing, downloads go to Ultron's own folder.

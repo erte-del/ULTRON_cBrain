@@ -1,5 +1,8 @@
 """Instagram: Ultron posts Reels to its own account (ai.ultron.120) through the Graph API.
 
+instagram_stats (read) shows how its posts did (views, watch time, saves, shares), so the next
+Reel builds on what worked.
+
 Two steps, so you always see the video before it goes out:
   instagram_preview (read)  checks the file is a valid Reel and puts it on the canvas with
                             its caption
@@ -142,6 +145,27 @@ def publish(path: Path, caption: str) -> str:
     return _graph("GET", media, fields="permalink").get("permalink", "")
 
 
+REEL_METRICS = "views,reach,saved,shares,likes,comments,total_interactions,ig_reels_avg_watch_time"
+
+
+def stats(count: int = 10) -> dict[str, Any]:
+    """The account's followers and its latest posts with their insights."""
+    me = _graph("GET", "me", fields="username,followers_count,media_count")
+    posts = _graph("GET", "me/media", fields="id,caption,timestamp,permalink,media_product_type",
+                   limit=max(1, min(int(count), 25)))["data"]
+    for post in posts:
+        post["caption"] = (post.get("caption") or "")[:80]
+        try:
+            found = _graph("GET", f"{post.pop('id')}/insights", metric=REEL_METRICS)["data"]
+            post.update({m["name"]: m["values"][0]["value"] for m in found})
+        except RuntimeError as e:  # e.g. posted minutes ago, or not a Reel
+            post["insights"] = str(e)
+        if "ig_reels_avg_watch_time" in post:
+            post["avg_watch_s"] = round(post.pop("ig_reels_avg_watch_time") / 1000, 1)
+    return {"account": me.get("username"), "followers": me.get("followers_count"),
+            "posts": me.get("media_count"), "latest": posts}
+
+
 # --- tools ---
 
 def _sha256(path: Path) -> str:
@@ -161,6 +185,23 @@ def _video(args: dict[str, Any]) -> Path:
 
 VIDEO_ARG = {"type": "string", "description": "Full path of the .mp4, made with reel.py."}
 CAPTION_ARG = {"type": "string", "description": "The post's caption, hashtags included."}
+
+
+@tool(
+    "instagram_stats",
+    "How Ultron's Instagram is doing: followers, and its latest posts (newest first) with views, "
+    "reach, average watch time in seconds, likes, comments, saves and shares. Check it before "
+    "planning a new Reel, to repeat what worked. Changes nothing.",
+    {"type": "object", "properties": {"count": {"type": "integer", "description": "Posts to show, 1-25 (default 10)."}}},
+)
+async def instagram_stats(args: dict[str, Any]) -> dict[str, Any]:
+    if not token():
+        return _text("No Instagram token: add INSTAGRAM_ACCESS_TOKEN to .env.", True)
+    try:
+        found = await asyncio.to_thread(stats, args.get("count") or 10)
+    except (RuntimeError, OSError, KeyError, ValueError) as e:
+        return _text(f"Couldn't read the stats: {e}", True)
+    return _text(json.dumps(found, ensure_ascii=False, indent=1))
 
 
 @tool(
