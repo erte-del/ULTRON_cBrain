@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest import mock
 
@@ -39,8 +40,9 @@ class FakeMeta:
         raise AssertionError(path)
 
 
-@unittest.skipUnless(shutil.which("ffmpeg"), "needs ffmpeg")
-class InstagramTest(unittest.TestCase):
+class Fakes:
+    """A real Reel file, with Meta, Litterbox and storage faked."""
+
     @classmethod
     def setUpClass(cls):
         cls.src = Path(tempfile.mkdtemp())
@@ -77,6 +79,10 @@ class InstagramTest(unittest.TestCase):
 
     def call(self, t, video, caption="Hello from Ultron #ai"):
         return asyncio.run(t.handler({"video": str(video), "caption": caption}))
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "needs ffmpeg")
+class InstagramTest(Fakes, unittest.TestCase):
 
     def test_preview_then_post(self):
         result = self.call(instagram.instagram_preview, self.reel)
@@ -199,6 +205,84 @@ class TokenTest(unittest.TestCase):
         self.assertTrue(done)
         self.assertIn("access_token=old", urlopen.call_args.args[0])
         self.assertEqual(instagram.token(), "newer")
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "needs ffmpeg")
+class ScheduleTest(Fakes, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.notify = mock.AsyncMock()
+        queue = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, queue)
+        for patch in (mock.patch.object(instagram, "QUEUE_DIR", queue),
+                      mock.patch.object(instagram, "QUEUE_FILE", queue / "queue.json"),
+                      mock.patch.object(instagram.notify, "push", self.notify)):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def schedule(self, at="2099-01-01 18:00", **extra):
+        args = {"video": str(self.reel), "caption": "Later #ai", "cover_at": 1, "at": at, **extra}
+        asyncio.run(instagram.instagram_preview.handler(args))
+        return asyncio.run(instagram.instagram_schedule.handler(args))
+
+    def soon(self):
+        return datetime.fromtimestamp(time.time() + 3600).strftime("%Y-%m-%d %H:%M")
+
+    def test_posts_when_due_from_its_own_copy(self):
+        result = self.schedule(self.soon())
+        self.assertNotIn("is_error", result)
+        self.upload.assert_not_called()  # nothing goes out at scheduling time
+        (entry,) = instagram._queue()
+        asyncio.run(instagram.post_due(now=entry["at"] - 1))
+        self.upload.assert_not_called()
+        asyncio.run(instagram.post_due(now=entry["at"] + 1))
+        create = next(c for c in self.meta.calls if c[1] == "178/media")[2]
+        self.assertEqual((create["caption"], create["thumb_offset"]), ("Later #ai", 1000))
+        self.assertEqual(instagram._queue()[0]["status"], "posted")
+        self.assertIn("instagram.com/reel/abc", self.notify.call_args.args[1])
+        self.assertFalse((instagram.QUEUE_DIR / entry["id"]).exists())
+        asyncio.run(instagram.post_due(now=entry["at"] + 60))
+        self.assertEqual(self.upload.call_count, 1)  # never twice
+
+    def test_needs_a_preview_and_uses_it_up(self):
+        args = {"video": str(self.reel), "caption": "x", "at": self.soon()}
+        self.assertTrue(asyncio.run(instagram.instagram_schedule.handler(args)).get("is_error"))
+        self.schedule(self.soon())
+        again = asyncio.run(instagram.instagram_post.handler({"video": str(self.reel), "caption": "Later #ai",
+                                                               "cover_at": 1}))
+        self.assertTrue(again.get("is_error"))
+
+    def test_refuses_past_times_and_bad_formats(self):
+        self.assertTrue(self.schedule("2020-01-01 10:00").get("is_error"))
+        self.assertTrue(self.schedule("tomorrow at six").get("is_error"))
+
+    def test_too_late_is_missed_not_posted(self):
+        self.schedule(self.soon())
+        (entry,) = instagram._queue()
+        asyncio.run(instagram.post_due(now=entry["at"] + instagram.LATE_LIMIT_S + 1))
+        self.upload.assert_not_called()
+        self.assertEqual(instagram._queue()[0]["status"], "missed")
+
+    def test_failure_is_reported(self):
+        self.meta.statuses = ["ERROR"]
+        self.schedule(self.soon())
+        (entry,) = instagram._queue()
+        asyncio.run(instagram.post_due(now=entry["at"] + 1))
+        self.assertEqual(instagram._queue()[0]["status"], "failed")
+        self.assertEqual(self.notify.call_args.args[0], "Instagram post failed")
+
+    def test_cancel(self):
+        self.schedule(self.soon())
+        (entry,) = instagram._queue()
+        result = asyncio.run(instagram.instagram_cancel.handler({"id": entry["id"]}))
+        self.assertNotIn("is_error", result)
+        asyncio.run(instagram.post_due(now=entry["at"] + 1))
+        self.upload.assert_not_called()
+        self.assertTrue(asyncio.run(instagram.instagram_cancel.handler({"id": entry["id"]})).get("is_error"))
+
+    def test_scheduling_asks_reading_the_queue_doesnt(self):
+        self.assertTrue(registry.needs_ok(registry.PREFIX + "instagram_schedule", {}))
+        self.assertEqual(registry.classify("mcp__ultron__instagram_queue"), "read")
 
 
 class CommentsTest(unittest.TestCase):

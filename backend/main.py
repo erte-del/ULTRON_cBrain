@@ -60,7 +60,9 @@ async def lifespan(app: FastAPI):
     scheduler.current_brain = lambda: (brain.provider, brain.gateway_model)
     jobs = asyncio.create_task(scheduler.loop())
     ig_token = asyncio.create_task(instagram.refresh_loop())
+    ig_queue = asyncio.create_task(instagram.queue_loop())
     yield
+    ig_queue.cancel()
     ig_token.cancel()
     jobs.cancel()
     warm_up.cancel()

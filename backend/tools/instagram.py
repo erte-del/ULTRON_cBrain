@@ -14,6 +14,13 @@ Two steps, so you always see the video before it goes out:
 With Instagram Login, Meta only takes a video from a public URL (no direct upload), so the
 file goes to Litterbox (litterbox.catbox.moe), a free host that deletes it after an hour.
 
+instagram_schedule (act) is instagram_post for later: you approve on the card now, and
+queue_loop (started in main.py) posts it at that time without asking again, then tells you
+(notify.py). It keeps its own copy of the file in storage/instagram_queue/, so editing the
+original afterwards changes nothing. instagram_queue (read) lists what's waiting and
+instagram_cancel (act) drops one. A post more than 3 hours late (the Mac was off) isn't
+posted: the time was the point, so you're told it was missed.
+
 The access token lasts 60 days. Ultron renews it once a week (refresh_loop, started in
 main.py) and keeps the newest one in storage/instagram_token.json; .env holds the first one.
 """
@@ -25,6 +32,8 @@ import logging
 import shutil
 import subprocess
 import time
+import uuid
+from datetime import datetime
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -36,6 +45,7 @@ from claude_agent_sdk import tool
 import config
 import events
 import hub
+import notify
 import reel
 from storage import image_store, video_store
 
@@ -50,6 +60,12 @@ POLL_EVERY_S = 5
 # ponytail: waits in the tool call while Meta processes the video (usually under a minute);
 # move to a background job like generate_video if long Reels time out.
 PROCESS_TIMEOUT_S = 300
+
+QUEUE_DIR = config.STORAGE_DIR / "instagram_queue"
+QUEUE_FILE = QUEUE_DIR / "queue.json"
+QUEUE_EVERY_S = 30
+LATE_LIMIT_S = 3 * 3600
+MAX_AHEAD_S = 60 * 86400
 
 # sha256 of each previewed file -> what you saw with it: (caption, cover_at, cover image's
 # sha256). In memory: after a restart, preview again.
@@ -240,6 +256,18 @@ POST_ARGS = {"type": "object", "properties": {"video": VIDEO_ARG, "caption": CAP
              "required": ["video", "caption"]}
 
 
+def _approved(args: dict[str, Any]) -> tuple[Path, str, float | None, Path | None]:
+    """The file, caption and cover to post, if the user previewed exactly these."""
+    path = _video(args)
+    cover_at, cover_image = _cover(args)
+    caption = str(args.get("caption") or "").strip()
+    cover_sha = _sha256(cover_image) if cover_image else None
+    if _previewed.get(_sha256(path)) != (caption, cover_at, cover_sha):
+        raise ValueError("This file, caption and cover weren't previewed as they are now. Call "
+                         "instagram_preview first so the user sees exactly what goes out; nothing was posted.")
+    return path, caption, cover_at, cover_image
+
+
 @tool(
     "instagram_stats",
     "How Ultron's Instagram is doing: followers, and its latest posts (newest first) with views, "
@@ -307,15 +335,9 @@ async def instagram_post(args: dict[str, Any]) -> dict[str, Any]:
     if not token():
         return _text("No Instagram token: add INSTAGRAM_ACCESS_TOKEN to .env.", True)
     try:
-        path = _video(args)
-        cover_at, cover_image = _cover(args)
+        path, caption, cover_at, cover_image = await asyncio.to_thread(_approved, args)
     except ValueError as e:
         return _text(str(e), True)
-    caption = str(args.get("caption") or "").strip()
-    cover_sha = await asyncio.to_thread(_sha256, cover_image) if cover_image else None
-    if _previewed.get(await asyncio.to_thread(_sha256, path)) != (caption, cover_at, cover_sha):
-        return _text("This file, caption and cover weren't previewed as they are now. Call instagram_preview "
-                     "first so the user sees exactly what goes out; nothing was posted.", True)
     try:
         link = await asyncio.to_thread(publish, path, caption, cover_at, cover_image)
     except (RuntimeError, OSError, KeyError, subprocess.TimeoutExpired) as e:
@@ -366,3 +388,137 @@ async def instagram_reply(args: dict[str, Any]) -> dict[str, Any]:
         return _text(f"Not sent: {e}", True)
     log.info("Replied on Instagram to comment %s", comment)
     return _text(f"Replied (reply id {reply.get('id')}).")
+
+
+# --- scheduled posts ---
+
+def _queue() -> list[dict[str, Any]]:
+    try:
+        return json.loads(QUEUE_FILE.read_text())
+    except (OSError, ValueError):
+        return []
+
+
+def _save_queue(queue: list[dict[str, Any]]) -> None:
+    QUEUE_DIR.mkdir(parents=True, exist_ok=True)
+    QUEUE_FILE.write_text(json.dumps(queue, ensure_ascii=False, indent=1))
+
+
+def _when(ts: float) -> str:
+    return datetime.fromtimestamp(ts).strftime("%a %d %b %H:%M")
+
+
+def schedule(path: Path, caption: str, cover_at: float | None, cover_image: Path | None, at: float) -> dict[str, Any]:
+    """Copy the Reel (and cover) into the queue folder and queue it for `at`."""
+    entry_id = uuid.uuid4().hex[:8]
+    folder = QUEUE_DIR / entry_id
+    folder.mkdir(parents=True)
+    shutil.copyfile(path, folder / "reel.mp4")
+    if cover_image:
+        shutil.copyfile(cover_image, folder / "cover.jpg")
+    entry = {"id": entry_id, "at": at, "caption": caption, "cover_at": cover_at,
+             "cover_image": bool(cover_image), "status": "waiting"}
+    _save_queue([*_queue(), entry])
+    return entry
+
+
+def _set(entry_id: str, **fields: Any) -> None:
+    queue = _queue()
+    for e in queue:
+        if e["id"] == entry_id:
+            e.update(fields)
+    _save_queue(queue)
+
+
+async def post_due(now: float | None = None) -> None:
+    """Post every waiting Reel whose time has come, one at a time, and tell the user."""
+    now = time.time() if now is None else now
+    for e in _queue():
+        if e["status"] != "waiting" or e["at"] > now:
+            continue
+        caption = e["caption"][:60]
+        if now - e["at"] > LATE_LIMIT_S:
+            _set(e["id"], status="missed")
+            await notify.push("Instagram post missed", f"\"{caption}\" was due {_when(e['at'])} and "
+                              "wasn't posted (the Mac was off). Schedule it again if you still want it.")
+            continue
+        # Marked before posting: if Ultron stops mid-post, it's never posted twice.
+        _set(e["id"], status="posting")
+        folder = QUEUE_DIR / e["id"]
+        cover = folder / "cover.jpg" if e["cover_image"] else None
+        try:
+            link = await asyncio.to_thread(publish, folder / "reel.mp4", e["caption"], e["cover_at"], cover)
+        except (RuntimeError, OSError, KeyError, subprocess.TimeoutExpired) as err:
+            _set(e["id"], status="failed", error=str(err))
+            await notify.push("Instagram post failed", f"\"{caption}\": {err}")
+            continue
+        _set(e["id"], status="posted", link=link)
+        shutil.rmtree(folder, ignore_errors=True)
+        log.info("Scheduled post went out: %s", link)
+        await notify.push("Posted to Instagram", f"\"{caption}\" {link}")
+
+
+async def queue_loop() -> None:
+    """Started by main.py."""
+    while True:
+        try:
+            await post_due()
+        except Exception:  # one bad pass mustn't stop later posts
+            log.exception("Instagram queue pass failed")
+        await asyncio.sleep(QUEUE_EVERY_S)
+
+
+@tool(
+    "instagram_schedule",
+    "Post a Reel to Ultron's Instagram later, at a set time. The user approves on a card now; it "
+    "then goes out at that time without asking again, and the user gets a notification. Same rules "
+    "as instagram_post: only a file shown with instagram_preview, unchanged, with the same caption "
+    "and cover. Ultron must be running at that time; a post over 3 hours late isn't sent.",
+    {**POST_ARGS, "properties": {**POST_ARGS["properties"], "at": {
+        "type": "string", "description": "When to post, the user's local time: YYYY-MM-DD HH:MM."}},
+     "required": ["video", "caption", "at"]},
+)
+async def instagram_schedule(args: dict[str, Any]) -> dict[str, Any]:
+    if not token():
+        return _text("No Instagram token: add INSTAGRAM_ACCESS_TOKEN to .env.", True)
+    try:
+        at = datetime.fromisoformat(str(args.get("at") or "").strip()).timestamp()
+    except ValueError:
+        return _text("Give the time as YYYY-MM-DD HH:MM, the user's local time.", True)
+    if not time.time() < at < time.time() + MAX_AHEAD_S:
+        return _text(f"{_when(at)} isn't within the next 60 days.", True)
+    try:
+        path, caption, cover_at, cover_image = await asyncio.to_thread(_approved, args)
+    except ValueError as e:
+        return _text(str(e), True)
+    entry = await asyncio.to_thread(schedule, path, caption, cover_at, cover_image, at)
+    _previewed.pop(await asyncio.to_thread(_sha256, path), None)  # one approval, one post
+    return _text(f"Scheduled for {_when(at)} (id {entry['id']}). The user gets a notification when it's out.")
+
+
+@tool(
+    "instagram_queue",
+    "Reels scheduled for Ultron's Instagram: id, when, caption and status (waiting, posting, "
+    "posted with its link, failed with why, missed, cancelled). Changes nothing.",
+    {"type": "object", "properties": {}},
+)
+async def instagram_queue(args: dict[str, Any]) -> dict[str, Any]:
+    queue = await asyncio.to_thread(_queue)
+    shown = [{"id": e["id"], "when": _when(e["at"]), "caption": e["caption"][:80], "status": e["status"],
+              **{k: e[k] for k in ("link", "error") if k in e}} for e in queue[-20:]]
+    return _text(json.dumps(shown, ensure_ascii=False, indent=1) if shown else "Nothing scheduled.")
+
+
+@tool(
+    "instagram_cancel",
+    "Cancel a scheduled Instagram post that hasn't gone out yet (id from instagram_queue).",
+    {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
+)
+async def instagram_cancel(args: dict[str, Any]) -> dict[str, Any]:
+    entry_id = str(args.get("id") or "")
+    entry = next((e for e in await asyncio.to_thread(_queue) if e["id"] == entry_id), None)
+    if not entry or entry["status"] != "waiting":
+        return _text(f"No waiting post with id {entry_id!r}.", True)
+    await asyncio.to_thread(_set, entry_id, status="cancelled")
+    await asyncio.to_thread(shutil.rmtree, QUEUE_DIR / entry_id, True)
+    return _text(f"Cancelled the post for {_when(entry['at'])}.")
