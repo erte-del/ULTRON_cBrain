@@ -20,6 +20,13 @@ You are helping me build **Ultron**: a personal AI assistant with **Claude as th
 
 Explain what you're doing in simple terms, because I am learning. Each step must work before the next one starts.
 
+**Every change must also work on my Windows PC.** I run Ultron there too, so check each piece of code
+for Mac-only assumptions before it's done: hardcoded `/System/...`, `/usr/local/...` or `/opt/...` paths,
+`osascript`, `.sh` scripts, Apple-only packages (e.g. `mlx`), POSIX-only calls, and file reads/writes
+without `encoding="utf-8"`. File paths that go into FFmpeg filters go through `reel.filter_path`. Where a
+feature truly can't run on Windows, say so plainly. **At the end of every feature, show a short
+"Windows setup" list** (what to install, with `winget` commands, and any `.env` lines), or say "nothing to set up".
+
 ---
 
 ## 1. How Ultron talks to Claude

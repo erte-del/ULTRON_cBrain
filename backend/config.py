@@ -6,6 +6,7 @@ import os
 import re
 import ssl
 import subprocess
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,6 +16,10 @@ ROOT_DIR = BACKEND_DIR.parent
 STORAGE_DIR = BACKEND_DIR / "storage"
 
 load_dotenv(ROOT_DIR / ".env")
+
+# Ultron.app and launchd start him with PATH=/usr/bin:/bin:..., which hides Homebrew's ffmpeg/ffprobe.
+if sys.platform == "darwin":
+    os.environ["PATH"] = os.pathsep.join(["/opt/homebrew/bin", "/usr/local/bin", os.environ.get("PATH", "")])
 
 HOST = os.getenv("JARVIS_HOST", "127.0.0.1")
 PORT = int(os.getenv("JARVIS_PORT", "8000"))

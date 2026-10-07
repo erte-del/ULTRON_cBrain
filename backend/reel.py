@@ -25,13 +25,19 @@ from pathlib import Path
 
 W, H, FPS = 1080, 1920, 30
 MIN_S, MAX_S = 3, 15 * 60  # what the Graph API accepts for a Reel
-FONT = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+FONT = "C:/Windows/Fonts/arialbd.ttf" if sys.platform == "win32" else "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
 FONT_SIZE = 72
 WRAP = 22  # characters per caption line at FONT_SIZE on a 1080 px frame
 AUDIO = ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart"]
 ENCODE = ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", *AUDIO]
 FIT = (f"scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,"
        f"setsar=1,fps={FPS},format=yuv420p")
+
+
+def filter_path(path: str | Path) -> str:
+    """A file path as FFmpeg's filter options want it: forward slashes, and the drive colon in
+    C:/... escaped so it isn't read as an option separator."""
+    return Path(path).as_posix().replace(":", r"\:")
 
 
 def probe(path: str) -> dict:
@@ -103,8 +109,8 @@ def caption(src: str, out: str, text: str, at: str = "bottom",
     with tempfile.TemporaryDirectory() as tmp:
         # textfile= avoids FFmpeg's escaping rules for quotes, colons and commas in the caption.
         txt = Path(tmp) / "caption.txt"
-        txt.write_text(textwrap.fill(text, WRAP))
-        draw = (f"drawtext=fontfile='{FONT}':textfile='{txt}':expansion=none:fontsize={FONT_SIZE}:fontcolor=white:"
+        txt.write_text(textwrap.fill(text, WRAP), encoding="utf-8")
+        draw = (f"drawtext=fontfile='{filter_path(FONT)}':textfile='{filter_path(txt)}':expansion=none:fontsize={FONT_SIZE}:fontcolor=white:"
                 f"borderw=5:bordercolor=black:line_spacing=12:text_align=C:x=(w-text_w)/2:y={y}")
         if start is not None or end is not None:
             draw += f":enable='between(t,{start or 0},{end if end is not None else 1e9})'"
@@ -203,10 +209,10 @@ def words(src: str, out: str, timed: list[dict], at: str = "bottom") -> None:
         raise ValueError("no words to caption")
     with tempfile.TemporaryDirectory() as tmp:
         sub = Path(tmp) / "words.ass"
-        sub.write_text(ass(timed, at))
+        sub.write_text(ass(timed, at), encoding="utf-8")
         fitted = str(Path(tmp) / "fitted.mp4")
         export(src, fitted)
-        ffmpeg("-i", fitted, "-vf", f"ass={sub}", *ENCODE, out)
+        ffmpeg("-i", fitted, "-vf", f"ass='{filter_path(sub)}'", *ENCODE, out)
 
 
 def check(path: str) -> list[str]:
@@ -269,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
         elif a.cmd == "voice":
             voice(a.src, a.out, a.speech, a.at, a.volume)
         elif a.cmd == "words":
-            words(a.src, a.out, json.loads(Path(a.words).read_text()), a.at)
+            words(a.src, a.out, json.loads(Path(a.words).read_text(encoding="utf-8")), a.at)
         elif a.cmd == "frames":
             frames(a.src, a.out, a.fps)
         elif a.cmd == "export":

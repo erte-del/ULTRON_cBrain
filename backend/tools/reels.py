@@ -105,7 +105,7 @@ def transcribe(src: str, tmp: Path, language: str = "en") -> list[dict[str, Any]
     reel.ffmpeg("-i", src, "-vn", "-ac", "1", "-ar", "16000", str(wav))
     _run([str(_voice_python()), "-m", "mlx_audio.stt.generate", "--model", str(WHISPER), "--audio", str(wav),
           "--output-path", str(tmp / "words"), "--format", "json", "--gen-kwargs", json.dumps({"word_timestamps": True, "language": language})])
-    found = json.loads((tmp / "words.json").read_text())
+    found = json.loads((tmp / "words.json").read_text(encoding="utf-8"))
     return [{"word": w["word"], "start": w["start"], "end": w["end"]}
             for seg in found.get("segments") or [] for w in seg.get("words") or []]
 

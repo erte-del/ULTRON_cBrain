@@ -142,5 +142,10 @@ class WordsTest(unittest.TestCase):
         self.assertIn("0:00:00.40,0:00:00.80", events[1])  # last word of a line ends on its own when the next is far
 
 
+class FilterPathTest(unittest.TestCase):
+    def test_windows_drive_colon_is_escaped(self):
+        self.assertEqual(reel.filter_path("C:/Windows/Fonts/arialbd.ttf"), r"C\:/Windows/Fonts/arialbd.ttf")
+
+
 if __name__ == "__main__":
     unittest.main()
