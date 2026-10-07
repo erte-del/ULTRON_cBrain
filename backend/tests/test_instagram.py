@@ -63,6 +63,7 @@ class InstagramTest(unittest.TestCase):
         self.upload = mock.Mock(return_value="https://litter.catbox.moe/x.mp4")
         for patch in (
             mock.patch.object(video_store, "VIDEOS_DIR", tmp / "videos"),
+            mock.patch.object(instagram.image_store, "ASSETS_DIR", tmp / "assets"),
             mock.patch.object(instagram.hub, "emit", self.emit),
             mock.patch.object(instagram, "TOKEN_FILE", tmp / "token.json"),
             mock.patch.object(instagram.config, "INSTAGRAM_ACCESS_TOKEN", "env-token"),
@@ -124,6 +125,38 @@ class InstagramTest(unittest.TestCase):
         self.assertTrue(result.get("is_error"))
         self.assertNotIn("178/media_publish", [c[1] for c in self.meta.calls])
 
+    def test_cover_frame_is_sent_as_thumb_offset(self):
+        args = {"video": str(self.reel), "caption": "c", "cover_at": 1.5}
+        asyncio.run(instagram.instagram_preview.handler(args))
+        result = asyncio.run(instagram.instagram_post.handler(args))
+        self.assertNotIn("is_error", result)
+        create = next(c for c in self.meta.calls if c[1] == "178/media")[2]
+        self.assertEqual(create["thumb_offset"], 1500)
+
+    def test_cover_image_is_shown_then_uploaded(self):
+        from PIL import Image
+        cover = self.src / "cover.jpg"
+        Image.new("RGB", (1080, 1920), "red").save(cover)
+        args = {"video": str(self.reel), "caption": "c", "cover_image": str(cover)}
+        asyncio.run(instagram.instagram_preview.handler(args))
+        self.assertIn("image", [c.args[0]["kind"] for c in self.emit.call_args_list])
+        asyncio.run(instagram.instagram_post.handler(args))
+        create = next(c for c in self.meta.calls if c[1] == "178/media")[2]
+        self.assertEqual(create["cover_url"], "https://litter.catbox.moe/x.mp4")
+        self.assertEqual(self.upload.call_args_list[0].args[0], cover)
+
+    def test_post_refuses_a_cover_that_wasnt_previewed(self):
+        self.call(instagram.instagram_preview, self.reel)
+        args = {"video": str(self.reel), "caption": "Hello from Ultron #ai", "cover_at": 2}
+        result = asyncio.run(instagram.instagram_post.handler(args))
+        self.assertTrue(result.get("is_error"))
+        self.upload.assert_not_called()
+
+    def test_cover_outside_the_video_is_refused(self):
+        args = {"video": str(self.reel), "caption": "c", "cover_at": 99}
+        result = asyncio.run(instagram.instagram_preview.handler(args))
+        self.assertTrue(result.get("is_error"))
+
     def test_posting_always_asks(self):
         self.assertTrue(registry.needs_ok(registry.PREFIX + "instagram_post", {}))
         self.assertFalse(registry.needs_ok(registry.PREFIX + "instagram_preview", {}))
@@ -166,6 +199,41 @@ class TokenTest(unittest.TestCase):
         self.assertTrue(done)
         self.assertIn("access_token=old", urlopen.call_args.args[0])
         self.assertEqual(instagram.token(), "newer")
+
+
+class CommentsTest(unittest.TestCase):
+    def fake(self, method, path, **params):
+        if path == "me/media":
+            return {"data": [{"id": "r1", "caption": "x" * 200, "permalink": "p"}]}
+        if path == "r1/comments":
+            return {"data": [{"id": "9", "text": "nice", "username": "a",
+                              "replies": {"data": [{"id": "10", "text": "thanks", "username": "ai.ultron.120"}]}},
+                             {"id": "11", "text": "wow", "username": "b"}]}
+        if path == "9/replies":
+            return {"id": "12"}
+        raise AssertionError(path)
+
+    def test_comments_flatten_replies(self):
+        with mock.patch.object(instagram, "_graph", self.fake):
+            posts = instagram.comments()
+        first, second = posts[0]["comments"]
+        self.assertEqual(first["replies"][0]["text"], "thanks")
+        self.assertNotIn("replies", second)
+        self.assertEqual(len(posts[0]["caption"]), 80)
+
+    def test_reply_posts_the_message(self):
+        graph = mock.Mock(side_effect=self.fake)
+        with mock.patch.object(instagram, "_graph", graph), \
+             mock.patch.object(instagram.config, "INSTAGRAM_ACCESS_TOKEN", "t"):
+            result = asyncio.run(instagram.instagram_reply.handler({"comment": "9", "message": "Thank you!"}))
+            bad = asyncio.run(instagram.instagram_reply.handler({"comment": "9/../me", "message": "x"}))
+        self.assertNotIn("is_error", result)
+        graph.assert_called_once_with("POST", "9/replies", message="Thank you!")
+        self.assertTrue(bad.get("is_error"))
+
+    def test_reading_is_free_replying_asks(self):
+        self.assertEqual(registry.classify("mcp__ultron__instagram_comments"), "read")
+        self.assertTrue(registry.needs_ok(registry.PREFIX + "instagram_reply", {}))
 
 
 class StatsTest(unittest.TestCase):

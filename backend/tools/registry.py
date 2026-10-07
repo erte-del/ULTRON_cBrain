@@ -31,7 +31,7 @@ from .expert import ask_expert
 from .flights import flights
 from .homework import check_homework
 from .imagegen import generate_image, image_ai_edit
-from .instagram import instagram_post, instagram_preview, instagram_stats
+from .instagram import instagram_comments, instagram_post, instagram_preview, instagram_reply, instagram_stats
 from .jobs import change_job, list_jobs, schedule_job
 from .mac import mac_change, mac_read, run_python
 from .maps import maps
@@ -123,15 +123,18 @@ TOOLS: list[UltronTool] = [
     UltronTool(generate_video, "act"),
     # Sends a message in your name.
     UltronTool(whatsapp_send, "act"),
-    # Instagram: the preview only shows the Reel on the canvas; posting is public, so it always asks.
+    # Instagram: the preview only shows the Reel (and its cover) on the canvas, comments are only
+    # read; posting and replying are public, so they always ask.
     UltronTool(instagram_preview, "read"),
     UltronTool(instagram_stats, "read"),
+    UltronTool(instagram_comments, "read"),
     # Only writes new .mp4s into Ultron's own Instagram folder.
     UltronTool(reel_edit, "read"),
     # Licensed stock clips and music: searching changes nothing, downloads go to Ultron's own folder.
     UltronTool(stock_search, "read"),
     UltronTool(stock_download, "read"),
     UltronTool(instagram_post, "act"),
+    UltronTool(instagram_reply, "act"),
     # Only ever texts you: the chat is fixed in .env.
     UltronTool(text_me, "read"),
     # Memories go into every later conversation; you see and delete them in the memory panel.
@@ -172,7 +175,7 @@ TOOLS: list[UltronTool] = [
 
 # In chat, an 'act' tool asks you first only when it reaches other people or touches
 # something you marked important. These are the ones of Ultron's own that always ask.
-ASK_TOOLS = {"whatsapp_send", "instagram_post", "unmark_important", "pc_run"}
+ASK_TOOLS = {"whatsapp_send", "instagram_post", "instagram_reply", "unmark_important", "pc_run"}
 # Connector actions whose name has one of these words reach other people (send_message,
 # reply, share, respond_to_event, publish_app, ...). Drafts don't: they wait for you.
 PEOPLE_WORDS = {"send", "reply", "forward", "share", "invite", "respond", "broadcast",
@@ -195,6 +198,7 @@ TITLES = {
     "generate_video": "Make a video (takes a few minutes)",
     "whatsapp_send": "Send a WhatsApp message",
     "instagram_post": "Post this Reel to Instagram",
+    "instagram_reply": "Reply to an Instagram comment",
     "amazon_change": "Change your Amazon cart or list",
     "remember": "Remember this",
     "forget": "Forget this",
