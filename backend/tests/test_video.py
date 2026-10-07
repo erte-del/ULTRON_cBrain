@@ -3,6 +3,7 @@
 """
 
 import asyncio
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,7 @@ from tools import video
 # Stands in for `python -m mlx_video.models.wan_2.generate`: prints tqdm-style
 # progress, then writes the file given after --output-path.
 FAKE_WAN = """#!/bin/bash
+echo "$@" > "$(dirname "$0")/args"
 while [ $# -gt 0 ]; do [ "$1" = --output-path ] && OUT="$2"; shift; done
 printf 'Loading T5 encoder...\\nDiffusion:  50%%|#####     | 1/2 [00:01<00:01]\\r'
 sleep 0.2
@@ -36,6 +38,7 @@ class VideoTest(unittest.TestCase):
         fake = wan / ".venv" / "bin" / "python"
         fake.write_text(FAKE_WAN)
         fake.chmod(0o755)
+        self.wan, self.tmp = wan, tmp
         self.emit = mock.AsyncMock()
         for patch in (
             mock.patch.object(video_store, "VIDEOS_DIR", tmp / "videos"),
@@ -44,6 +47,13 @@ class VideoTest(unittest.TestCase):
         ):
             patch.start()
             self.addCleanup(patch.stop)
+
+    def add_5b(self):
+        (self.wan / "Wan2.2-TI2V-5B-MLX").mkdir()
+        (self.wan / "Wan2.2-TI2V-5B-MLX" / "config.json").write_text("{}")
+
+    def args_used(self) -> str:
+        return (self.wan / ".venv" / "bin" / "args").read_text()
 
     def run_job(self, **args):
         async def go():
@@ -87,6 +97,36 @@ class VideoTest(unittest.TestCase):
         self.assertEqual(rec.status, "failed")
         self.assertIn("failed", rec.error)
         self.assertFalse((video_store.folder("vid_001") / "video.mp4").exists())
+
+    def test_portrait_by_default_landscape_on_request(self):
+        self.run_job()
+        self.assertIn("--width 480 --height 832", self.args_used())
+        self.assertIn("Wan2.1-T2V-1.3B-MLX", self.args_used())
+        self.run_job(shape="landscape")
+        self.assertIn("--width 832 --height 480", self.args_used())
+
+    def test_image_needs_the_5b_model(self):
+        result = self.run_job(image="/nonexistent.png")
+        self.assertTrue(result["is_error"])
+        self.assertIn("setup_video.sh 5b", result["content"][0]["text"])
+
+    def test_animates_an_image_in_its_own_shape_with_5b(self):
+        self.add_5b()
+        still = self.tmp / "still.png"
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "color=red:size=300x200",
+                        "-frames:v", "1", str(still)], check=True)
+        result = self.run_job(image=str(still))
+        self.assertNotIn("is_error", result)
+        used = self.args_used()
+        self.assertIn("Wan2.2-TI2V-5B-MLX", used)
+        self.assertIn(f"--image {still}", used)
+        self.assertIn("--width 1280 --height 704 --num-frames 121", used)  # landscape image, 24 fps
+
+    def test_rejects_a_non_image(self):
+        self.add_5b()
+        text = self.tmp / "notes.txt"
+        text.write_text("hi")
+        self.assertTrue(self.run_job(image=str(text))["is_error"])
 
     def test_not_set_up(self):
         with mock.patch.object(video.config, "WAN_DIR", Path("/nonexistent")):
