@@ -35,6 +35,7 @@ Ultron.app/
 .idea/
 backend/storage/usage.json
 backend/storage/spotify_token.json
+backend/storage/instagram_token.json
 graphify-out/
 backend/storage/chats.json
 backend/storage/memory.json

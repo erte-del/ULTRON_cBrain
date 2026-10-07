@@ -29,7 +29,7 @@ from brain.confirm import ConfirmationGate
 from PIL import Image, UnidentifiedImageError
 
 from storage import chat_store, image_store, job_store, memory_store, model_store, upload_store, video_store
-from tools import canvas, mac, spotify
+from tools import canvas, instagram, mac, spotify
 
 log = logging.getLogger("ultron")
 
@@ -59,7 +59,9 @@ async def lifespan(app: FastAPI):
     warm_up = asyncio.create_task(brain.start())  # ready before your first message
     scheduler.current_brain = lambda: (brain.provider, brain.gateway_model)
     jobs = asyncio.create_task(scheduler.loop())
+    ig_token = asyncio.create_task(instagram.refresh_loop())
     yield
+    ig_token.cancel()
     jobs.cancel()
     warm_up.cancel()
     await brain.close()

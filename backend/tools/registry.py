@@ -31,6 +31,7 @@ from .expert import ask_expert
 from .flights import flights
 from .homework import check_homework
 from .imagegen import generate_image, image_ai_edit
+from .instagram import instagram_post, instagram_preview
 from .jobs import change_job, list_jobs, schedule_job
 from .mac import mac_change, mac_read, run_python
 from .maps import maps
@@ -120,6 +121,9 @@ TOOLS: list[UltronTool] = [
     UltronTool(generate_video, "act"),
     # Sends a message in your name.
     UltronTool(whatsapp_send, "act"),
+    # Instagram: the preview only shows the Reel on the canvas; posting is public, so it always asks.
+    UltronTool(instagram_preview, "read"),
+    UltronTool(instagram_post, "act"),
     # Only ever texts you: the chat is fixed in .env.
     UltronTool(text_me, "read"),
     # Memories go into every later conversation; you see and delete them in the memory panel.
@@ -160,7 +164,7 @@ TOOLS: list[UltronTool] = [
 
 # In chat, an 'act' tool asks you first only when it reaches other people or touches
 # something you marked important. These are the ones of Ultron's own that always ask.
-ASK_TOOLS = {"whatsapp_send", "unmark_important", "pc_run"}
+ASK_TOOLS = {"whatsapp_send", "instagram_post", "unmark_important", "pc_run"}
 # Connector actions whose name has one of these words reach other people (send_message,
 # reply, share, respond_to_event, publish_app, ...). Drafts don't: they wait for you.
 PEOPLE_WORDS = {"send", "reply", "forward", "share", "invite", "respond", "broadcast",
@@ -182,6 +186,7 @@ TITLES = {
     "export_3d": "Build the final 3D file",
     "generate_video": "Make a video (takes a few minutes)",
     "whatsapp_send": "Send a WhatsApp message",
+    "instagram_post": "Post this Reel to Instagram",
     "amazon_change": "Change your Amazon cart or list",
     "remember": "Remember this",
     "forget": "Forget this",

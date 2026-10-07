@@ -23,6 +23,8 @@ SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "").strip()
 # Ultron's own Telegram bot, for texting you (tools/telegram.py).
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+# Ultron's own Instagram (tools/instagram.py). Ultron renews it into storage/instagram_token.json.
+INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN", "").strip()
 # The MacroDroid webhook on your phone, for its volume (tools/phone.py).
 MACRODROID_WEBHOOK = os.getenv("MACRODROID_WEBHOOK", "").strip()
 # Teams on the web, which Ultron reads in Chrome (tools/homework.py).
