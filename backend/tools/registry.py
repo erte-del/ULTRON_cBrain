@@ -44,6 +44,7 @@ from .phone import phone_taxi, phone_volume
 from .reels import reel_edit
 from .library3d import search_3d_library, show_3d_asset, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
+from .stock import stock_download, stock_search
 from .spotify import spotify_control, spotify_playlist_tracks
 from .slides import lectures, make_slides, open_slides
 from .syllabus import syllabus
@@ -126,6 +127,9 @@ TOOLS: list[UltronTool] = [
     UltronTool(instagram_preview, "read"),
     # Only writes new .mp4s into Ultron's own Instagram folder.
     UltronTool(reel_edit, "read"),
+    # Licensed stock clips and music: searching changes nothing, downloads go to Ultron's own folder.
+    UltronTool(stock_search, "read"),
+    UltronTool(stock_download, "read"),
     UltronTool(instagram_post, "act"),
     # Only ever texts you: the chat is fixed in .env.
     UltronTool(text_me, "read"),

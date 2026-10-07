@@ -43,9 +43,19 @@ class ReelTest(unittest.TestCase):
         reel.cut(self.wide, self.out("c.mp4"), 0.5, 3.5)
         self.assertAlmostEqual(reel.probe(self.out("c.mp4"))["seconds"], 3, delta=0.15)
 
-    def test_caption_with_awkward_characters(self):
-        reel.caption(self.wide, self.out("t.mp4"), "It's 50% off: \"really\", isn't it?", at="top", start=1, end=3)
+    def brightest(self, path: str, at: float) -> int:
+        frame = subprocess.run(["ffmpeg", "-loglevel", "error", "-ss", str(at), "-i", path, "-frames:v", "1",
+                                "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+        return max(frame)
+
+    def test_caption_with_awkward_characters_is_drawn(self):
+        black = str(self.dir / "black.mp4")
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=black:s=1080x1920:d=4",
+                        "-f", "lavfi", "-i", "sine=d=4", "-pix_fmt", "yuv420p", black], check=True)
+        reel.caption(black, self.out("t.mp4"), "It's 50% off: \"really\", isn't it? %{pts} \\n", at="top", start=1, end=3)
         self.assertEqual(reel.check(self.out("t.mp4")), [])
+        self.assertGreater(self.brightest(self.out("t.mp4"), 2), 200)  # white text on black, while it's on
+        self.assertLess(self.brightest(self.out("t.mp4"), 0.5), 30)  # and not before its start time
 
     def make_track(self, seconds: float, freq: int = 220) -> str:
         path = self.dir / f"track{seconds}.m4a"

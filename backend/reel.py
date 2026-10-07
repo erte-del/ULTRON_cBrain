@@ -86,7 +86,7 @@ def caption(src: str, out: str, text: str, at: str = "bottom",
         # textfile= avoids FFmpeg's escaping rules for quotes, colons and commas in the caption.
         txt = Path(tmp) / "caption.txt"
         txt.write_text(textwrap.fill(text, WRAP))
-        draw = (f"drawtext=fontfile='{FONT}':textfile='{txt}':fontsize={FONT_SIZE}:fontcolor=white:"
+        draw = (f"drawtext=fontfile='{FONT}':textfile='{txt}':expansion=none:fontsize={FONT_SIZE}:fontcolor=white:"
                 f"borderw=5:bordercolor=black:line_spacing=12:text_align=C:x=(w-text_w)/2:y={y}")
         if start is not None or end is not None:
             draw += f":enable='between(t,{start or 0},{end if end is not None else 1e9})'"
