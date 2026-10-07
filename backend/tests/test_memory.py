@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import config
 from brain.brain_claudecode import ClaudeCodeBrain
 from storage import memory_store
 from tools import memory, registry
@@ -20,6 +21,10 @@ def call(tool, args):
 class MemoryTest(unittest.TestCase):
     def setUp(self):
         patch = mock.patch.object(memory_store, "MEMORY_FILE", Path(tempfile.mkdtemp()) / "memory.json")
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.vault = Path(tempfile.mkdtemp())  # never the real one
+        patch = mock.patch.object(config, "VAULT_DIR", self.vault)
         patch.start()
         self.addCleanup(patch.stop)
 
@@ -80,6 +85,32 @@ class MemoryTest(unittest.TestCase):
         self.assertNotIn("Fact number 0 ", block)
         self.assertIn("find them with recall", block)
 
+
+    def test_the_vault_gets_the_memory_and_conversation_notes(self):
+        memory_store.add("Lives in Dubai.", "facts")
+        second = memory_store.add("Likes F1.", "preferences")
+        memory_store.delete(second["id"])
+        self.assertIn("- Lives in Dubai.", (self.vault / "memory" / "Facts.md").read_text())
+        self.assertNotIn("F1", (self.vault / "memory" / "Preferences.md").read_text())
+
+        path = memory_store.save_conversation("Revision: plan / SAT?", "Made a revision plan.\nwifi password is kedi1\n\nAbout him: tired.", 0)
+        self.assertTrue(path.startswith("memory/Conversations/1970-01-01 "), path)
+        self.assertTrue(path.endswith(" Revision plan SAT.md"), path)  # no / ? : in file names
+        memory_store.save_conversation("Later", "Talked about F1.")
+        block = memory_store.conversations_block()
+        self.assertNotIn("kedi1", block)
+        self.assertLess(block.index("Talked about F1"), block.index("Made a revision plan"))  # newest first
+        self.assertIn("Talked about F1", ClaudeCodeBrain()._options().system_prompt)
+
+
+    def test_facts_learned_from_a_conversation(self):
+        memory_store.add("Lives in Dubai.", "facts")
+        saved = memory_store.learn(" - [people] Deniz is his cousin in Izmir.\n- [facts] lives in dubai.\n"
+                                   "- [secrets] Nope.\n- [facts] His wifi password is kedi1234\nnothing else")
+        self.assertEqual([m["text"] for m in saved], ["Deniz is his cousin in Izmir."])
+        self.assertEqual(saved[0]["source"], "conversation")
+        self.assertIn("Deniz", (self.vault / "memory" / "People.md").read_text())
+        self.assertEqual(memory_store.learn("Remember: nothing"), [])
 
 if __name__ == "__main__":
     unittest.main()

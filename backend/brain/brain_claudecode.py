@@ -95,7 +95,7 @@ class ClaudeCodeBrain:
         return ClaudeAgentOptions(
             # Replaces Claude Code's coding prompt. Your school notes and what Ultron remembers
             # about you are added each time a conversation starts.
-            system_prompt=JARVIS_SYSTEM_PROMPT + school_block() + memory_store.prompt_block() + PERSONA_REMINDER,
+            system_prompt=JARVIS_SYSTEM_PROMPT + school_block() + memory_store.prompt_block() + memory_store.conversations_block() + PERSONA_REMINDER,
             model=self._model,
             # Thinking was the biggest use of the Pro limit (see .env). Gateway models
             # may not understand the setting, so it's only sent to Claude.

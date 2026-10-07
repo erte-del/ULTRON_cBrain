@@ -56,6 +56,7 @@ ultron = Ultron(brain)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     config.set_login(brain.provider)
+    await asyncio.to_thread(memory_store.mirror)  # the vault's memory notes match memory.json
     warm_up = asyncio.create_task(brain.start())  # ready before your first message
     scheduler.current_brain = lambda: (brain.provider, brain.gateway_model)
     jobs = asyncio.create_task(scheduler.loop())
@@ -66,6 +67,7 @@ async def lifespan(app: FastAPI):
     ig_token.cancel()
     jobs.cancel()
     warm_up.cancel()
+    await ultron.wrap_up()  # the last conversation's note
     await brain.close()
 
 
@@ -266,7 +268,7 @@ def settings_event() -> events.Event:
 
 
 async def start_new_chat() -> None:
-    await brain.new_conversation()
+    await ultron.new_conversation()
     await hub.emit(events.conversation_new("button"))
     await brain.start()  # ready before your next message
 
@@ -355,7 +357,7 @@ async def load_chat(chat_id: str) -> None:
         return
     cards = [c for c in map(restore_card, chat.get("cards", [])) if c]
     canvas.restored([c["id"] for c in cards])
-    await brain.new_conversation(resume=chat_id)
+    await ultron.new_conversation(resume=chat_id)
     await hub.emit(events.conversation_loaded(chat["messages"], cards))
     await hub.emit(ultron.usage_event())
     await brain.start()
@@ -370,7 +372,7 @@ async def switch_provider(provider: str) -> None:
         if problem:
             await hub.emit(events.error(problem))
             return
-    await brain.new_conversation(provider)
+    await ultron.new_conversation(provider)
     await hub.emit(events.conversation_new("provider"))
     await hub.emit(settings_event())
     await hub.emit(ultron.usage_event())
