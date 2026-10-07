@@ -280,6 +280,17 @@ class ScheduleTest(Fakes, unittest.TestCase):
         self.upload.assert_not_called()
         self.assertTrue(asyncio.run(instagram.instagram_cancel.handler({"id": entry["id"]})).get("is_error"))
 
+    def test_cancelled_while_another_posts_stays_cancelled(self):
+        self.schedule(self.soon())
+        self.schedule(self.soon(), caption="Second")
+        first, second = instagram._queue()
+        url = self.upload.return_value
+        self.upload.side_effect = lambda path: (asyncio.run(instagram.instagram_cancel.handler({"id": second["id"]})),
+                                                url)[1]
+        asyncio.run(instagram.post_due(now=second["at"] + 1))
+        self.assertEqual([e["status"] for e in instagram._queue()], ["posted", "cancelled"])
+        self.assertEqual(self.notify.call_count, 1)
+
     def test_scheduling_asks_reading_the_queue_doesnt(self):
         self.assertTrue(registry.needs_ok(registry.PREFIX + "instagram_schedule", {}))
         self.assertEqual(registry.classify("mcp__ultron__instagram_queue"), "read")

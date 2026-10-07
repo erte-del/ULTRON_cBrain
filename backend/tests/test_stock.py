@@ -46,6 +46,7 @@ class StockTest(unittest.TestCase):
         self.fetch = mock.Mock(side_effect=lambda url, dest: dest.write_bytes(b"media"))
         for patch in (mock.patch.object(stock.config, "FILES_DIR", tmp),
                       mock.patch.object(stock.config, "PEXELS_API_KEY", "key"),
+                      mock.patch.object(stock.config, "PIXABAY_API_KEY", ""),  # not the one in .env
                       mock.patch.object(stock, "_get_json", self.api),
                       mock.patch.object(stock, "_fetch", self.fetch)):
             patch.start()

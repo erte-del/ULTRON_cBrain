@@ -297,12 +297,12 @@ async def instagram_preview(args: dict[str, Any]) -> dict[str, Any]:
     try:
         path = _video(args)
         problems = await asyncio.to_thread(reel.check, str(path))
+        info = await asyncio.to_thread(reel.probe, str(path))
     except (ValueError, RuntimeError, subprocess.CalledProcessError) as e:
         return _text(str(e), True)
     if problems:
         return _text("Not a valid Reel yet: " + "; ".join(problems) + ". Fix it with reel.py export.", True)
     caption = str(args.get("caption") or "").strip()
-    info = await asyncio.to_thread(reel.probe, str(path))
     try:
         cover_at, cover_image = _cover(args, info["seconds"])
     except ValueError as e:
@@ -436,6 +436,8 @@ async def post_due(now: float | None = None) -> None:
     for e in _queue():
         if e["status"] != "waiting" or e["at"] > now:
             continue
+        if next((x["status"] for x in _queue() if x["id"] == e["id"]), None) != "waiting":
+            continue  # cancelled while an earlier post was going out
         caption = e["caption"][:60]
         if now - e["at"] > LATE_LIMIT_S:
             _set(e["id"], status="missed")
