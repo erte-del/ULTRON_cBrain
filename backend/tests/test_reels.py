@@ -67,8 +67,28 @@ class ReelEditTest(unittest.TestCase):
         py = reels._voice_python()
         py.parent.mkdir(parents=True)
         py.touch()
-        with self.assertRaises(ValueError):
-            reels.speak("hi", self.dir, "darth_vader")
+        for bad in ("darth_vader", None):  # no default voice: Ultron picks one
+            with self.assertRaises(ValueError):
+                reels.speak("hi", self.dir, bad)
+
+    def test_treated_voices_filter_the_plain_one(self):
+        py = reels._voice_python()
+        py.parent.mkdir(parents=True)
+        py.touch()
+        def fake_kokoro(cmd):
+            self.assertIn("bm_lewis", cmd)
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "sine=f=110:d=2:sample_rate=24000",
+                            str(self.dir / "line.wav")], check=True)
+        for name in reels.EFFECTS:
+            (self.dir / "line.wav").unlink(missing_ok=True)
+            with mock.patch.object(reels, "_run", fake_kokoro):
+                out = reels.speak("hi", self.dir, name)
+            self.assertEqual(out.name, "treated.wav")
+            self.assertGreater(reel.probe(str(out))["seconds"], 1.5)
+
+    def test_every_voice_has_a_description(self):
+        self.assertTrue(set(reels.EFFECTS) <= set(reels.VOICES))
+        self.assertTrue(all(len(d) > 20 for d in reels.VOICES.values()))
 
     def test_frames_folder_becomes_a_reel(self):
         folder = self.dir / "frames"

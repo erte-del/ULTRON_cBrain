@@ -33,7 +33,8 @@ for f in preprocessor_config.json tokenizer.json tokenizer_config.json vocab.jso
 done
 
 echo "== Downloading the voice (Kokoro 82M, ~330 MB)"
-"$PY" -c "from huggingface_hub import snapshot_download as d; d('mlx-community/Kokoro-82M-bf16')"
+"$PY" -c "from huggingface_hub import snapshot_download as d; d('mlx-community/Kokoro-82M-bf16')
+d('prince-canuma/Kokoro-82M', allow_patterns=['voices/a*', 'voices/b*'])  # the English voices, fetched here not mid-Reel"
 # Kokoro fetches a small English language model on first use; do that now, not mid-Reel.
 "$PY" -m mlx_audio.tts.generate --model mlx-community/Kokoro-82M-bf16 --voice am_michael --lang_code a \
   --text "Ready." --output_path "$VOICE" --file_prefix check --join_audio > /dev/null

@@ -24,8 +24,37 @@ SAY_TIMEOUT_S = 60
 VOICE_DIR = config.STORAGE_DIR / "voice"
 WHISPER = VOICE_DIR / "whisper-large-v3-turbo"
 KOKORO = "mlx-community/Kokoro-82M-bf16"
-# a = American, b = British; m = male, f = female.
-SPEAKERS = ["am_michael", "am_adam", "am_fenrir", "am_puck", "af_heart", "af_bella", "bm_george", "bm_lewis", "bf_emma"]
+# Kokoro voices (a = American, b = British; m = male, f = female). The descriptions come from
+# measuring one sample line per voice: pitch, how much it moves, and pace; nobody listened.
+VOICES = {
+    "bm_lewis": "British man, low, steady, slow and deliberate. The user's favourite plain voice.",
+    "bm_george": "British man, mid pitch, some expression, slow.",
+    "bm_daniel": "British man, mid-low, flat and even, brisk.",
+    "bm_fable": "British man, mid-low, expressive, average pace.",
+    "am_onyx": "American man, the deepest voice, very even, close to monotone.",
+    "am_echo": "American man, low, some expression, average pace.",
+    "am_puck": "American man, low, lively, average pace.",
+    "am_michael": "American man, mid-low, steady, slow and measured.",
+    "am_adam": "American man, mid-low, fairly flat, average pace.",
+    "am_liam": "American man, mid-low, some expression, brisk.",
+    "am_fenrir": "American man, mid pitch, the most expressive, big swings in tone.",
+    "am_eric": "American man, the highest male voice, expressive, the fastest.",
+    "af_heart": "American woman, mid pitch, expressive, average pace.",
+    "af_bella": "American woman, high, expressive, slow.",
+    "bf_emma": "British woman, mid pitch, calm and even, average pace.",
+    "bm_lewis_deep": "bm_lewis made about 12% deeper with more bass: heavier and more imposing.",
+    "bm_lewis_synthetic": "bm_lewis deeper, with a quiet copy an octave below and a short metallic echo: clearly an AI.",
+    "bm_lewis_robotic": "bm_lewis deeper, with a slow shimmer and a short echo: the most machine-like.",
+}
+# Treated voices: (Kokoro voice, FFmpeg filter on its 24 kHz output).
+EFFECTS = {
+    "bm_lewis_deep": ("bm_lewis", "asetrate=24000*0.88,aresample=24000,atempo=1/0.88,bass=g=4"),
+    "bm_lewis_synthetic": ("bm_lewis", "asetrate=24000*0.9,aresample=24000,atempo=1/0.9,asplit=2[a][b];"
+                           "[b]asetrate=24000*0.5,aresample=24000,atempo=2,volume=0.35[low];"
+                           "[a][low]amix=inputs=2:normalize=0,aecho=0.8:0.6:12|24:0.35|0.2,bass=g=3"),
+    "bm_lewis_robotic": ("bm_lewis", "asetrate=24000*0.9,aresample=24000,atempo=1/0.9,"
+                         "flanger=delay=2:depth=2:speed=0.3:regen=30,aecho=0.8:0.5:8:0.3"),
+}
 MODEL_TIMEOUT_S = 600
 
 
@@ -39,18 +68,22 @@ def _run(cmd: list[str]) -> None:
         raise RuntimeError((run.stderr.strip().splitlines() or ["the voice model failed"])[-1])
 
 
-def speak(text: str, tmp: Path, speaker: str = "am_michael") -> Path:
-    """The line as an audio file: Kokoro if it's set up, else macOS say."""
+def speak(text: str, tmp: Path, speaker: str | None) -> Path:
+    """The line as an audio file: Kokoro in the chosen voice if it's set up, else macOS say."""
     if not _voice_python().exists():
         out = tmp / "line.aiff"
         subprocess.run(["say", "-o", str(out), "--", text], check=True, timeout=SAY_TIMEOUT_S)
         return out
-    if speaker not in SPEAKERS:
-        raise ValueError(f"speaker must be one of {', '.join(SPEAKERS)}")
-    _run([str(_voice_python()), "-m", "mlx_audio.tts.generate", "--model", KOKORO, "--voice", speaker,
-          "--lang_code", speaker[0], f"--text={text}", "--output_path", str(tmp), "--file_prefix", "line",
+    if speaker not in VOICES:
+        raise ValueError(f"Pick a speaker for say: one of {', '.join(VOICES)}")
+    base, effect = EFFECTS.get(speaker, (speaker, None))
+    _run([str(_voice_python()), "-m", "mlx_audio.tts.generate", "--model", KOKORO, "--voice", base,
+          "--lang_code", base[0], f"--text={text}", "--output_path", str(tmp), "--file_prefix", "line",
           "--join_audio"])
-    return tmp / "line.wav"
+    if not effect:
+        return tmp / "line.wav"
+    reel.ffmpeg("-i", str(tmp / "line.wav"), "-filter_complex", effect, str(tmp / "treated.wav"))
+    return tmp / "treated.wav"
 
 
 def transcribe(src: str, tmp: Path) -> list[dict[str, Any]]:
@@ -122,7 +155,7 @@ def edit(args: dict[str, Any]) -> Path:
     elif op == "voice":
         with tempfile.TemporaryDirectory() as tmp:
             if args.get("say"):
-                speech = str(speak(str(args["say"]), Path(tmp), args.get("speaker") or "am_michael"))
+                speech = str(speak(str(args["say"]), Path(tmp), args.get("speaker")))
             else:
                 speech = _file(args.get("speech"), "voice")
             reel.voice(src, out, speech, float(args.get("at", 0)), float(args.get("volume", 1.0)))
@@ -140,7 +173,7 @@ def edit(args: dict[str, Any]) -> Path:
     "run_python, played in name order at fps: kinetic text, charts, counters, logo reveals), caption (text, position, optional start/end), words (captions "
     "of everything said in the video, word by word in sync with the speech, the current word "
     "highlighted; add them after the voice), music (track, volume, replace), voice (say: text "
-    "to speak, in a natural voice chosen with speaker; or speech: an audio file; at: start "
+    "to speak, with speaker: the voice to use, required; or speech: an audio file; at: start "
     "second; music under it is lowered automatically), export (any video -> Reel format).",
     {
         "type": "object",
@@ -156,8 +189,9 @@ def edit(args: dict[str, Any]) -> Path:
             "volume": {"type": "number", "description": "Music (default 0.25) or voice (default 1) volume."},
             "replace": {"type": "boolean", "description": "Music only: drop the clip's own sound."},
             "say": {"type": "string", "description": "Voice: the words to speak."},
-            "speaker": {"type": "string", "enum": SPEAKERS,
-                        "description": "Voice for say (am/af American, bm/bf British; m male, f female). Default am_michael."},
+            "speaker": {"type": "string", "enum": list(VOICES),
+                        "description": "Voice for say, required, no default: pick one that suits the Reel. "
+                                       + " ".join(f"{k}: {v}" for k, v in VOICES.items())},
             "speech": {"type": "string", "description": "Voice: an audio file instead of say."},
             "at": {"type": "number", "description": "Voice: second the line starts."},
             "fps": {"type": "number", "description": "Frames: frames per second (default 30)."},
