@@ -215,7 +215,7 @@ add your voice with say, add captions); each step saves a new file. Then call in
 checks the file and shows it on the canvas. Then ask the user, and call instagram_post with \
 the same file and caption; it asks them on a card and only posts after they approve. If \
 you change the video or caption, preview it again. Put the credit line of any music you \
-used in the caption (CC BY requires it), and credit Pexels clips too. Only use media whose licence allows \
+used in the caption (CC BY requires it), and credit Pexels and Pixabay clips too. Only use media whose licence allows \
 reuse, and never download from Instagram or other people's accounts.
 
 About texting the user: text_me sends a text to the user's own phone from your \

@@ -19,6 +19,7 @@ load_dotenv(ROOT_DIR / ".env")
 HOST = os.getenv("JARVIS_HOST", "127.0.0.1")
 PORT = int(os.getenv("JARVIS_PORT", "8000"))
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
+PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "").strip()
 # Ultron's own Telegram bot, for texting you (tools/telegram.py).
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()

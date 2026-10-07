@@ -30,6 +30,14 @@ TRACK = {"id": "abc-1", "title": "Sunrise", "creator": "Bo", "creator_url": "htt
          "attribution": '"Sunrise" by Bo is licensed under CC BY 3.0.'}
 
 
+PIXABAY_HIT = {
+    "id": 77, "pageURL": "https://pixabay.com/videos/id-77/", "duration": 9, "user": "Cy", "user_id": 5,
+    "videos": {"large": {"url": "", "width": 0, "height": 0},  # Pixabay leaves missing sizes empty
+               "medium": {"url": "https://cdn.pixabay.com/m.mp4", "width": 1080, "height": 1920},
+               "small": {"url": "https://cdn.pixabay.com/s.mp4", "width": 720, "height": 1280}},
+}
+
+
 class StockTest(unittest.TestCase):
     def setUp(self):
         tmp = Path(tempfile.mkdtemp())
@@ -57,6 +65,27 @@ class StockTest(unittest.TestCase):
         _, text = self.run_tool(stock.stock_search, kind="video", query="ocean")
         self.assertIn("orientation=portrait", self.api.call_args.args[0])
         self.assertEqual(json.loads(text)[0]["id"], "123")
+
+    def test_video_search_adds_pixabay_when_there_is_a_key(self):
+        self.api.side_effect = lambda url, *h: {"videos": [PEXELS_VIDEO]} if "pexels" in url else {"hits": [PIXABAY_HIT]}
+        _, text = self.run_tool(stock.stock_search, kind="video", query="ocean")
+        self.assertEqual([c["id"] for c in json.loads(text)], ["123"])  # no key: Pexels only
+        with mock.patch.object(stock.config, "PIXABAY_API_KEY", "pk"):
+            _, text = self.run_tool(stock.stock_search, kind="video", query="ocean")
+        found = json.loads(text)
+        self.assertEqual([c["id"] for c in found], ["123", "pixabay-77"])
+        self.assertEqual(found[1]["size"], "1080x1920")
+
+    def test_pixabay_download_saves_licence_and_credit(self):
+        self.api.return_value = {"hits": [PIXABAY_HIT]}
+        with mock.patch.object(stock.config, "PIXABAY_API_KEY", "pk"):
+            result, text = self.run_tool(stock.stock_download, kind="video", id="pixabay-77")
+        self.assertNotIn("is_error", result)
+        path = stock.stock_dir() / "pixabay_77.mp4"
+        self.assertEqual(self.fetch.call_args.args, ("https://cdn.pixabay.com/m.mp4", path))
+        self.assertIn("id=77", self.api.call_args.args[0])
+        self.assertEqual(json.loads(path.with_suffix(".json").read_text())["credit"], "Video by Cy on Pixabay")
+        self.assertTrue(self.run_tool(stock.stock_download, kind="video", id="pixabay-../x")[0]["is_error"])
 
     def test_music_search_only_asks_for_reusable_licences(self):
         self.api.return_value = {"results": [TRACK]}

@@ -1,4 +1,5 @@
-"""Stock media for Ultron's Reels: video clips from Pexels, music from Openverse.
+"""Stock media for Ultron's Reels: video clips from Pexels (and Pixabay, if PIXABAY_API_KEY is
+set), music from Openverse.
 
 stock_search    finds clips or tracks; changes nothing
 stock_download  saves one into JARVIS_FILES_DIR/Instagram/stock, with a .json beside it
@@ -22,6 +23,7 @@ from claude_agent_sdk import tool
 import config
 
 PEXELS = "https://api.pexels.com/v1/videos"
+PIXABAY = "https://pixabay.com/api/videos/"
 OPENVERSE = "https://api.openverse.org/v1/audio"
 MUSIC_LICENSES = {"cc0", "pdm", "by"}
 MAX_BYTES = 300 * 1024 * 1024
@@ -46,6 +48,16 @@ def _pexels(path: str, **params: Any) -> dict[str, Any]:
         raise RuntimeError("No PEXELS_API_KEY in .env")
     query = f"?{urllib.parse.urlencode(params)}" if params else ""
     return _get_json(f"{PEXELS}/{path}{query}", {"Authorization": config.PEXELS_API_KEY})
+
+
+def _pixabay(**params: Any) -> list[dict[str, Any]]:
+    params = {"key": config.PIXABAY_API_KEY, "safesearch": "true", **params}
+    return _get_json(f"{PIXABAY}?{urllib.parse.urlencode(params)}")["hits"]
+
+
+def _pixabay_files(hit: dict[str, Any]) -> list[dict[str, Any]]:
+    """Pixabay's renditions in Pexels' shape, for best_file."""
+    return [{**f, "file_type": "video/mp4", "link": f.get("url")} for f in hit["videos"].values()]
 
 
 def best_file(files: list[dict[str, Any]]) -> dict[str, Any]:
@@ -83,8 +95,14 @@ def search(kind: str, query: str, count: int = 8) -> list[dict[str, Any]]:
     count = max(1, min(int(count), 20))
     if kind == "video":
         found = _pexels("search", query=query, orientation="portrait", per_page=count)["videos"]
-        return [{"id": str(v["id"]), "seconds": v["duration"], "size": f"{v['width']}x{v['height']}",
-                 "by": v["user"]["name"], "page": v["url"]} for v in found]
+        clips = [{"id": str(v["id"]), "seconds": v["duration"], "size": f"{v['width']}x{v['height']}",
+                  "by": v["user"]["name"], "page": v["url"]} for v in found]
+        if config.PIXABAY_API_KEY:  # no orientation filter there: check "size" for portrait
+            for h in _pixabay(q=query, per_page=max(count, 3))[:count]:
+                big = max(_pixabay_files(h), key=lambda f: f.get("width") or 0)
+                clips.append({"id": f"pixabay-{h['id']}", "seconds": h["duration"],
+                              "size": f"{big['width']}x{big['height']}", "by": h["user"], "page": h["pageURL"]})
+        return clips
     params = {"q": query, "category": "music", "license": ",".join(sorted(MUSIC_LICENSES)), "page_size": count}
     found = _get_json(f"{OPENVERSE}/?{urllib.parse.urlencode(params)}")["results"]
     return [{"id": r["id"], "title": r["title"], "seconds": round((r.get("duration") or 0) / 1000),
@@ -93,9 +111,29 @@ def search(kind: str, query: str, count: int = 8) -> list[dict[str, Any]]:
 
 def download(kind: str, item_id: str) -> Path:
     _check_kind(kind)
+    if kind == "video" and item_id.startswith("pixabay-"):
+        number = item_id.removeprefix("pixabay-")
+        if not number.isdigit():
+            raise ValueError("not a Pixabay id")
+        dest = stock_dir() / f"pixabay_{number}.mp4"
+        if not dest.exists():
+            if not config.PIXABAY_API_KEY:
+                raise RuntimeError("No PIXABAY_API_KEY in .env")
+            hits = _pixabay(id=number)
+            if not hits:
+                raise RuntimeError("no such Pixabay video")
+            h = hits[0]
+            _fetch(best_file(_pixabay_files(h))["link"], dest)
+            info = {"source": "Pixabay", "page": h["pageURL"], "creator": h["user"],
+                    "creator_url": f"https://pixabay.com/users/{h['user']}-{h['user_id']}/",
+                    "license": "Pixabay Content License (free to use, credit optional)",
+                    "license_url": "https://pixabay.com/service/license-summary/",
+                    "credit": f"Video by {h['user']} on Pixabay"}
+            dest.with_suffix(".json").write_text(json.dumps(info, indent=1))
+        return dest
     if kind == "video":
         if not item_id.isdigit():
-            raise ValueError("Pexels ids are numbers")
+            raise ValueError("Pexels ids are numbers, Pixabay ids start with pixabay-")
         dest = stock_dir() / f"pexels_{item_id}.mp4"
         if not dest.exists():
             v = _pexels(f"videos/{item_id}")
@@ -130,13 +168,14 @@ def _text(text: str, is_error: bool = False) -> dict[str, Any]:
 
 
 KIND = {"type": "string", "enum": ["video", "music"],
-        "description": "video: portrait clips from Pexels. music: tracks from Openverse (CC0, CC BY, public domain)."}
+        "description": "video: clips from Pexels (portrait) and Pixabay. music: tracks from Openverse (CC0, CC BY, public domain)."}
 
 
 @tool(
     "stock_search",
-    "Find licensed stock media for Ultron's Instagram Reels: portrait video clips (Pexels) or "
-    "background music (Openverse). Returns ids to pass to stock_download. Use short, broad "
+    "Find licensed stock media for Ultron's Instagram Reels: video clips or "
+    "background music (Openverse). Video searches Pexels and Pixabay; each result's size shows "
+    "whether it's portrait. Returns ids to pass to stock_download. Use short, broad "
     "English queries ('ocean waves', 'upbeat', 'cinematic').",
     {"type": "object", "properties": {"kind": KIND, "query": {"type": "string"},
                                       "count": {"type": "integer", "description": "1-20, default 8."}},
