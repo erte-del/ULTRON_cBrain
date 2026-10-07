@@ -1,7 +1,7 @@
 // The centre of the HUD: the reactor core (Ultron's state, and the voice orb), or the
 // canvas: cards and 3D models, each in a tab.
 
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import { toolLabel } from '../labels'
 import type { ActiveTool, CanvasCard, ConnectionState, ImageSelection, TerminalTab } from '../ws'
 import Canvas from './Canvas'
@@ -10,8 +10,6 @@ import VoiceOrb, { type VoiceState } from './VoiceOrb'
 // xterm is only loaded when Ultron first opens a terminal.
 const Terminal = lazy(() => import('./Terminal'))
 
-const VOICE_STATES: VoiceState[] = ['idle', 'listening', 'thinking', 'speaking']
-
 const VOICE_PILL: Record<VoiceState, string> = {
   idle: 'MIC PAUSED',
   listening: 'LISTENING…',
@@ -19,16 +17,15 @@ const VOICE_PILL: Record<VoiceState, string> = {
   speaking: 'SPEAKING…',
 }
 
-// Sample captions for the voice preview (voice isn't connected yet: Phase 5b/5c).
-const SAMPLE: Record<VoiceState, { you?: string; ultron?: string }> = {
-  idle: {},
-  listening: { you: "What's on my calendar tomorrow" },
-  thinking: { you: "What's on my calendar tomorrow?" },
-  speaking: {
-    you: "What's on my calendar tomorrow?",
-    ultron: 'You have three things tomorrow. The first is a dentist appointment at nine.',
-  },
+// Voice mode's captions: the last thing you said and Ultron's last reply.
+// hearing = you're talking right now (your words come when you stop).
+export interface Captions {
+  hearing: boolean
+  you?: string
+  ultron?: string
 }
+
+const clip = (text: string, n = 220) => (text.length > n ? text.slice(0, n - 1) + '…' : text)
 
 interface StageProps {
   cards: CanvasCard[]
@@ -44,6 +41,10 @@ interface StageProps {
   connection: ConnectionState
   voiceOn: boolean
   onVoice: (on: boolean) => void
+  captions: Captions
+  level: { current: number } // how loud you are, or Ultron is while speaking: 0..1
+  speaking: boolean // Ultron's voice is playing
+  onStop: () => void // stops the reply and the voice
 }
 
 function Waveform({ state }: { state: VoiceState }) {
@@ -56,26 +57,26 @@ function Waveform({ state }: { state: VoiceState }) {
   )
 }
 
-export function Core({ busy, activeTool, connection, voiceOn, onVoice }: Pick<StageProps, 'busy' | 'activeTool' | 'connection' | 'voiceOn' | 'onVoice'>) {
-  const [preview, setPreview] = useState<VoiceState>('listening')
-  const state: VoiceState = voiceOn ? preview : busy ? 'thinking' : 'idle'
-  const sample = voiceOn ? SAMPLE[preview] : {}
+export function Core({ busy, activeTool, connection, voiceOn, onVoice, captions, level, speaking, onStop }: Pick<StageProps, 'busy' | 'activeTool' | 'connection' | 'voiceOn' | 'onVoice' | 'captions' | 'level' | 'speaking' | 'onStop'>) {
+  let state: VoiceState = voiceOn ? 'listening' : 'idle'
+  if (busy) state = 'thinking'
+  if (speaking) state = 'speaking'
 
   let pill: string
-  if (voiceOn) pill = VOICE_PILL[state]
+  if (voiceOn) pill = busy && activeTool && !speaking ? toolLabel(activeTool).toUpperCase() : VOICE_PILL[state]
   else if (connection !== 'open') pill = connection === 'closed' ? 'BACKEND OFFLINE' : 'CONNECTING…'
   else if (busy) pill = activeTool ? toolLabel(activeTool).toUpperCase() : 'PROCESSING…'
   else pill = 'AWAITING COMMAND…'
 
-  const cycle = () => setPreview(VOICE_STATES[(VOICE_STATES.indexOf(preview) + 1) % VOICE_STATES.length])
+  // In voice mode a click on the orb stops Ultron (its reply and its voice); otherwise it
+  // starts voice mode.
+  let onOrb: (() => void) | undefined = () => onVoice(true)
+  if (voiceOn) onOrb = busy || speaking ? onStop : undefined
+  const label = voiceOn ? (busy || speaking ? 'Stop Ultron' : 'Listening') : 'Talk to Ultron'
 
   return (
     <div className="core">
-      <VoiceOrb
-        state={state}
-        onClick={voiceOn ? cycle : () => onVoice(true)}
-        label={voiceOn ? 'Voice preview: next state' : 'Talk to Ultron'}
-      />
+      <VoiceOrb state={state} level={level} onClick={onOrb} label={label} />
       <div className="core-bottom">
         <Waveform state={state} />
         <button
@@ -92,24 +93,22 @@ export function Core({ busy, activeTool, connection, voiceOn, onVoice }: Pick<St
         </button>
         {voiceOn && (
           <div className="core-captions" aria-live="polite">
-            {sample.you && (
-              <div className={`caption${preview === 'listening' ? ' interim' : ''}`}>
-                <b>YOU</b> {sample.you}
+            {captions.hearing ? (
+              <div className="caption interim">
+                <b>YOU</b>
               </div>
+            ) : (
+              captions.you && (
+                <div className="caption">
+                  <b>YOU</b> {clip(captions.you)}
+                </div>
+              )
             )}
-            {sample.ultron && (
+            {captions.ultron && !captions.hearing && (
               <div className="caption caption-ultron">
-                <b>ULTRON</b> {sample.ultron}
+                <b>ULTRON</b> {clip(captions.ultron)}
               </div>
             )}
-            <div className="core-preview">
-              <span>UI PREVIEW · VOICE NOT CONNECTED YET</span>
-              {VOICE_STATES.map((s) => (
-                <button key={s} type="button" className={s === preview ? 'active' : undefined} onClick={() => setPreview(s)}>
-                  {s}
-                </button>
-              ))}
-            </div>
           </div>
         )}
       </div>

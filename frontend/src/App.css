@@ -512,38 +512,19 @@
   letter-spacing: 0.15em;
   color: var(--text-dim);
 }
+/* Ultron's reply can be long: the captions show its start, the chat has the rest. */
+.caption-ultron {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
 .caption.interim {
   color: var(--text-dim);
   font-style: italic;
 }
 .caption.interim::after { content: '…'; }
 .caption-ultron b { color: var(--accent); }
-
-.core-preview {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: var(--text-dim);
-}
-.core-preview button {
-  font: inherit;
-  padding: 1px 9px;
-  color: var(--text-dim);
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  cursor: pointer;
-}
-.core-preview button.active {
-  color: var(--accent);
-  border-color: var(--accent);
-}
 
 /* The reactor. --level (0..1) is how loud you are, or Ultron is. */
 

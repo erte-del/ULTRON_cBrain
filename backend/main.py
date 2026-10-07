@@ -30,6 +30,7 @@ from PIL import Image, UnidentifiedImageError
 
 from storage import chat_store, image_store, job_store, memory_store, model_store, upload_store, video_store
 from tools import canvas, instagram, mac, spotify
+from voice import stt, tts, vad
 
 log = logging.getLogger("ultron")
 
@@ -241,18 +242,36 @@ async def run_turn(
     device: str,
     here: list[float] | None = None,
     status: str | None = None,
+    voice: bool = False,
 ) -> None:
-    """Answer one user message and stream the reply to the browser."""
+    """Answer one user message and stream the reply to the browser. Something you said
+    (voice) is answered out loud too, sentence by sentence as the reply comes in."""
     await send(events.status("thinking"))
+    sentences: asyncio.Queue[str | None] = asyncio.Queue()
+    mouth = asyncio.create_task(speak(send, sentences)) if voice else None
+    parts = tts.Sentences()
     if here:  # maps and mac_read location start from the phone (or PC), not the Mac
         device += f", at {here[0]:.5f},{here[1]:.5f} (its location)"
     mac.phone_here, mac.phone_status = here, status
     try:
         # aclosing: if sending fails (browser gone), end the brain turn right away.
-        async with aclosing(ultron.handle_text(text, model_override, selected_image=selected_image, files=files, device=device)) as stream:
+        async with aclosing(ultron.handle_text(text, model_override, voice, selected_image, files, device)) as stream:
             async for ev in stream:
                 await send(ev)
+                if mouth and ev["type"] == "assistant.text_delta":
+                    for sentence in parts.feed(ev["text"]):
+                        sentences.put_nowait(sentence)
+                elif mouth and ev["type"] == "tool.started":  # "Let me check." is said before the tool runs
+                    for sentence in parts.flush():
+                        sentences.put_nowait(sentence)
+        if mouth:
+            for sentence in parts.flush():
+                sentences.put_nowait(sentence)
+            sentences.put_nowait(None)
+            await mouth  # the last sentence is on its way before "idle"
     finally:
+        if mouth:
+            mouth.cancel()  # stopped: say no more
         mac.phone_here = mac.phone_status = None
         try:
             await send(events.status("idle"))
@@ -261,6 +280,63 @@ async def run_turn(
 
 
 background: set[asyncio.Task] = set()  # keeps tasks alive until they finish
+
+
+async def speak(send: hub.Sender, sentences: asyncio.Queue) -> None:
+    """Voice mode: turn each sentence of the reply into Ultron's voice for the page, in order.
+    If the voice can't be made, the page reads the text with its own voice instead."""
+    while (text := await sentences.get()) is not None:
+        try:
+            wav = await asyncio.to_thread(tts.speak, text)
+        except Exception as e:
+            log.warning("Text to speech failed (%s); the page will read it out", e)
+            wav = None
+        tts.said(text)
+        await send(events.voice_audio(text, wav))
+
+
+async def hear(send: hub.Sender, audio, replies: set[asyncio.Task]) -> None:
+    """Voice mode: turn one finished utterance into text for the page. The page sends it
+    back as a voice message (user.text), through the same checks as typing.
+    Words said while Ultron is answering stop that reply first (a cough doesn't: it has no
+    words). Claude keeps what it said up to there, so it can pick up from it."""
+    try:
+        text = await asyncio.to_thread(stt.transcribe, audio)
+    except Exception as e:
+        log.exception("Speech to text failed")
+        await send(events.voice_transcript(""))
+        await send(events.error(f"I couldn't turn that into text: {e}"))
+        return
+    if text and tts.is_echo(text):  # Ultron's own voice from the speakers
+        log.info("Ignored an echo of Ultron's voice: %r", text)
+        text = ""
+    if text and replies:
+        for task in replies:
+            task.cancel()
+        await asyncio.wait(list(replies))  # its "idle" goes out before the new message starts
+    await send(events.voice_transcript(text))
+
+
+async def load_voice(send: hub.Sender) -> None:
+    """Load Ultron's voice and the speech model as voice mode starts, so the first thing you
+    say isn't slow. The first time, this downloads them."""
+    if not tts.ready():
+        if not all((tts.FOLDER / f).exists() for f in tts.FILES):
+            await send(events.notice("Downloading Ultron's voice (~350 MB, only this once)."))
+        try:
+            await asyncio.to_thread(tts.load)
+        except Exception as e:
+            log.exception("Loading the voice failed")
+            await send(events.error(f"Ultron's voice didn't load, so the browser's voice is used: {e}"))
+    if stt.ready():
+        return
+    if not config.GROQ_API_KEY:  # with Groq it's only the fallback: load it quietly
+        await send(events.notice(f"Loading the speech model ({config.STT_MODEL}); the first time it downloads."))
+    try:
+        await asyncio.to_thread(stt.load)
+    except Exception as e:
+        log.exception("Loading the speech model failed")
+        await send(events.error(f"The speech model didn't load: {e}"))
 
 
 def settings_event() -> events.Event:
@@ -401,12 +477,30 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     model_override: ModelAlias | None = None
     selected_image: dict | None = None  # the image you clicked on the canvas
     device = device_of(ws)
-    turns: set[asyncio.Task] = set()
+    turns: set[asyncio.Task] = set()  # replies in progress
+    hearing: set[asyncio.Task] = set()  # voice mode: utterances being turned into text
+    ears: vad.Endpointer | None = None  # voice mode: made with the first audio
 
     try:
         while True:
+            raw = await ws.receive()
+            if raw["type"] == "websocket.disconnect":
+                raise WebSocketDisconnect(raw.get("code", 1000))
+            if (audio := raw.get("bytes")) is not None:
+                # Your microphone in voice mode. It keeps listening while Ultron answers,
+                # so you can talk over it (hear() stops the reply).
+                ears = ears or vad.Endpointer()
+                was = ears.speaking
+                said = ears.feed(audio)
+                if ears.speaking != was:
+                    await send(events.voice_speech(ears.speaking))
+                if said is not None:
+                    task = asyncio.create_task(hear(send, said, turns))
+                    hearing.add(task)
+                    task.add_done_callback(hearing.discard)
+                continue
             try:
-                msg = json.loads(await ws.receive_text())
+                msg = json.loads(raw.get("text") or "")
                 kind = msg["type"]
             except (json.JSONDecodeError, KeyError, TypeError):
                 await send(events.error("Invalid message"))
@@ -419,17 +513,26 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 if not text and not files:
                     continue
                 # Run the turn in the background so this loop keeps listening
-                # (later: confirmations, barge-in). The brain runs one turn at a time.
+                # (confirmations, your voice). The brain runs one turn at a time.
                 task = asyncio.create_task(run_turn(send, text, model_override, selected_image, files, device,
-                                                    phone_location(msg.get("location")), phone_status(msg.get("status"))))
+                                                    phone_location(msg.get("location")), phone_status(msg.get("status")),
+                                                    msg.get("voice") is True))
                 turns.add(task)
                 task.add_done_callback(turns.discard)
 
             elif kind == "user.stop":
-                # Same as closing the tab mid-reply: the brain restarts its session and
-                # keeps the conversation, run_turn still reports idle.
+                # Same as closing the tab mid-reply: the brain stops the reply and keeps
+                # the conversation, run_turn still reports idle.
                 for task in turns:
                     task.cancel()
+
+            elif kind == "user.voice":
+                if ears:
+                    ears.reset()  # nothing half-heard carries over
+                if msg.get("on") is True:
+                    task = asyncio.create_task(load_voice(send))
+                    background.add(task)
+                    task.add_done_callback(background.discard)
 
             elif kind == "user.new_chat":
                 # Not tied to this tab: closing it mustn't cut the restart short.
@@ -503,7 +606,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         log.info("Browser disconnected")
     finally:
         hub.disconnect(send)
-        for task in turns:
+        for task in turns | hearing:
             task.cancel()
 
 

@@ -70,12 +70,12 @@ const FLICKER = POINTS.map(() => rnd() * 1000)
 
 interface VoiceOrbProps {
   state: VoiceState
-  level?: number // 0..1, how loud you are (listening) or Ultron is (speaking)
+  level?: { current: number } // 0..1, how loud you are (listening) or Ultron is (speaking); read every frame
   onClick?: () => void
   label: string
 }
 
-export default function VoiceOrb({ state, level = 0, onClick, label }: VoiceOrbProps) {
+export default function VoiceOrb({ state, level, onClick, label }: VoiceOrbProps) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const live = useRef({ state, level })
   live.current = { state, level }
@@ -88,31 +88,42 @@ export default function VoiceOrb({ state, level = 0, onClick, label }: VoiceOrbP
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let angle = 0
     let speed = SPEED.idle
-    let loose = 0 // 0 = tight shape, 1 = speaking: nodes pulse outward and fall back
+    let loose = 0 // 0 = tight shape, 1 = speaking (or you, loudly): nodes pulse outward and fall back
     let last = performance.now()
     let raf = 0
 
     const frame = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1)
       last = now
-      const { state: st, level: lv } = live.current
+      const st = live.current.state
+      const lv = live.current.level?.current ?? 0
       speed += (SPEED[st] - speed) * Math.min(dt * 2, 1) // ease between speeds
       if (!still) angle += speed * dt
-      loose += ((st === 'speaking' && !still ? 1 : 0) - loose) * Math.min(dt * 3, 1)
+      // Speaking loosens the orb fully; while listening it follows how loud you are.
+      const target = still ? 0 : st === 'speaking' ? 1 : st === 'listening' ? Math.min(1, lv * 3) : 0
+      loose += (target - loose) * Math.min(dt * 3, 1)
       const beat = 0.5 + 0.5 * Math.sin(now / 360) // nodes go out and come back
       const slow = 0.5 + 0.5 * Math.sin(now / 800) // the whole orb swells slower and less
       const spread = loose * beat * (0.22 + 0.3 * lv)
 
-      const size = el.clientWidth
+      // Drawn at the canvas's real size, so the orb stays round when the layout makes the
+      // space shorter than it is wide (it shrinks instead of being squashed).
+      const w = el.clientWidth
+      const h = el.clientHeight
+      const size = Math.min(w, h)
       const dpr = window.devicePixelRatio || 1
-      if (el.width !== size * dpr) el.width = el.height = size * dpr
+      if (el.width !== Math.round(w * dpr) || el.height !== Math.round(h * dpr)) {
+        el.width = Math.round(w * dpr)
+        el.height = Math.round(h * dpr)
+      }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      ctx.clearRect(0, 0, size, size)
+      ctx.clearRect(0, 0, w, h)
 
       const pulse = 1 + loose * (0.012 * slow + 0.02 * lv)
       const breathe = 1 + 0.015 * Math.sin(now / 1500)
       const R = size * 0.3 * pulse * breathe
-      const cx = size / 2
+      const cx = w / 2
+      const cy = h / 2
       const tilt = 0.35
       const [ca, sa, ct, stl] = [Math.cos(angle), Math.sin(angle), Math.cos(tilt), Math.sin(tilt)]
       const t = (now / 1000) * (0.4 + speed) // drift quickens when thinking
@@ -127,7 +138,7 @@ export default function VoiceOrb({ state, level = 0, onClick, label }: VoiceOrbP
         const z1 = -x * sa + z * ca
         const y1 = y * ct - z1 * stl
         const z2 = y * stl + z1 * ct
-        return [cx + x1 * R, cx + y1 * R, z2] as const // z2: -1 far .. 1 near
+        return [cx + x1 * R, cy + y1 * R, z2] as const // z2: -1 far .. 1 near
       })
 
       ctx.lineWidth = 0.7

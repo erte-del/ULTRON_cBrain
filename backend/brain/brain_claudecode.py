@@ -50,6 +50,9 @@ CONNECTOR_WAIT_S = 15
 # Ultron's own server can show up before the claude.ai ones; give those this long to appear
 # (their list usually arrives after ~5 s).
 CONNECTOR_LIST_WAIT_S = 10
+# A reply you stop (or talk over) is interrupted in place; if Claude Code hasn't wound it
+# down within this time, it is restarted instead.
+STOP_WAIT_S = 3
 # A session that still has no claude.ai connectors looks for them again this often.
 CONNECTOR_RETRY_S = 300
 
@@ -222,7 +225,7 @@ class ClaudeCodeBrain:
             raise NotImplementedError("Image input arrives in Phase 4c")
 
         async with self._lock:
-            finished = False
+            finished = stopped = False
             try:
                 if model != self._model and self.provider == "omniroute":
                     # Switching model in a running Claude Code asks the gateway to confirm
@@ -312,13 +315,35 @@ class ClaudeCodeBrain:
             except Exception as e:  # keep the app alive; report to the UI
                 log.exception("Brain turn failed")
                 yield Error(f"{type(e).__name__}: {e}")
+            except (asyncio.CancelledError, GeneratorExit):
+                # Stopped by you (stop button, talking over it, tab closed): Claude Code is
+                # fine, so stop the reply in place; restarting it would take seconds.
+                stopped = await self._stop_reply()
+                raise
             finally:
                 self.last_active = time.time()
-                # If the turn was cut short (error, timeout, browser closed mid-reply),
+                # If the turn was cut short (error, timeout, a stop that didn't take),
                 # Claude Code may still be sending the old reply. Restart it so the next
                 # turn starts clean; `resume` keeps the conversation.
-                if not finished:
+                if not finished and not stopped:
                     await self.close()
+
+    async def _stop_reply(self) -> bool:
+        """Interrupt the reply in progress and wait for Claude Code to end it, so the session
+        can carry on. The conversation keeps what was said up to the interruption."""
+        client = self._client
+        if client is None:
+            return False
+        try:
+            async with asyncio.timeout(STOP_WAIT_S):
+                await client.interrupt()
+                async for _ in client.receive_response():  # ends with the turn's result
+                    pass
+            log.info("Reply interrupted")
+            return True
+        except Exception:
+            log.info("Interrupting the reply didn't work; restarting Claude Code", exc_info=True)
+            return False
 
     async def new_conversation(self, provider: str | None = None, resume: str | None = None) -> None:
         """Forget the conversation: the next message starts a fresh Claude Code session,

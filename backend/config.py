@@ -61,6 +61,16 @@ WAN_DIR = Path(os.getenv("JARVIS_WAN_DIR") or STORAGE_DIR / "wan")
 # Local image generation (FLUX.2 Klein through mflux): scripts/setup_images.sh.
 FLUX_DIR = Path(os.getenv("JARVIS_FLUX_DIR") or STORAGE_DIR / "flux")
 
+# Voice mode: the faster-whisper model that turns your speech into text (voice/stt.py).
+# small.en is fast and English only; "small" or "large-v3-turbo" also hear other languages.
+STT_MODEL = os.getenv("JARVIS_STT_MODEL", "").strip() or "small.en"
+# With a Groq key (console.groq.com, free), your speech goes to Groq's Whisper large-v3-turbo
+# instead: more accurate and faster. The local model above stays the fallback.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+# Ultron's voice when it answers you in voice mode (voice/tts.py): a Kokoro voice, the same
+# ones as Reels. b = British, a = American; m = man, f = woman. bm_lewis: low and steady.
+VOICE = os.getenv("JARVIS_VOICE", "").strip() or "bm_lewis"
+
 # How hard Claude thinks before answering: low | medium | high | xhigh | max.
 # Thinking was the biggest single use of the Pro limit, so the default is medium.
 EFFORT = os.getenv("JARVIS_EFFORT", "medium").strip().lower()

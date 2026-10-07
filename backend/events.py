@@ -3,7 +3,9 @@
 Every message is a JSON object with a "type" field.
 
 Client -> server:
-    user.text        {text}
+    user.text        {text, voice?}      voice = true when you said it (voice mode)
+    user.voice       {on}                voice mode on (loads the speech model) or off
+    (binary frame)   your microphone in voice mode: 16 kHz, 16-bit mono PCM (voice/vad.py)
     user.confirm     {id, approved}       your answer to a confirm.request
     user.select_image {id, version} | {id: null}   you clicked an image on the canvas
     settings.update  {model_override: "haiku" | "sonnet" | "opus" | null}
@@ -50,10 +52,15 @@ Server -> client:
                          kind "video": data = {video_id, status, progress, url, ...} (video_store)
     terminal.open        {claude}  open a new terminal tab (a fresh shell at /ws/terminal);
                          claude = start Claude Code in it
-
-Later phases add user.audio_*, 3D objects, ...
+    voice.speech         {active}         voice mode: you started (true) or stopped (false) talking
+    voice.transcript     {text}           what you said ("" = nothing understood); the page
+                                          sends it back as user.text {voice: true}
+    voice.audio          {text, audio}    one sentence of a reply to something you said, to play
+                                          in order; audio = base64 WAV, or null: the page says
+                                          text with its own voice
 """
 
+import base64
 from typing import Any
 
 from brain.base import BrainEvent, Done, Error, TextDelta, ToolResult, ToolStart, UIEvent
@@ -154,6 +161,18 @@ def notification(title: str, text: str, when: float) -> Event:
 
 def terminal_open(claude: bool) -> Event:
     return {"type": "terminal.open", "claude": claude}
+
+
+def voice_speech(active: bool) -> Event:
+    return {"type": "voice.speech", "active": active}
+
+
+def voice_transcript(text: str) -> Event:
+    return {"type": "voice.transcript", "text": text}
+
+
+def voice_audio(text: str, wav: bytes | None) -> Event:
+    return {"type": "voice.audio", "text": text, "audio": base64.b64encode(wav).decode() if wav else None}
 
 
 def canvas_card(card_id: str, kind: str, title: str, data: dict[str, Any]) -> Event:

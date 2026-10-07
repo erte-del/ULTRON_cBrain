@@ -1,6 +1,7 @@
 // WebSocket client + event handling. Mirrors backend/events.py.
 
 import { useCallback, useEffect, useReducer, useRef } from 'react'
+import { speaker } from './speaker'
 
 // The dev page (npm run dev, port 5173) talks to the backend on port 8000. The built page
 // is served by the backend itself, so it uses the address you opened: 127.0.0.1 on this
@@ -106,12 +107,16 @@ export type ServerEvent =
   | { type: 'memory.list'; memories: Memory[]; categories: string[] }
   | { type: 'jobs.list'; jobs: Job[]; runs: JobRun[] }
   | { type: 'notification'; title: string; text: string; time: number }
+  | { type: 'voice.speech'; active: boolean } // voice mode: you started / stopped talking
+  | { type: 'voice.transcript'; text: string } // what you said; '' = nothing understood
+  | { type: 'voice.audio'; text: string; audio: string | null } // a sentence to say: base64 WAV, or null: the browser says it
   | ({ type: 'settings.state' } & BrainSettings)
   | ({ type: 'usage.update' } & UsageSnapshot)
 
 // Browser -> server
 export type ClientEvent =
-  | { type: 'user.text'; text: string; files?: string[]; location?: [number, number]; status?: PhoneStatus }
+  | { type: 'user.text'; text: string; files?: string[]; location?: [number, number]; status?: PhoneStatus; voice?: boolean }
+  | { type: 'user.voice'; on: boolean } // voice mode on or off (the mic itself goes as binary frames)
   | { type: 'user.confirm'; id: string; approved: boolean }
   | { type: 'user.select_image'; id: string | null; version?: number }
   | { type: 'settings.update'; model_override?: ModelAlias | null; provider?: Provider; gateway_model?: string }
@@ -285,6 +290,11 @@ export class UltronSocket {
     return true
   }
 
+  // Microphone audio in voice mode (mic.ts): 16 kHz, 16-bit mono PCM.
+  sendAudio(pcm: ArrayBuffer) {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(pcm)
+  }
+
   close() {
     this.stopped = true
     window.clearTimeout(this.retryTimer)
@@ -336,6 +346,7 @@ interface ChatState {
   memoryCategories: string[]
   jobs: Job[]
   jobRuns: JobRun[]
+  hearing: boolean // voice mode: you're talking right now
   log: LogLine[]
 }
 
@@ -489,7 +500,7 @@ function baseReducer(state: ChatState, action: Action): ChatState {
         }
         return m
       })
-      return { ...state, connection: 'closed', busy: false, activeTool: null, retry: null, messages }
+      return { ...state, connection: 'closed', busy: false, activeTool: null, retry: null, hearing: false, messages }
     }
 
     case 'server': {
@@ -580,6 +591,10 @@ function baseReducer(state: ChatState, action: Action): ChatState {
         }
         case 'chats.list':
           return { ...state, savedChats: ev.chats, maxSavedChats: ev.max }
+        case 'voice.speech':
+          return { ...state, hearing: ev.active }
+        case 'voice.transcript':
+          return { ...state, hearing: false }
         case 'memory.list':
           return { ...state, memories: ev.memories, memoryCategories: ev.categories }
         case 'jobs.list':
@@ -668,10 +683,12 @@ const initialState: ChatState = {
   memoryCategories: [],
   jobs: [],
   jobRuns: [],
+  hearing: false,
   log: [],
 }
 
-export function useUltron() {
+// heard: what to do with what you said in voice mode (App sends it on, like typing).
+export function useUltron(heard?: { current: (text: string) => void }) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const socketRef = useRef<UltronSocket | null>(null)
   const overrideRef = useRef<ModelAlias | null>(null)
@@ -694,7 +711,17 @@ export function useUltron() {
 
   useEffect(() => {
     const socket = new UltronSocket()
-    socket.onEvent = (ev) => dispatch({ kind: 'server', ev })
+    socket.onEvent = (ev) => {
+      dispatch({ kind: 'server', ev })
+      // Voice mode: Ultron's voice. Talking over it turns it down, and if you said
+      // words (not a cough, not its own echo) it stops and you're heard.
+      if (ev.type === 'voice.audio') speaker.play(ev.text, ev.audio)
+      if (ev.type === 'voice.speech') speaker.duck(ev.active)
+      if (ev.type === 'voice.transcript' && ev.text) {
+        speaker.stop()
+        heard?.current(ev.text)
+      }
+    }
     socket.onConnection = (s) => dispatch({ kind: 'connection', state: s })
     // Settings live per connection on the server, so re-send them after a reconnect.
     socket.onOpen = () => {
@@ -707,7 +734,7 @@ export function useUltron() {
     return () => socket.close()
   }, [])
 
-  const sendText = useCallback((text: string, files: Attachment[] = []) => {
+  const sendText = useCallback((text: string, files: Attachment[] = [], voice = false) => {
     const trimmed = text.trim()
     if (!trimmed && files.length === 0) return false
     const nav = navigator as PhoneNavigator
@@ -718,11 +745,17 @@ export function useUltron() {
       dark: matchMedia('(prefers-color-scheme: dark)').matches,
     } : undefined
     if (!socketRef.current?.send({
-      type: 'user.text', text: trimmed, files: files.map((f) => f.id), location: hereRef.current, status,
+      type: 'user.text', text: trimmed, files: files.map((f) => f.id), location: hereRef.current, status, voice: voice || undefined,
     })) return false
     dispatch({ kind: 'user', text: trimmed, files })
     return true
   }, [])
+
+  const voiceMode = useCallback((on: boolean) => {
+    socketRef.current?.send({ type: 'user.voice', on })
+  }, [])
+
+  const sendAudio = useCallback((pcm: ArrayBuffer) => socketRef.current?.sendAudio(pcm), [])
 
   const stop = useCallback(() => {
     socketRef.current?.send({ type: 'user.stop' })
@@ -801,5 +834,5 @@ export function useUltron() {
   const setStageTab = useCallback((tab: string) => dispatch({ kind: 'tab', tab }), [])
   const closeTerminal = useCallback((id: string) => dispatch({ kind: 'closeTerminal', id }), [])
 
-  return { ...state, sendText, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
+  return { ...state, sendText, voiceMode, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
 }

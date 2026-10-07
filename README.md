@@ -20,6 +20,19 @@ only look things up.
 
 - **Chat.** Replies stream in word by word. Each reply shows a badge with the model
   that answered and why it was picked (see [The brains](#the-brains)).
+- **Talk to it.** The mic button (or a click on the orb) starts voice mode: Ultron listens,
+  hears when you've stopped talking, writes down what you said and answers out loud, sentence
+  by sentence while it's still writing (about 2 s to the first word). With `GROQ_API_KEY`
+  set, your speech is written down by Groq's Whisper (more accurate, ~0.3 s; the audio goes
+  to Groq); without it, or if Groq fails, by faster-whisper on this computer
+  (`JARVIS_STT_MODEL`, default `small.en`, ~250 MB, downloads the first time). The voice is
+  Kokoro's `bm_lewis` on this computer (`JARVIS_VOICE`, ~350 MB, downloads the first time);
+  code, tables and links aren't read out.
+  You can talk over it: what you say stops the reply and Ultron carries on from where it
+  was cut off; "stop" or "never mind" on its own just stops it, and so does a click on the
+  orb. Its own voice coming back through the mic is recognised and ignored.
+  Works in Chrome on this Mac and on your phone through Tailscale; Esc or "back to typing"
+  ends it.
 - **Consult an expert.** For hard problems (multi-step reasoning, tricky maths, complex
   code, long writing) Sonnet hands the task to Opus with `ask_expert`. Long answers go
   straight onto the canvas.
@@ -355,6 +368,6 @@ continue it, ask for your homework, play a song, and open the page on your phone
   - [x] Spotify
   - [x] OmniRoute as a second brain
   - [x] file uploads
-- [ ] Phase 5: voice (the mic button and voice mode are only the interface so far)
+- [ ] Phase 5: voice: listening (5b) and speaking (5c) work; the voice flow (5d) is next
 - [x] Phase 6: memory (`remember` / `recall` / `forget`, and the memory button in the top bar)
 - [ ] Phase 7: polish (wake word, barge-in)

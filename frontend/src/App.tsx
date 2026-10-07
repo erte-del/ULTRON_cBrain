@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import './App.css'
 import Chat from './components/Chat'
 import Panel from './components/Panel'
@@ -9,6 +9,8 @@ import TopBar from './components/TopBar'
 import { screenOverlaySupported, useScreenOverlay } from './screen/useScreenOverlay'
 import { useSwipePanes } from './useSwipePanes'
 import { morph } from './morph'
+import { startMic } from './mic'
+import { speaker } from './speaker'
 import { useUltron } from './ws'
 
 const PANES = [['chat', 'CHAT'], ['stage', 'CANVAS'], ['status', 'STATUS']] as const
@@ -17,6 +19,10 @@ const PANE_IDS = PANES.map(([id]) => id)
 // In voice mode, "go back to typing", "switch to texting", "text mode"... ends voice mode.
 const BACK_TO_TYPING = /\b(?:(?:back|switch|go|change)\s+(?:back\s+)?to\s+(?:typing|texting|text|keyboard)|(?:typing|texting|text)\s+mode)\b/i
 
+// In voice mode, talking over Ultron stops its reply (the server does that). If all you
+// said was "stop", "wait", "never mind"..., that's all: it isn't sent as a message.
+const JUST_STOP = /^\W*(?:(?:ok(?:ay)?|ultron)\W+)?(?:stop|wait|hold on|never ?mind|shut up|enough|that'?s enough|quiet|be quiet|cancel)(?:\W+(?:it|that|please|ultron|stop|wait))*\W*$/i
+
 // "look at my screen" on its own (not a question about screens) opens the screen overlay.
 const LOOK_AT_SCREEN = /^\s*(?:ultron\W+)?(?:please\s+)?(?:(?:can|could) you\s+)?(?:look at|watch|see)\s+(?:my|the)\s+screen\W*$/i
 
@@ -24,9 +30,12 @@ const LOOK_AT_SCREEN = /^\s*(?:ultron\W+)?(?:please\s+)?(?:(?:can|could) you\s+)
 // A phone shows one of the three at a time (App.css): drag sideways (useSwipePanes), or
 // use the bar at the bottom.
 export default function App() {
-  const ultron = useUltron()
+  const heard = useRef((_text: string) => {}) // what you said in voice mode: set below
+  const ultron = useUltron(heard)
   const [pane, setPane] = useState<(typeof PANES)[number][0]>('chat')
-  const [voiceOn, setVoiceOn] = useState(false) // UI only for now (Phase 5a)
+  const [voiceOn, setVoiceOn] = useState(false)
+  const [micError, setMicError] = useState('')
+  const level = useRef(0) // how loud you are (0..1), for the orb
   // Each switch picks one of three animations at random (morph.ts): the fold (3) is 6
   // points likelier than each of the others, 37.3% against 31.3% each.
   const setVoice = useCallback((on: boolean) => {
@@ -45,7 +54,7 @@ export default function App() {
   const { ref: gridRef, go, touch } = useSwipePanes(PANE_IDS, pane, setPane)
   const screen = useScreenOverlay(ultron.sendText)
   const canWatch = screenOverlaySupported()
-  const send = useCallback((text: string, files: Parameters<typeof ultron.sendText>[1]) => {
+  const send = useCallback((text: string, files: Parameters<typeof ultron.sendText>[1] = [], voice = false) => {
     if (voiceOn && BACK_TO_TYPING.test(text) && text.split(/\s+/).length <= 8) {
       setVoice(false)
       return true
@@ -54,8 +63,53 @@ export default function App() {
       void screen.open() // this key press is the click the browser wants
       return true
     }
-    return ultron.sendText(text, files)
+    return ultron.sendText(text, files, voice)
   }, [canWatch, screen, ultron, voiceOn, setVoice])
+  heard.current = (text) => !JUST_STOP.test(text) && send(text, [], true)
+
+  // Voice mode: the mic streams to the server, which hears when you've finished and sends
+  // back the words (voice.transcript -> heard).
+  const { voiceMode, sendAudio } = ultron
+  useEffect(() => {
+    if (!voiceOn) return
+    let stop: (() => void) | undefined
+    let ended = false
+    setMicError('')
+    speaker.unlock()
+    voiceMode(true)
+    startMic((pcm, loud) => {
+      level.current = loud
+      sendAudio(pcm)
+    })
+      .then((s) => (ended ? s() : (stop = s)))
+      .catch((e: Error) => {
+        if (ended) return
+        setMicError(`Microphone: ${e.message}`)
+        setVoice(false)
+      })
+    return () => {
+      ended = true
+      stop?.()
+      speaker.stop()
+      voiceMode(false)
+      level.current = 0
+    }
+  }, [voiceOn, voiceMode, sendAudio, setVoice])
+  const lastText = (role: 'user' | 'assistant') => ultron.messages.findLast((m) => m.role === role)?.text
+  const speaking = useSyncExternalStore(speaker.subscribe, () => speaker.speaking)
+  // The orb follows Ultron's voice while it speaks, yours otherwise.
+  const orbLevel = useMemo(() => ({ get current() { return speaker.speaking ? speaker.level : level.current } }), [])
+  const { stop: stopReply } = ultron
+  const hush = useCallback(() => {
+    speaker.stop()
+    stopReply()
+  }, [stopReply])
+  const voice = {
+    captions: { hearing: ultron.hearing, you: lastText('user'), ultron: lastText('assistant') },
+    level: orbLevel,
+    speaking,
+    onStop: hush,
+  }
 
   return (
     <div className="hud">
@@ -86,6 +140,9 @@ export default function App() {
         onScreen={() => (screen.win ? screen.close() : void screen.open())}
         onTyping={voiceOn ? () => setVoice(false) : undefined}
       />
+      {micError && (
+        <div className="screen-toast" role="alert" onClick={() => setMicError('')}>{micError}</div>
+      )}
       {screen.error && !screen.win && (
         <div className="screen-toast" role="alert" onClick={() => screen.open()}>{screen.error}</div>
       )}
@@ -134,6 +191,7 @@ export default function App() {
           connection={ultron.connection}
           voiceOn={voiceOn}
           onVoice={setVoice}
+          {...voice}
         />
 
         <div className="hud-right">
@@ -148,7 +206,7 @@ export default function App() {
           <TerminalPanel busy={ultron.busy} activeTool={ultron.activeTool} connection={ultron.connection} />
           {voiceOn && tab !== 'core' && (
             <div className="voice-core">
-              <Core busy={ultron.busy} activeTool={ultron.activeTool} connection={ultron.connection} voiceOn onVoice={setVoice} />
+              <Core busy={ultron.busy} activeTool={ultron.activeTool} connection={ultron.connection} voiceOn onVoice={setVoice} {...voice} />
             </div>
           )}
         </div>
