@@ -8,6 +8,7 @@ import asyncio
 import io
 import json
 import logging
+import re
 from contextlib import aclosing, asynccontextmanager
 
 import uvicorn
@@ -250,6 +251,16 @@ async def run_turn(
     sentences: asyncio.Queue[str | None] = asyncio.Queue()
     mouth = asyncio.create_task(speak(send, sentences)) if voice else None
     parts = tts.Sentences()
+
+    async def ask_aloud(ev: events.Event) -> None:
+        """A confirmation card during a spoken reply is asked out loud too."""
+        if ev["type"] == "confirm.request":
+            for sentence in parts.flush():
+                sentences.put_nowait(sentence)
+            sentences.put_nowait(f"{ev['title'].replace(':', ',')}. Shall I go ahead?")
+
+    if mouth:
+        hub.connect(ask_aloud)
     if here:  # maps and mac_read location start from the phone (or PC), not the Mac
         device += f", at {here[0]:.5f},{here[1]:.5f} (its location)"
     mac.phone_here, mac.phone_status = here, status
@@ -271,6 +282,7 @@ async def run_turn(
             await mouth  # the last sentence is on its way before "idle"
     finally:
         if mouth:
+            hub.disconnect(ask_aloud)
             mouth.cancel()  # stopped: say no more
         mac.phone_here = mac.phone_status = None
         try:
@@ -280,6 +292,23 @@ async def run_turn(
 
 
 background: set[asyncio.Task] = set()  # keeps tasks alive until they finish
+
+
+_YES = re.compile(r"(?:yes|yeah|yep|yup|sure|ok(?:ay)?|do it|go ahead|go for it|send it|confirm(?:ed)?|"
+                  r"approved?|please do|of course|absolutely|correct)\b", re.I)
+_NO = re.compile(r"(?:no|nope|nah|don'?t|do not|cancel|stop|never ?mind|deny|not now|leave it)\b", re.I)
+
+
+def yes_or_no(text: str) -> bool | None:
+    """True / False when what you said is a plain yes or no ("Yes, send it." / "No, don't."),
+    None for anything longer: that's a new message (it stops the reply, and the card with it)."""
+    words = re.sub(r"[^\w\s']", " ", text).split()
+    if not words or len(words) > 5:
+        return None
+    start = " ".join(words)
+    if _NO.match(start):
+        return False
+    return True if _YES.match(start) else None
 
 
 async def speak(send: hub.Sender, sentences: asyncio.Queue) -> None:
@@ -295,26 +324,40 @@ async def speak(send: hub.Sender, sentences: asyncio.Queue) -> None:
         await send(events.voice_audio(text, wav))
 
 
-async def hear(send: hub.Sender, audio, replies: set[asyncio.Task]) -> None:
+async def hear(send: hub.Sender, audio, replies: set[asyncio.Task], wake: bool = False) -> None:
     """Voice mode: turn one finished utterance into text for the page. The page sends it
     back as a voice message (user.text), through the same checks as typing.
+    Wake word mode (wake): only speech starting with "Hey Ultron" counts; the page then
+    starts voice mode with what followed.
     Words said while Ultron is answering stop that reply first (a cough doesn't: it has no
     words). Claude keeps what it said up to there, so it can pick up from it."""
     try:
-        text = await asyncio.to_thread(stt.transcribe, audio)
+        if wake:
+            woken = await asyncio.to_thread(stt.woken, audio)
+            if woken is None:
+                return  # not for Ultron
+            text = woken
+        else:
+            text = await asyncio.to_thread(stt.transcribe, audio)
     except Exception as e:
         log.exception("Speech to text failed")
+        if wake:
+            return
         await send(events.voice_transcript(""))
         await send(events.error(f"I couldn't turn that into text: {e}"))
         return
     if text and tts.is_echo(text):  # Ultron's own voice from the speakers
         log.info("Ignored an echo of Ultron's voice: %r", text)
         text = ""
+    # "Yes" / "no" while a confirmation card waits answers it (the reply carries on).
+    if text and (waiting := gate.pending_requests()) and (answer := yes_or_no(text)) is not None:
+        gate.resolve(waiting[-1]["id"], answer)
+        text = ""
     if text and replies:
         for task in replies:
             task.cancel()
         await asyncio.wait(list(replies))  # its "idle" goes out before the new message starts
-    await send(events.voice_transcript(text))
+    await send(events.voice_wake(text) if wake else events.voice_transcript(text))
 
 
 async def load_voice(send: hub.Sender) -> None:
@@ -480,6 +523,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     turns: set[asyncio.Task] = set()  # replies in progress
     hearing: set[asyncio.Task] = set()  # voice mode: utterances being turned into text
     ears: vad.Endpointer | None = None  # voice mode: made with the first audio
+    listening = "off"  # "voice", "wake" (only for "Hey Ultron") or "off": see user.voice
 
     try:
         while True:
@@ -489,13 +533,15 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             if (audio := raw.get("bytes")) is not None:
                 # Your microphone in voice mode. It keeps listening while Ultron answers,
                 # so you can talk over it (hear() stops the reply).
+                if listening == "off":
+                    continue
                 ears = ears or vad.Endpointer()
                 was = ears.speaking
                 said = ears.feed(audio)
                 if ears.speaking != was:
                     await send(events.voice_speech(ears.speaking))
                 if said is not None:
-                    task = asyncio.create_task(hear(send, said, turns))
+                    task = asyncio.create_task(hear(send, said, turns, wake=listening == "wake"))
                     hearing.add(task)
                     task.add_done_callback(hearing.discard)
                 continue
@@ -529,7 +575,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             elif kind == "user.voice":
                 if ears:
                     ears.reset()  # nothing half-heard carries over
-                if msg.get("on") is True:
+                listening = msg.get("mode") if msg.get("mode") in ("voice", "wake") else "off"
+                if listening != "off":
                     task = asyncio.create_task(load_voice(send))
                     background.add(task)
                     task.add_done_callback(background.discard)

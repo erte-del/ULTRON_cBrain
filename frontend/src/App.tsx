@@ -11,7 +11,7 @@ import { useSwipePanes } from './useSwipePanes'
 import { morph } from './morph'
 import { startMic } from './mic'
 import { speaker } from './speaker'
-import { useUltron } from './ws'
+import { type ListenMode, useUltron } from './ws'
 
 const PANES = [['chat', 'CHAT'], ['stage', 'CANVAS'], ['status', 'STATUS']] as const
 const PANE_IDS = PANES.map(([id]) => id)
@@ -23,6 +23,12 @@ const BACK_TO_TYPING = /\b(?:(?:back|switch|go|change)\s+(?:back\s+)?to\s+(?:typ
 // said was "stop", "wait", "never mind"..., that's all: it isn't sent as a message.
 const JUST_STOP = /^\W*(?:(?:ok(?:ay)?|ultron)\W+)?(?:stop|wait|hold on|never ?mind|shut up|enough|that'?s enough|quiet|be quiet|cancel)(?:\W+(?:it|that|please|ultron|stop|wait))*\W*$/i
 
+// "Hey Ultron": while it's on, the mic listens in the background and voice mode starts when
+// you say it (the server checks on this computer; nothing else leaves it). Remembered per
+// browser. Voice mode started this way goes back to waiting after this long in silence.
+const WAKE_KEY = 'ultron.wake'
+const VOICE_IDLE_MS = 20_000
+
 // "look at my screen" on its own (not a question about screens) opens the screen overlay.
 const LOOK_AT_SCREEN = /^\s*(?:ultron\W+)?(?:please\s+)?(?:(?:can|could) you\s+)?(?:look at|watch|see)\s+(?:my|the)\s+screen\W*$/i
 
@@ -30,10 +36,24 @@ const LOOK_AT_SCREEN = /^\s*(?:ultron\W+)?(?:please\s+)?(?:(?:can|could) you\s+)
 // A phone shows one of the three at a time (App.css): drag sideways (useSwipePanes), or
 // use the bar at the bottom.
 export default function App() {
-  const heard = useRef((_text: string) => {}) // what you said in voice mode: set below
+  const heard = useRef((_text: string, _woke?: boolean) => {}) // what you said in voice mode: set below
   const ultron = useUltron(heard)
   const [pane, setPane] = useState<(typeof PANES)[number][0]>('chat')
   const [voiceOn, setVoiceOn] = useState(false)
+  const [wakeOn, setWakeOn] = useState(() => {
+    try {
+      return localStorage.getItem(WAKE_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem(WAKE_KEY, wakeOn ? '1' : '0')
+    } catch {
+      // private window: just not remembered
+    }
+  }, [wakeOn])
   const [micError, setMicError] = useState('')
   const level = useRef(0) // how loud you are (0..1), for the orb
   // Each switch picks one of three animations at random (morph.ts): the fold (3) is 6
@@ -65,18 +85,26 @@ export default function App() {
     }
     return ultron.sendText(text, files, voice)
   }, [canWatch, screen, ultron, voiceOn, setVoice])
-  heard.current = (text) => !JUST_STOP.test(text) && send(text, [], true)
+  heard.current = (text, woke = false) => {
+    if (woke) {
+      speaker.stop()
+      speaker.chime()
+      if (!voiceOn) setVoice(true)
+    }
+    if (text && !JUST_STOP.test(text)) send(text, [], true)
+  }
 
-  // Voice mode: the mic streams to the server, which hears when you've finished and sends
-  // back the words (voice.transcript -> heard).
+  // The mic streams to the server, which hears when you've finished and sends back the
+  // words (voice.transcript / voice.wake -> heard). On in voice mode and while waiting for
+  // "Hey Ultron"; going from one to the other keeps it running.
   const { voiceMode, sendAudio } = ultron
+  const mode: ListenMode = voiceOn ? 'voice' : wakeOn ? 'wake' : 'off'
+  const micOn = mode !== 'off'
   useEffect(() => {
-    if (!voiceOn) return
+    if (!micOn) return
     let stop: (() => void) | undefined
     let ended = false
     setMicError('')
-    speaker.unlock()
-    voiceMode(true)
     startMic((pcm, loud) => {
       level.current = loud
       sendAudio(pcm)
@@ -86,17 +114,31 @@ export default function App() {
         if (ended) return
         setMicError(`Microphone: ${e.message}`)
         setVoice(false)
+        setWakeOn(false)
       })
     return () => {
       ended = true
       stop?.()
-      speaker.stop()
-      voiceMode(false)
       level.current = 0
     }
-  }, [voiceOn, voiceMode, sendAudio, setVoice])
+  }, [micOn, sendAudio, setVoice])
+  const connected = ultron.connection === 'open'
+  useEffect(() => {
+    if (connected) voiceMode(mode) // again after a reconnect: the server forgets
+  }, [mode, connected, voiceMode])
+  useEffect(() => {
+    if (voiceOn) speaker.unlock()
+    else speaker.stop()
+  }, [voiceOn])
   const lastText = (role: 'user' | 'assistant') => ultron.messages.findLast((m) => m.role === role)?.text
   const speaking = useSyncExternalStore(speaker.subscribe, () => speaker.speaking)
+  // With "Hey Ultron" on, a quiet voice mode goes back to waiting for it.
+  const idle = voiceOn && wakeOn && !ultron.busy && !ultron.hearing && !speaking
+  useEffect(() => {
+    if (!idle) return
+    const t = window.setTimeout(() => setVoice(false), VOICE_IDLE_MS)
+    return () => window.clearTimeout(t)
+  }, [idle, setVoice])
   // The orb follows Ultron's voice while it speaks, yours otherwise.
   const orbLevel = useMemo(() => ({ get current() { return speaker.speaking ? speaker.level : level.current } }), [])
   const { stop: stopReply } = ultron
@@ -105,10 +147,17 @@ export default function App() {
     stopReply()
   }, [stopReply])
   const voice = {
-    captions: { hearing: ultron.hearing, you: lastText('user'), ultron: lastText('assistant') },
+    captions: {
+      hearing: ultron.hearing,
+      you: lastText('user'),
+      ultron: lastText('assistant'),
+      asking: ultron.messages.findLast((m) => m.confirm?.status === 'pending')?.confirm,
+    },
     level: orbLevel,
     speaking,
     onStop: hush,
+    wakeOn,
+    onWake: () => setWakeOn((on) => !on),
   }
 
   return (

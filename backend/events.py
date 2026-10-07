@@ -4,7 +4,8 @@ Every message is a JSON object with a "type" field.
 
 Client -> server:
     user.text        {text, voice?}      voice = true when you said it (voice mode)
-    user.voice       {on}                voice mode on (loads the speech model) or off
+    user.voice       {mode}              "voice" (voice mode), "wake" (listening only for
+                                         "Hey Ultron") or "off"; on loads the voice models
     (binary frame)   your microphone in voice mode: 16 kHz, 16-bit mono PCM (voice/vad.py)
     user.confirm     {id, approved}       your answer to a confirm.request
     user.select_image {id, version} | {id: null}   you clicked an image on the canvas
@@ -55,6 +56,8 @@ Server -> client:
     voice.speech         {active}         voice mode: you started (true) or stopped (false) talking
     voice.transcript     {text}           what you said ("" = nothing understood); the page
                                           sends it back as user.text {voice: true}
+    voice.wake           {text}           wake word mode: you said "Hey Ultron" (text = what
+                                          followed, "" if nothing): start voice mode
     voice.audio          {text, audio}    one sentence of a reply to something you said, to play
                                           in order; audio = base64 WAV, or null: the page says
                                           text with its own voice
@@ -169,6 +172,10 @@ def voice_speech(active: bool) -> Event:
 
 def voice_transcript(text: str) -> Event:
     return {"type": "voice.transcript", "text": text}
+
+
+def voice_wake(text: str) -> Event:
+    return {"type": "voice.wake", "text": text}
 
 
 def voice_audio(text: str, wav: bytes | None) -> Event:

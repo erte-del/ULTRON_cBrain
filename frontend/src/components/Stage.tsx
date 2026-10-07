@@ -3,7 +3,7 @@
 
 import { lazy, Suspense } from 'react'
 import { toolLabel } from '../labels'
-import type { ActiveTool, CanvasCard, ConnectionState, ImageSelection, TerminalTab } from '../ws'
+import type { ActiveTool, CanvasCard, Confirmation, ConnectionState, ImageSelection, TerminalTab } from '../ws'
 import Canvas from './Canvas'
 import VoiceOrb, { type VoiceState } from './VoiceOrb'
 
@@ -23,6 +23,7 @@ export interface Captions {
   hearing: boolean
   you?: string
   ultron?: string
+  asking?: Confirmation // an action waiting for your OK: answer it out loud
 }
 
 const clip = (text: string, n = 220) => (text.length > n ? text.slice(0, n - 1) + '…' : text)
@@ -45,6 +46,8 @@ interface StageProps {
   level: { current: number } // how loud you are, or Ultron is while speaking: 0..1
   speaking: boolean // Ultron's voice is playing
   onStop: () => void // stops the reply and the voice
+  wakeOn: boolean // listening for "Hey Ultron"
+  onWake: () => void
 }
 
 function Waveform({ state }: { state: VoiceState }) {
@@ -57,7 +60,7 @@ function Waveform({ state }: { state: VoiceState }) {
   )
 }
 
-export function Core({ busy, activeTool, connection, voiceOn, onVoice, captions, level, speaking, onStop }: Pick<StageProps, 'busy' | 'activeTool' | 'connection' | 'voiceOn' | 'onVoice' | 'captions' | 'level' | 'speaking' | 'onStop'>) {
+export function Core({ busy, activeTool, connection, voiceOn, onVoice, captions, level, speaking, onStop, wakeOn, onWake }: Pick<StageProps, 'busy' | 'activeTool' | 'connection' | 'voiceOn' | 'onVoice' | 'captions' | 'level' | 'speaking' | 'onStop' | 'wakeOn' | 'onWake'>) {
   let state: VoiceState = voiceOn ? 'listening' : 'idle'
   if (busy) state = 'thinking'
   if (speaking) state = 'speaking'
@@ -66,7 +69,7 @@ export function Core({ busy, activeTool, connection, voiceOn, onVoice, captions,
   if (voiceOn) pill = busy && activeTool && !speaking ? toolLabel(activeTool).toUpperCase() : VOICE_PILL[state]
   else if (connection !== 'open') pill = connection === 'closed' ? 'BACKEND OFFLINE' : 'CONNECTING…'
   else if (busy) pill = activeTool ? toolLabel(activeTool).toUpperCase() : 'PROCESSING…'
-  else pill = 'AWAITING COMMAND…'
+  else pill = wakeOn ? 'SAY “HEY ULTRON”…' : 'AWAITING COMMAND…'
 
   // In voice mode a click on the orb stops Ultron (its reply and its voice); otherwise it
   // starts voice mode.
@@ -91,6 +94,15 @@ export function Core({ busy, activeTool, connection, voiceOn, onVoice, captions,
           </svg>
           <span>{pill}</span>
         </button>
+        <button
+          type="button"
+          className={`wake-toggle${wakeOn ? ' on' : ''}`}
+          onClick={onWake}
+          aria-pressed={wakeOn}
+          title={wakeOn ? 'Stop listening for “Hey Ultron”' : 'Listen for “Hey Ultron” (the mic stays on; nothing leaves this computer until you say it)'}
+        >
+          “HEY ULTRON” · {wakeOn ? 'ON' : 'OFF'}
+        </button>
         {voiceOn && (
           <div className="core-captions" aria-live="polite">
             {captions.hearing ? (
@@ -107,6 +119,12 @@ export function Core({ busy, activeTool, connection, voiceOn, onVoice, captions,
             {captions.ultron && !captions.hearing && (
               <div className="caption caption-ultron">
                 <b>ULTRON</b> {clip(captions.ultron)}
+              </div>
+            )}
+            {captions.asking && (
+              <div className="caption caption-ask">
+                <b>APPROVE?</b> {captions.asking.title}: {clip(captions.asking.details.map(([k, v]) => `${k} ${v}`).join(' · '), 160)}
+                <span className="caption-hint">Say yes or no</span>
               </div>
             )}
           </div>

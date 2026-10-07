@@ -104,6 +104,23 @@ class Speaker {
     })
   }
 
+  /** Two soft notes: "I'm listening" after "Hey Ultron". */
+  chime() {
+    const ctx = this.context()
+    ;[660, 990].forEach((pitch, i) => {
+      const tone = ctx.createOscillator()
+      const env = ctx.createGain()
+      const at = ctx.currentTime + 0.02 + i * 0.12
+      tone.frequency.value = pitch
+      env.gain.setValueAtTime(0, at)
+      env.gain.linearRampToValueAtTime(0.15, at + 0.02)
+      env.gain.exponentialRampToValueAtTime(0.001, at + 0.25)
+      tone.connect(env).connect(ctx.destination)
+      tone.start(at)
+      tone.stop(at + 0.3)
+    })
+  }
+
   /** Quieter while you might be talking over it; back to normal if you weren't. */
   duck(on: boolean) {
     if (this.ctx && this.gain) this.gain.gain.setTargetAtTime(on ? 0.3 : 1, this.ctx.currentTime, 0.05)

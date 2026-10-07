@@ -87,6 +87,48 @@ class TalkOverTest(unittest.IsolatedAsyncioTestCase):
         stopped, _ = await self.hear("")
         self.assertFalse(stopped)
 
+    async def test_yes_answers_the_card(self):
+        import main
+
+        with patch.object(main.gate, "pending_requests", return_value=[{"id": "card-1"}]), \
+                patch.object(main.gate, "resolve") as resolve:
+            stopped, sent = await self.hear("Yeah, send it.")
+        resolve.assert_called_once_with("card-1", True)
+        self.assertFalse(stopped)  # the reply carries on with the action
+        self.assertEqual(sent, [{"type": "voice.transcript", "text": ""}])  # not a new message
+
+    async def test_wake_word(self):
+        import main
+
+        async def woken(said: str | None) -> list[dict]:
+            sent: list[dict] = []
+
+            async def send(ev: dict) -> None:
+                sent.append(ev)
+
+            with patch.object(main.stt, "woken", return_value=said):
+                await main.hear(send, np.zeros(1, np.float32), set(), wake=True)
+            return sent
+
+        self.assertEqual(await woken(None), [])  # not for Ultron: nothing happens
+        self.assertEqual(await woken(""), [{"type": "voice.wake", "text": ""}])
+        self.assertEqual(await woken("turn it down"), [{"type": "voice.wake", "text": "turn it down"}])
+
+    def test_after_wake(self):
+        for said, rest in [("Hey Ultron.", ""), ("Hey, Ultron, what's on tomorrow?", "what's on tomorrow?"),
+                           ("Ultron, turn the music down.", "turn the music down."),
+                           ("I was talking about Ultron yesterday.", None), ("Hey, how are you?", None),
+                           ("Ultraviolet light is dangerous.", None)]:
+            self.assertEqual(stt.after_wake(said), rest, said)
+
+    def test_yes_or_no(self):
+        import main
+
+        for said, answer in [("Yes.", True), ("Okay, go ahead", True), ("No, don't.", False),
+                             ("Stop.", False), ("Nope, not now", False), ("Not sure", None),
+                             ("Yes, but change the time to five please", None)]:
+            self.assertEqual(main.yes_or_no(said), answer, said)
+
 
 class GroqTest(unittest.TestCase):
     """Speech to text through Groq (voice/stt.py), and the local model when that fails."""
@@ -142,6 +184,33 @@ class SpeakingTest(unittest.TestCase):
         self.assertFalse(tts.is_echo("move the dentist to Friday please"))
         self.assertFalse(tts.is_echo("stop"))  # short: always you
 
+
+
+class SpokenReplyTest(unittest.IsolatedAsyncioTestCase):
+    """A spoken reply (main.run_turn with voice): said sentence by sentence, and a
+    confirmation card on the way is asked out loud."""
+
+    async def test_card_is_asked_out_loud(self):
+        import events
+        import hub
+        import main
+
+        async def reply(*_args):
+            yield {"type": "assistant.text_delta", "id": "r", "text": "I'll message Selin now. "}
+            await hub.emit(events.confirm_request("c1", "WhatsApp: Send", "", []))
+            yield {"type": "assistant.text_delta", "id": "r", "text": "Sent."}
+
+        sent: list[dict] = []
+
+        async def send(ev: dict) -> None:
+            sent.append(ev)
+
+        with patch.object(main.ultron, "handle_text", reply), patch.object(main.tts, "speak", return_value=b"wav"):
+            await main.run_turn(send, "message Selin", None, None, [], "Mac", voice=True)
+        said = [ev["text"] for ev in sent if ev["type"] == "voice.audio"]
+        self.assertEqual(said, ["I'll message Selin now.", "WhatsApp, Send. Shall I go ahead?", "Sent."])
+        self.assertEqual(sent[-1], {"type": "status", "state": "idle"})
+        self.assertFalse(hub.has_clients())  # the listener is gone after the reply
 
 if __name__ == "__main__":
     unittest.main()

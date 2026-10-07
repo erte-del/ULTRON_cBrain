@@ -48,7 +48,14 @@ export async function startMic(onChunk: (pcm: ArrayBuffer, level: number) => voi
     } finally {
       URL.revokeObjectURL(url)
     }
-    await ctx.resume()
+    if (ctx.state !== 'running') {
+      // Started without a click (the page opened with "Hey Ultron" on): the browser may hold
+      // the sound back until you click or type on the page once.
+      void ctx.resume()
+      const allow = () => void ctx.resume()
+      document.addEventListener('pointerdown', allow, { once: true })
+      document.addEventListener('keydown', allow, { once: true })
+    }
     const node = new AudioWorkletNode(ctx, 'ultron-mic', { numberOfOutputs: 0 }) // a sink: always runs
     node.port.onmessage = (e: MessageEvent<{ pcm: ArrayBuffer; level: number }>) => onChunk(e.data.pcm, e.data.level)
     ctx.createMediaStreamSource(stream).connect(node)

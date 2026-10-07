@@ -109,6 +109,7 @@ export type ServerEvent =
   | { type: 'notification'; title: string; text: string; time: number }
   | { type: 'voice.speech'; active: boolean } // voice mode: you started / stopped talking
   | { type: 'voice.transcript'; text: string } // what you said; '' = nothing understood
+  | { type: 'voice.wake'; text: string } // you said "Hey Ultron"; text = what followed
   | { type: 'voice.audio'; text: string; audio: string | null } // a sentence to say: base64 WAV, or null: the browser says it
   | ({ type: 'settings.state' } & BrainSettings)
   | ({ type: 'usage.update' } & UsageSnapshot)
@@ -116,7 +117,7 @@ export type ServerEvent =
 // Browser -> server
 export type ClientEvent =
   | { type: 'user.text'; text: string; files?: string[]; location?: [number, number]; status?: PhoneStatus; voice?: boolean }
-  | { type: 'user.voice'; on: boolean } // voice mode on or off (the mic itself goes as binary frames)
+  | { type: 'user.voice'; mode: ListenMode } // what the mic is for (the mic itself goes as binary frames)
   | { type: 'user.confirm'; id: string; approved: boolean }
   | { type: 'user.select_image'; id: string | null; version?: number }
   | { type: 'settings.update'; model_override?: ModelAlias | null; provider?: Provider; gateway_model?: string }
@@ -129,6 +130,9 @@ export type ClientEvent =
   | { type: 'user.memory_delete'; id: string }
   | { type: 'user.memory_wipe' }
   | { type: 'user.job_update'; id: string; action: JobAction }
+
+// voice: voice mode; wake: listening only for "Hey Ultron"; off: the mic is off.
+export type ListenMode = 'voice' | 'wake' | 'off'
 
 export type ConfirmStatus = 'pending' | 'approved' | 'denied' | 'expired'
 
@@ -687,8 +691,9 @@ const initialState: ChatState = {
   log: [],
 }
 
-// heard: what to do with what you said in voice mode (App sends it on, like typing).
-export function useUltron(heard?: { current: (text: string) => void }) {
+// heard: what to do with what you said in voice mode (App sends it on, like typing);
+// woke = it came after "Hey Ultron".
+export function useUltron(heard?: { current: (text: string, woke?: boolean) => void }) {
   const [state, dispatch] = useReducer(reducer, initialState)
   const socketRef = useRef<UltronSocket | null>(null)
   const overrideRef = useRef<ModelAlias | null>(null)
@@ -721,6 +726,7 @@ export function useUltron(heard?: { current: (text: string) => void }) {
         speaker.stop()
         heard?.current(ev.text)
       }
+      if (ev.type === 'voice.wake') heard?.current(ev.text, true)
     }
     socket.onConnection = (s) => dispatch({ kind: 'connection', state: s })
     // Settings live per connection on the server, so re-send them after a reconnect.
@@ -751,8 +757,8 @@ export function useUltron(heard?: { current: (text: string) => void }) {
     return true
   }, [])
 
-  const voiceMode = useCallback((on: boolean) => {
-    socketRef.current?.send({ type: 'user.voice', on })
+  const voiceMode = useCallback((mode: ListenMode) => {
+    socketRef.current?.send({ type: 'user.voice', mode })
   }, [])
 
   const sendAudio = useCallback((pcm: ArrayBuffer) => socketRef.current?.sendAudio(pcm), [])

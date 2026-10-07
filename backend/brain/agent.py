@@ -154,6 +154,8 @@ class Ultron:
         # The system prompt replaces Claude Code's, which carried the date: without this
         # "tomorrow" or "next Friday" can't be resolved.
         prompt = f"[Now: {now_note()}]\n{prompt}"
+        if voice:  # said out loud: the reply is read out (see the system prompt)
+            prompt = f"[Spoken]\n{prompt}"
         if device:  # Mac tools act on the Mac, wherever the user is talking from
             prompt = f"[Device: {device}]\n{prompt}"
 

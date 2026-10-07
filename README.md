@@ -27,12 +27,20 @@ only look things up.
   to Groq); without it, or if Groq fails, by faster-whisper on this computer
   (`JARVIS_STT_MODEL`, default `small.en`, ~250 MB, downloads the first time). The voice is
   Kokoro's `bm_lewis` on this computer (`JARVIS_VOICE`, ~350 MB, downloads the first time);
-  code, tables and links aren't read out.
+  code, tables and links aren't read out. Spoken questions get spoken answers: 1-3 short
+  sentences, with anything longer (lists, tables, drafts) on the canvas. When an action
+  needs your OK, Ultron asks out loud and shows the card under the orb; say "yes" or "no".
   You can talk over it: what you say stops the reply and Ultron carries on from where it
   was cut off; "stop" or "never mind" on its own just stops it, and so does a click on the
   orb. Its own voice coming back through the mic is recognised and ignored.
   Works in Chrome on this Mac and on your phone through Tailscale; Esc or "back to typing"
   ends it.
+- **"Hey Ultron".** The switch under the orb ("HEY ULTRON · ON") keeps the mic listening
+  while the page is open: say "Hey Ultron" (or "Hey Ultron, what's on tomorrow?") and voice
+  mode starts with a soft chime, with your question if you asked one. It checks for the
+  name on this computer (local Whisper), so nothing you say leaves it until you've said
+  "Hey Ultron". After 20 seconds of quiet it goes back to waiting. The browser remembers the
+  switch; if the page was opened without a click, it may need one click before it hears you.
 - **Consult an expert.** For hard problems (multi-step reasoning, tricky maths, complex
   code, long writing) Sonnet hands the task to Opus with `ask_expert`. Long answers go
   straight onto the canvas.
@@ -233,6 +241,14 @@ Backend (Python 3.13):
     uv venv --python 3.13 backend/.venv
     VIRTUAL_ENV=backend/.venv uv pip install -r backend/requirements.txt
 
+On Windows (PowerShell, in the project folder; get uv with `winget install -e --id astral-sh.uv`):
+
+    uv venv --python 3.13 backend\.venv
+    uv pip install --python backend\.venv\Scripts\python.exe -r backend\requirements.txt
+
+There's no `pip` inside this environment (uv makes it without one): always install with
+`uv pip install`, as above.
+
 Frontend:
 
     cd frontend && npm install
@@ -368,6 +384,6 @@ continue it, ask for your homework, play a song, and open the page on your phone
   - [x] Spotify
   - [x] OmniRoute as a second brain
   - [x] file uploads
-- [ ] Phase 5: voice: listening (5b) and speaking (5c) work; the voice flow (5d) is next
+- [x] Phase 5: voice (listening, speaking, spoken answers, yes/no out loud, talking over it)
 - [x] Phase 6: memory (`remember` / `recall` / `forget`, and the memory button in the top bar)
-- [ ] Phase 7: polish (wake word, barge-in)
+- [x] Phase 7: polish (wake word "Hey Ultron", talking over Ultron)

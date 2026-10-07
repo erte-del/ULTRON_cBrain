@@ -9,6 +9,7 @@ downloads once, the first time voice mode is turned on, into storage/voice/faste
 import io
 import json
 import logging
+import re
 import threading
 import uuid
 import urllib.request
@@ -26,6 +27,10 @@ GROQ_TIMEOUT_S = 10
 NO_SPEECH = 0.6  # parts Whisper thinks are more likely silence than this are dropped
 
 HINT = "Ultron, TickTick, Spotify, Gmail, Canva, WhatsApp, Obsidian."
+# Listening for "Hey Ultron": the hint makes Whisper write the name it would otherwise hear as
+# Aldron, Uldren or Aldrin; ordinary speech isn't turned into it.
+WAKE_HINT = "Hey Ultron."
+GREETINGS = {"hey", "hi", "hello", "ok", "okay", "oi", "yo"}
 
 _model = None
 _lock = threading.Lock()
@@ -89,12 +94,37 @@ def groq(audio: np.ndarray) -> str:
                     if s.get("no_speech_prob", 0) < NO_SPEECH).strip()
 
 
-def local(audio: np.ndarray) -> str:
+def after_wake(text: str) -> str | None:
+    """What follows "(Hey) Ultron" at the start of text ("" if nothing does), or None when
+    it isn't addressed to Ultron ("I was talking about Ultron" isn't)."""
+    for i, word in enumerate(re.finditer(r"[\w']+", text)):
+        w = word.group().lower()
+        if w == "ultron":
+            return text[word.end():].lstrip(" ,.!?;:-—").strip()
+        if w not in GREETINGS or i >= 2:
+            return None
+    return None
+
+
+def woken(audio: np.ndarray) -> str | None:
+    """Wake word mode: checked on this computer, so speech that isn't for Ultron never leaves
+    it. None if you didn't say "Hey Ultron"; else what you asked ("" for nothing yet), written
+    down by Groq if it's set up (more accurate)."""
+    rest = after_wake(local(audio, WAKE_HINT))
+    if rest and config.GROQ_API_KEY:
+        try:
+            rest = after_wake(groq(audio)) or rest
+        except Exception as e:
+            log.warning("Groq speech to text failed (%s); using the local words", e)
+    return rest
+
+
+def local(audio: np.ndarray, hint: str = HINT) -> str:
     english_only = config.STT_MODEL.endswith(".en")
     # One careful pass (beam 5) and no retries: when unsure, Whisper otherwise tries again up
     # to five times with more randomness, which is slow (seconds) and invents words.
     # The prompt spells the names it can't guess.
     segments, _ = load().transcribe(audio, language="en" if english_only else None, beam_size=5,
-                                    temperature=0.0, initial_prompt=HINT,
+                                    temperature=0.0, initial_prompt=hint,
                                     vad_filter=False, condition_on_previous_text=False)
     return " ".join(s.text.strip() for s in segments if s.no_speech_prob < NO_SPEECH).strip()
