@@ -6,20 +6,24 @@ the shell only gets what you type in that tab. Only pages on this Mac may connec
 Tailscale: a shell is more than the rest of Ultron can do.
 
 The shell lives as long as the tab's connection: closing the tab or reloading the
-page ends it.
+page ends it. Mac (and Linux) only: on Windows the tab says so and closes.
 """
 
 import asyncio
-import fcntl
 import json
 import logging
 import os
-import pty
 import signal
 import struct
 import subprocess
-import termios
+import sys
 from pathlib import Path
+
+WINDOWS = sys.platform == "win32"
+if not WINDOWS:  # Unix-only modules: importing them on Windows would stop Ultron starting
+    import fcntl
+    import pty
+    import termios
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -65,6 +69,10 @@ async def serve(ws: WebSocket) -> None:
         await ws.close(code=1008)
         return
     await ws.accept()
+    if WINDOWS:
+        await ws.send_bytes("The terminal tab isn't available on Windows yet.\r\n".encode())
+        await ws.close()
+        return
     try:
         number = int(ws.query_params.get("n", "0"))
     except ValueError:
