@@ -189,6 +189,7 @@ async def listen() -> None:
     window = Window()
     asyncio.create_task(window.watch())
     ears = vad.Endpointer()
+    mic = None
     while True:
         chunks: asyncio.Queue[bytes] = asyncio.Queue()
         try:
@@ -196,7 +197,9 @@ async def listen() -> None:
             sd._initialize()
             with sd.RawInputStream(samplerate=vad.RATE, channels=1, dtype="int16", blocksize=vad.FRAME,
                                    callback=lambda data, *_: loop.call_soon_threadsafe(chunks.put_nowait, bytes(data))):
-                log.info("Listening for \"Hey Ultron\" on %s", sd.query_devices(kind="input")["name"])
+                if (name := sd.query_devices(kind="input")["name"]) != mic:  # said once per mic, not every reopen
+                    log.info("Listening for \"Hey Ultron\" on %s", name)
+                    mic = name
                 started = loop.time()
                 while ears.speaking or loop.time() - started < REOPEN_S:
                     pcm = await asyncio.wait_for(chunks.get(), 2)  # nothing for 2 s: the mic is gone
@@ -220,6 +223,8 @@ def setup_logging() -> None:
     handler = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=500_000, backupCount=1, encoding="utf-8")
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S"))
     logging.basicConfig(level=logging.INFO, handlers=[handler, logging.StreamHandler()])
+    for noisy in ("httpx", "huggingface_hub"):  # the model download's request-by-request chatter
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def main() -> None:
