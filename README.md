@@ -248,6 +248,24 @@ winget install -e --id Tailscale.Tailscale
 Mac-only features (Apple Maps, Contacts, WhatsApp/Chrome automation, the sandboxed Python,
 FLUX/Wan on Apple Silicon, `Ultron.app`) are off on Windows.
 
+**Windows PC ("Hey Ultron" opens the Mac's Ultron).** Ultron has one brain, on the Mac. Instead of
+running Ultron on the PC, the PC can just listen for "Hey Ultron" and open the Mac's page (over
+Tailscale, like the phone) full screen in its own Edge window. Speech is checked on the PC
+(Silero VAD + faster-whisper `small.en`), never sent anywhere; while the window is open the page
+listens and the PC doesn't. It uses `backend\.venv` (nothing new to install; the model, ~250 MB,
+downloads once into `windows\whisper\`).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\autostart.ps1 off   # the full Ultron off on the PC
+copy windows\wake_pc.env.example windows\wake_pc.env                 # then set ULTRON_URL
+backend\.venv\Scripts\python.exe windows\wake_pc.py --check          # does the Mac's page load?
+powershell -ExecutionPolicy Bypass -File windows\wake_pc.ps1 on      # start at logon ("off" to stop)
+```
+
+The Mac needs `tailscale serve --bg 8000` and `JARVIS_REMOTE_ORIGIN` set to the same address.
+Log: `windows\wake_pc.log`. Words in the same breath ("Hey Ultron, play music") aren't passed on
+yet: say the request again once the window is open.
+
 ### 2.8 Back up and move to a new Mac
 
 `scripts/backup.sh` writes everything that isn't on GitHub (`.env`, memory, saved chats, jobs,

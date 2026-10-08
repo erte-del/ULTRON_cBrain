@@ -48,3 +48,7 @@ backend/storage/textbooks/
 backend/storage/slides/
 backend/storage/lectures/
 backend/storage/backend.out
+windows/wake_pc.env
+windows/wake_pc.log*
+windows/whisper/
+windows/edge-profile/
