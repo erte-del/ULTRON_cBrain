@@ -56,6 +56,10 @@ so you see the results while you keep talking.
 
 ## 2. Setup
 
+> ## ⚠️ THIS SETUP WAS MADE FOR AN ANDROID PHONE
+> **Some things may be different for iPhone users.** Anything that only works on Android is
+> marked **(android phone)**.
+
 ### 2.1 What you need
 
 **Required**
@@ -84,7 +88,7 @@ On a Mac, [Homebrew](https://brew.sh) makes the rest easy. On Windows, use `wing
 | WhatsApp desktop app | sending WhatsApp messages | [whatsapp.com/download](https://www.whatsapp.com/download) |
 | Obsidian | your notes | [obsidian.md](https://obsidian.md) |
 | Tailscale | Ultron on your phone and Windows PC | [tailscale.com/download](https://tailscale.com/download) |
-| MacroDroid (Android) | phone volume, taxis, food | [macrodroid.com](https://www.macrodroid.com) |
+| MacroDroid | phone volume, taxis, food **(android phone)** | [macrodroid.com](https://www.macrodroid.com) |
 | OmniRoute | optional second brain (other providers' models) | [github.com/diegosouzapw/OmniRoute](https://github.com/diegosouzapw/OmniRoute) |
 
 ### 2.2 Keys and accounts
@@ -101,7 +105,7 @@ Every key is optional: without one, only the feature that needs it is off. They 
 | `GROQ_API_KEY` | faster, more accurate speech-to-text (audio goes to Groq) | free: [console.groq.com/keys](https://console.groq.com/keys) |
 | `SPOTIFY_CLIENT_ID` | reading the songs in your playlists (playing needs nothing) | [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) → Create app, tick "Web API", redirect URI `http://127.0.0.1:8000/spotify/callback` |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Ultron texting your phone | message [@BotFather](https://t.me/BotFather) → `/newbot`; press Start in your bot's chat; then `cd backend && .venv/bin/python -m tools.telegram` prints your chat ID |
-| `MACRODROID_WEBHOOK` | phone volume, Careem taxis and food | MacroDroid webhook macros, step by step in `.env.example` |
+| `MACRODROID_WEBHOOK` | phone volume, Careem taxis and food **(android phone)** | MacroDroid webhook macros, step by step in `.env.example` |
 | `INSTAGRAM_ACCESS_TOKEN` | posting Reels to Ultron's Instagram | a Creator account + a Meta app with "API setup with Instagram Login": [developers.facebook.com/apps](https://developers.facebook.com/apps) |
 | `JARVIS_VAULT` | your Obsidian notes | the path to your vault folder |
 | `JARVIS_REMOTE_ORIGIN` | Ultron on your phone | the `https://….ts.net` address `tailscale serve` prints |
@@ -301,7 +305,7 @@ only look things up.
 
 - **WhatsApp**: finds the person in your Contacts and sends after you approve.
 - **Telegram**: Ultron's own bot texts *you* ("send that list to my phone").
-- **Phone volume**, **Careem taxis** and **Careem Food** on Android via MacroDroid (you book and pay).
+- **Phone volume**, **Careem taxis** and **Careem Food** via MacroDroid (you book and pay) **(android phone)**.
 - **Use it from your phone** anywhere through Tailscale; swipe between chat, canvas and panels.
 
 ### Shopping, travel and video
@@ -356,7 +360,7 @@ only look things up.
 ### The big picture
 
 ```
-   Phone (Android)            Windows PC                      Your Mac
+   Phone                      Windows PC                      Your Mac
   ┌──────────────┐        ┌──────────────────┐   ┌─────────────────────────────────────────┐
   │ browser page │        │ ultron_pc.py     │   │  Browser page / Ultron.app (React)       │
   └──────┬───────┘        │ 127.0.0.1:8765   │   │        │  WebSocket /ws, /ws/terminal     │
@@ -427,8 +431,8 @@ only look things up.
   (`/read`, `/change`, `/run`). It updates itself with `git pull` at every start.
 - **Claude.** Claude Code (through `claude-agent-sdk`) talks to Anthropic with your Pro login.
   The connectors are the ones on your claude.ai account; no tokens are stored by Ultron.
-- **Your Android phone's apps.** MacroDroid webhooks (volume, Careem) and Ultron's Telegram bot
-  reach the phone through those services, not through Tailscale.
+- **Your phone's apps.** MacroDroid webhooks (volume, Careem) **(android phone)** and Ultron's
+  Telegram bot reach the phone through those services, not through Tailscale.
 - **OmniRoute (optional).** Started as `omniroute serve --daemon` on `127.0.0.1:20128`. In that mode
   connectors, web search and `ask_expert` are off, so your emails never reach other providers.
 
