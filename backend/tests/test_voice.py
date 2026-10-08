@@ -162,12 +162,13 @@ class SpeakingTest(unittest.TestCase):
         self.assertEqual(parts.feed("st is at 9.30 with Dr. Smith, e.g. a check-up."), [])
         self.assertEqual(parts.flush(), ["The first is at 9.30 with Dr. Smith, e.g. a check-up."])
 
-    def test_long_first_sentence_starts_early(self):
-        # Cut at its first pause, so the voice starts sooner; later sentences stay whole.
+    def test_first_words_are_said_at_once(self):
+        # The first few words (or up to a pause, if sooner) go out right away; later sentences stay whole.
         said = self.stream("Quietly dignified, mildly electric and calm, and he never coughs up a hairball. "
                            "Ask me again later, if you like.")
-        self.assertEqual(said, ["Quietly dignified, mildly electric and calm,", "and he never coughs up a hairball.",
+        self.assertEqual(said, ["Quietly dignified,", "mildly electric and calm, and he never coughs up a hairball.",
                                 "Ask me again later, if you like."])
+        self.assertEqual(self.stream("You have three things tomorrow."), ["You have three", "things tomorrow."])
         # Markdown after a full stop doesn't hide the end of the sentence.
         self.assertEqual(self.stream("**Circuit.** Quietly dignified."), ["Circuit.", "Quietly dignified."])
 
@@ -208,7 +209,7 @@ class SpokenReplyTest(unittest.IsolatedAsyncioTestCase):
         with patch.object(main.ultron, "handle_text", reply), patch.object(main.tts, "speak", return_value=b"wav"):
             await main.run_turn(send, "message Selin", None, None, [], "Mac", voice=True)
         said = [ev["text"] for ev in sent if ev["type"] == "voice.audio"]
-        self.assertEqual(said, ["I'll message Selin now.", "WhatsApp, Send. Shall I go ahead?", "Sent."])
+        self.assertEqual(said, ["I'll message Selin", "now.", "WhatsApp, Send. Shall I go ahead?", "Sent."])
         self.assertEqual(sent[-1], {"type": "status", "state": "idle"})
         self.assertFalse(hub.has_clients())  # the listener is gone after the reply
 

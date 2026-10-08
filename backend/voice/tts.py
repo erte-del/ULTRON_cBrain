@@ -76,10 +76,12 @@ _END = re.compile(r"(?<=[.!?…])[\"'”)*_]*\s+(?=[\"'“(*_]*[A-Z0-9])")
 _ABBREV = re.compile(r"\b(?:Mr|Mrs|Ms|Dr|St|Prof|Mt|vs|etc|e\.g|i\.e|approx|No)\.$", re.I)
 
 
-# The first sentence of a reply is said sooner if it's long: cut at its first pause (comma,
-# dash, ...) after this many characters, so Ultron starts talking while it writes the rest.
-FIRST_CUT = 40
+# The start of a reply is said at once: its first few words (or up to its first pause, if
+# sooner) go out as soon as they're written, and Ultron talks while it writes the rest.
+# Fewer words = sooner, but a choppier start (each piece is said on its own).
+FIRST_WORDS = 3
 _PAUSE = re.compile(r"[,;:—–]\s+|\s[-–—]\s+")
+_FIRST = re.compile(r"\s*(?:\S+\s+){%d}" % FIRST_WORDS)
 
 
 def split(text: str) -> list[str]:
@@ -132,10 +134,10 @@ class Sentences:
             *done, self._line = split(self._line)
             out += [c for s in done if (c := clean(s))]
             if not self._started and not out:
-                cut = next((m for m in _PAUSE.finditer(self._line) if m.start() >= FIRST_CUT), None)
-                if cut and (c := clean(self._line[:cut.end()])):
+                ends = [m.end() for m in (_PAUSE.search(self._line), _FIRST.match(self._line)) if m]
+                if ends and (c := clean(self._line[:min(ends)])):
                     out.append(c)
-                    self._line = self._line[cut.end():]
+                    self._line = self._line[min(ends):]
         self._started = self._started or bool(out)
         return out
 
