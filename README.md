@@ -250,7 +250,8 @@ FLUX/Wan on Apple Silicon, `Ultron.app`) are off on Windows.
 
 **Windows PC ("Hey Ultron" opens the Mac's Ultron).** Ultron has one brain, on the Mac. Instead of
 running Ultron on the PC, the PC can just listen for "Hey Ultron" and open the Mac's page (over
-Tailscale, like the phone) full screen in its own Edge window. Speech is checked on the PC
+Tailscale, like the phone) full screen in its own Edge window, already in voice mode, and
+Ultron says "Awake and ready, sir." Speech is checked on the PC
 (Silero VAD + faster-whisper `small.en`), never sent anywhere; while the window is open the page
 listens and the PC doesn't. It uses `backend\.venv` (nothing new to install; the model, ~250 MB,
 downloads once into `windows\whisper\`).

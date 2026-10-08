@@ -235,6 +235,18 @@ class SpokenReplyTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(said, ["I'll message Selin", "now.", "WhatsApp, Send. Shall I go ahead?", "Sent."])
         self.assertEqual(sent[-1], {"type": "status", "state": "idle"})
         self.assertFalse(hub.has_clients())  # the listener is gone after the reply
+    async def test_greeting_is_spoken(self):
+        import main
+
+        sent: list[dict] = []
+
+        async def send(ev: dict) -> None:
+            sent.append(ev)
+
+        with patch.object(main.tts, "speak", return_value=b"wav"):
+            await main.greet(send)
+        self.assertEqual([(ev["type"], ev["text"]) for ev in sent], [("voice.audio", "Awake and ready, sir.")])
+
 
 if __name__ == "__main__":
     unittest.main()

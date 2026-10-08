@@ -111,7 +111,7 @@ def open_window() -> None:
         else:
             subprocess.Popen(cmd, creationflags=no_window)
     else:
-        subprocess.Popen(edge_command(URL), creationflags=no_window)
+        subprocess.Popen(edge_command(URL + "/?wake=1"), creationflags=no_window)  # ?wake: voice mode + hello
 
 
 def window_open() -> bool:

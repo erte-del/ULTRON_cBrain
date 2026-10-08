@@ -29,6 +29,10 @@ const JUST_STOP = /^\W*(?:(?:ok(?:ay)?|ultron)\W+)?(?:stop|wait|hold on|never ?m
 const WAKE_KEY = 'ultron.wake'
 const VOICE_IDLE_MS = 20_000
 
+// Opened by "Hey Ultron" on the Windows PC (windows/wake_pc.py adds ?wake): start in voice
+// mode and say hello. Once: the address loses ?wake, so a reload doesn't greet again.
+const WOKEN = new URLSearchParams(location.search).has('wake')
+
 // "look at my screen" on its own (not a question about screens) opens the screen overlay.
 const LOOK_AT_SCREEN = /^\s*(?:ultron\W+)?(?:please\s+)?(?:(?:can|could) you\s+)?(?:look at|watch|see)\s+(?:my|the)\s+screen\W*$/i
 
@@ -123,6 +127,16 @@ export default function App() {
     }
   }, [micOn, sendAudio, setVoice])
   const connected = ultron.connection === 'open'
+  const { greet } = ultron
+  const greeted = useRef(false)
+  useEffect(() => {
+    if (!WOKEN || greeted.current || !connected) return
+    greeted.current = true
+    history.replaceState(null, '', location.pathname)
+    speaker.unlock() // the window was opened with --autoplay-policy=no-user-gesture-required
+    setVoice(true)
+    greet()
+  }, [connected, greet, setVoice])
   useEffect(() => {
     if (connected) voiceMode(mode) // again after a reconnect: the server forgets
   }, [mode, connected, voiceMode])

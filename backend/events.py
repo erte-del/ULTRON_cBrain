@@ -6,6 +6,8 @@ Client -> server:
     user.text        {text, voice?}      voice = true when you said it (voice mode)
     user.voice       {mode}              "voice" (voice mode), "wake" (listening only for
                                          "Hey Ultron") or "off"; on loads the voice models
+    user.greet       {}                  say "Awake and ready, sir." (a window "Hey Ultron" opened
+                                         on the PC, windows/wake_pc.py)
     (binary frame)   your microphone in voice mode: 16 kHz, 16-bit mono PCM (voice/vad.py)
     user.confirm     {id, approved}       your answer to a confirm.request
     user.select_image {id, version} | {id: null}   you clicked an image on the canvas

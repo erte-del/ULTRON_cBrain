@@ -122,6 +122,7 @@ export type ClientEvent =
   | { type: 'user.select_image'; id: string | null; version?: number }
   | { type: 'settings.update'; model_override?: ModelAlias | null; provider?: Provider; gateway_model?: string }
   | { type: 'user.new_chat' }
+  | { type: 'user.greet' } // "Awake and ready, sir." in Ultron's voice
   | { type: 'user.stop' }
   | { type: 'user.save_chat'; messages: ChatMessage[]; cards: CanvasCard[] }
   | { type: 'user.load_chat'; id: string }
@@ -761,6 +762,10 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
     socketRef.current?.send({ type: 'user.voice', mode })
   }, [])
 
+  const greet = useCallback(() => {
+    socketRef.current?.send({ type: 'user.greet' })
+  }, [])
+
   const sendAudio = useCallback((pcm: ArrayBuffer) => socketRef.current?.sendAudio(pcm), [])
 
   const stop = useCallback(() => {
@@ -840,5 +845,5 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
   const setStageTab = useCallback((tab: string) => dispatch({ kind: 'tab', tab }), [])
   const closeTerminal = useCallback((id: string) => dispatch({ kind: 'closeTerminal', id }), [])
 
-  return { ...state, sendText, voiceMode, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
+  return { ...state, sendText, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
 }

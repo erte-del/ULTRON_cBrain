@@ -338,6 +338,18 @@ async def speak(send: hub.Sender, sentences: asyncio.Queue) -> None:
         await send(events.voice_audio(text, wav))
 
 
+GREETING = "Awake and ready, sir."
+
+
+async def greet(send: hub.Sender) -> None:
+    """A window opened by "Hey Ultron" on the PC (windows/wake_pc.py): Ultron says hello in
+    its voice. A fixed sentence, not sent to Claude."""
+    sentences: asyncio.Queue = asyncio.Queue()
+    sentences.put_nowait(GREETING)
+    sentences.put_nowait(None)
+    await speak(send, sentences)
+
+
 async def hear(send: hub.Sender, audio, replies: set[asyncio.Task], wake: bool = False) -> None:
     """Voice mode: turn one finished utterance into text for the page. The page sends it
     back as a voice message (user.text), through the same checks as typing.
@@ -609,6 +621,11 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     task = asyncio.create_task(load_voice(send))
                     background.add(task)
                     task.add_done_callback(background.discard)
+
+            elif kind == "user.greet":
+                task = asyncio.create_task(greet(send))
+                background.add(task)
+                task.add_done_callback(background.discard)
 
             elif kind == "user.new_chat":
                 # Not tied to this tab: closing it mustn't cut the restart short.
