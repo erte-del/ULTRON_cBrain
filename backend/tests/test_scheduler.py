@@ -64,7 +64,8 @@ class JobsTest(unittest.IsolatedAsyncioTestCase):
             self.pushed.append((title, text))
 
         for target, name, value in [(job_store, "JOBS_FILE", Path(tempfile.mkdtemp()) / "jobs.json"),
-                                    (notify, "push", push), (usage, "windows", {})]:
+                                    (notify, "push", push), (usage, "windows", {}),
+                                    (config, "OLLAMA_MODEL", "")]:
             patch = mock.patch.object(target, name, value)
             patch.start()
             self.addCleanup(patch.stop)
@@ -155,6 +156,67 @@ class JobsTest(unittest.IsolatedAsyncioTestCase):
             await scheduler.run_job(made["id"])
         self.assertEqual((job_store.runs()[0]["status"], job_store.runs()[0]["text"]), ("failed", "overloaded"))
         self.assertEqual(self.pushed, [])
+
+
+class LocalModelTest(unittest.IsolatedAsyncioTestCase):
+    """Jobs on the local model (Ollama), and falling back to Claude."""
+    def setUp(self):
+        JobsTest.setUp(self)  # same temp job file and caught notifications
+        for target, name, value in [(config, "OLLAMA_MODEL", "qwen3:8b"), (scheduler, "ollama_up", lambda: True)]:
+            patch = mock.patch.object(target, name, value)
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.calls: list[bool] = []
+
+    def models(self, local_reply):
+        """_ask that answers 'claude' on Claude and local_reply (or raises it) locally."""
+        async def ask(job, local=False):
+            self.calls.append(local)
+            if not local:
+                return "claude"
+            if isinstance(local_reply, Exception):
+                raise local_reply
+            return local_reply
+        return mock.patch.object(scheduler, "_ask", ask)
+
+    async def test_jobs_run_locally_and_say_so(self):
+        made = job_store.add("Briefing", "p", at="08:00")
+        with self.models("Two meetings."):
+            await scheduler.run_job(made["id"])
+        self.assertEqual((self.calls, self.pushed), ([True], [("Briefing", "Two meetings.\n\n(qwen3:8b)")]))
+        self.assertEqual(job_store.get(made["id"])["last_text"], "Two meetings.")  # no footer
+
+    async def test_jobs_that_change_things_or_ask_for_claude_stay_on_claude(self):
+        self.assertFalse(scheduler.runs_local({"allow": ["mcp__claude_ai_TickTick__create_task"]}))
+        self.assertFalse(scheduler.runs_local({"brain": "claude"}))
+        self.assertTrue(scheduler.runs_local({}))
+        with mock.patch.object(config, "OLLAMA_MODEL", ""):
+            self.assertFalse(scheduler.runs_local({}))
+
+    async def test_a_failing_local_model_is_retried_then_claude_does_it(self):
+        made = job_store.add("Briefing", "p", at="08:00")
+        with self.models(RuntimeError("model crashed")):
+            await scheduler.run_job(made["id"])
+        self.assertEqual(self.calls, [True, True, False])
+        self.assertIn("claude\n\n(The local model failed: model crashed.", self.pushed[0][1])
+
+    async def test_ollama_down_goes_straight_to_claude(self):
+        made = job_store.add("Briefing", "p", at="08:00")
+        with self.models("unused"), mock.patch.object(scheduler, "ollama_up", lambda: False):
+            await scheduler.run_job(made["id"])
+        self.assertEqual(self.calls, [False])
+        self.assertIn("wasn't running", self.pushed[0][1])
+
+    async def test_local_jobs_ignore_the_pro_limit_but_a_fallback_never_vanishes(self):
+        usage.windows["five_hour"] = {"used": 0.95, "resets_at": time.time() + 3600, "reported_at": time.time()}
+        made = job_store.add("Briefing", "p", at="08:00")
+        with self.models("Two meetings."):
+            await scheduler.run_job(made["id"])
+        self.assertEqual(job_store.runs()[0]["status"], "told")
+        with self.models(RuntimeError("down")):
+            await scheduler.run_job(made["id"])
+        self.assertEqual(job_store.runs()[0]["status"], "skipped")
+        self.assertIn("Skipped", self.pushed[-1][1])
 
 
 class NotifyTest(unittest.IsolatedAsyncioTestCase):

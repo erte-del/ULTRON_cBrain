@@ -1,0 +1,3 @@
+FROM qwen3:8b
+# Ultron's prompt and tools are ~20k tokens; Ollama's default 4k window cuts them off.
+PARAMETER num_ctx 32768
