@@ -70,6 +70,7 @@ async def lifespan(app: FastAPI):
     jobs.cancel()
     warm_up.cancel()
     await ultron.wrap_up()  # the last conversation's note
+    await asyncio.gather(*ultron.notes)  # and any still being written
     await brain.close()
 
 

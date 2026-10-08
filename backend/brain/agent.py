@@ -75,6 +75,7 @@ class Ultron:
         self.brain = brain
         self.transcript: list[str] = []  # this conversation, for its note in the vault
         self.started = 0.0
+        self.notes: set[asyncio.Task] = set()  # old conversations' notes still being written
 
     def usage_event(self) -> events.Event:
         return events.usage_update(usage.snapshot(self.brain.provider, self.brain.context_tokens))
@@ -99,8 +100,11 @@ class Ultron:
             log.exception("Couldn't write the conversation note")  # the chat itself is unaffected
 
     async def new_conversation(self, provider: str | None = None, resume: str | None = None) -> None:
-        """End this conversation (its note is written first, so the next one knows it) and start another."""
-        await self.wrap_up()
+        """End this conversation and start another. Its note is written in the background,
+        so the new chat is ready straight away."""
+        note = asyncio.create_task(self.wrap_up())  # takes the transcript before anything new arrives
+        self.notes.add(note)
+        note.add_done_callback(self.notes.discard)
         if resume:
             await self.brain.new_conversation(resume=resume)
         elif provider:
