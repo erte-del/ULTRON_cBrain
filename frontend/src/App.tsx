@@ -29,8 +29,8 @@ const JUST_STOP = /^\W*(?:(?:ok(?:ay)?|ultron)\W+)?(?:stop|wait|hold on|never ?m
 const WAKE_KEY = 'ultron.wake'
 const VOICE_IDLE_MS = 20_000
 
-// Opened by "Hey Ultron" on the Windows PC (windows/wake_pc.py adds ?wake): start in voice
-// mode and say hello. Once: the address loses ?wake, so a reload doesn't greet again.
+// Opened by "Hey Ultron" on the Windows PC (windows/wake_pc.py adds ?wake): open straight in
+// voice mode (no text screen first) and say hello once connected. Once: the address loses ?wake, so a reload doesn't greet again.
 const WOKEN = new URLSearchParams(location.search).has('wake')
 
 // "look at my screen" on its own (not a question about screens) opens the screen overlay.
@@ -43,7 +43,7 @@ export default function App() {
   const heard = useRef((_text: string, _woke?: boolean) => {}) // what you said in voice mode: set below
   const ultron = useUltron(heard)
   const [pane, setPane] = useState<(typeof PANES)[number][0]>('chat')
-  const [voiceOn, setVoiceOn] = useState(false)
+  const [voiceOn, setVoiceOn] = useState(WOKEN) // opened by "Hey Ultron": voice mode from the start
   const [wakeOn, setWakeOn] = useState(() => {
     try {
       return localStorage.getItem(WAKE_KEY) === '1'
@@ -134,9 +134,8 @@ export default function App() {
     greeted.current = true
     history.replaceState(null, '', location.pathname)
     speaker.unlock() // the window was opened with --autoplay-policy=no-user-gesture-required
-    setVoice(true)
     greet()
-  }, [connected, greet, setVoice])
+  }, [connected, greet])
   useEffect(() => {
     if (connected) voiceMode(mode) // again after a reconnect: the server forgets
   }, [mode, connected, voiceMode])

@@ -111,7 +111,9 @@ def open_window() -> None:
         else:
             subprocess.Popen(cmd, creationflags=no_window)
     else:
-        subprocess.Popen(edge_command(URL + "/?wake=1"), creationflags=no_window)  # ?wake: voice mode + hello
+        url = URL + "/?wake=1"  # ?wake: the page opens in voice mode and says hello
+        log.info("Opening %s", url)
+        subprocess.Popen(edge_command(url), creationflags=no_window)
 
 
 def window_open() -> bool:
