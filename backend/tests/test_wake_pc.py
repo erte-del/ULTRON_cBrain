@@ -27,6 +27,14 @@ class WakePcTest(unittest.TestCase):
         self.assertIsNone(wake_pc.after_wake("Hey there"))
         self.assertIsNone(wake_pc.after_wake("I was talking about Ultron"))
 
+    def test_env_file_with_bom(self):
+        # Windows PowerShell's Set-Content -Encoding utf8 starts the file with a BOM.
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            env = Path(d) / "wake_pc.env"
+            env.write_bytes("\ufeffULTRON_URL=https://mac.tail1.ts.net\r\n".encode("utf-8"))
+            self.assertEqual(load().read_env(env), {"ULTRON_URL": "https://mac.tail1.ts.net"})
+
     def test_no_backend_config(self):
         code = (f"import importlib.util, sys; s = importlib.util.spec_from_file_location('w', r'{WAKE_PC}'); "
                 "s.loader.exec_module(importlib.util.module_from_spec(s)); print('config' in sys.modules)")

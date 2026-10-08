@@ -66,7 +66,7 @@ def read_env(path: Path = ENV_FILE) -> dict[str, str]:
     """KEY=value lines; # starts a comment. Quotes around a value are dropped."""
     out = {}
     if path.exists():
-        for line in path.read_text(encoding="utf-8").splitlines():
+        for line in path.read_text(encoding="utf-8-sig").splitlines():  # -sig: PowerShell 5 writes a BOM
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)
