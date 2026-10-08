@@ -145,8 +145,9 @@ export default function App() {
   }, [voiceOn])
   const lastText = (role: 'user' | 'assistant') => ultron.messages.findLast((m) => m.role === role)?.text
   const speaking = useSyncExternalStore(speaker.subscribe, () => speaker.speaking)
-  // With "Hey Ultron" on, a quiet voice mode goes back to waiting for it.
-  const idle = voiceOn && wakeOn && !ultron.busy && !ultron.hearing && !speaking
+  // With "Hey Ultron" on, a quiet voice mode goes back to waiting for it (not in the window
+  // "Hey Ultron" opened on the PC: that one stays in voice mode).
+  const idle = voiceOn && wakeOn && !WOKEN && !ultron.busy && !ultron.hearing && !speaking
   useEffect(() => {
     if (!idle) return
     const t = window.setTimeout(() => setVoice(false), VOICE_IDLE_MS)
