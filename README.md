@@ -235,7 +235,14 @@ PC (or run `windows/install.ps1`). It installs Python, Git and Tailscale with `w
 small PC agent at logon, and prints the two lines (`JARVIS_PC_URL`, `JARVIS_PC_TOKEN`) for the
 Mac's `.env`.
 
-**Windows PC (running Ultron itself).** Follow 2.3 with the PowerShell commands. Winget installs:
+**Windows PC (running Ultron itself).** One script does all of 2.3 and 2.6 (installs uv and
+Node if missing, the Python packages, the page build, `.env`, autostart):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup_windows.ps1
+```
+
+Or step by step: follow 2.3 with the PowerShell commands. Winget installs:
 
 ```powershell
 winget install -e --id astral-sh.uv
