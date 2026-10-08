@@ -312,6 +312,16 @@ def yes_or_no(text: str) -> bool | None:
     return True if _YES.match(start) else None
 
 
+_NEW_CHAT = re.compile(r"(?:(?:hey )?ultron )?(?:please )?(?:(?:let'?s |can you |could you )?(?:start|open|begin|make) )?"
+                       r"(?:a )?(?:new|fresh) (?:chat|conversation)(?: please)?", re.I)
+
+
+def wants_new_chat(text: str) -> bool:
+    """True when the whole message just asks for a new chat ("Start a new chat.", said or typed),
+    so it does what the button does instead of going to Claude."""
+    return bool(_NEW_CHAT.fullmatch(" ".join(re.sub(r"[^\w\s']", " ", text).split())))
+
+
 async def speak(send: hub.Sender, sentences: asyncio.Queue) -> None:
     """Voice mode: turn each sentence of the reply into Ultron's voice for the page, in order.
     If the voice can't be made, the page reads the text with its own voice instead."""
@@ -387,9 +397,15 @@ def settings_event() -> events.Event:
     return events.settings_state(brain.provider, config.GATEWAY_URL, brain.gateway_model, config.GATEWAY_MODELS)
 
 
-async def start_new_chat() -> None:
+async def start_new_chat(say_to: hub.Sender | None = None) -> None:
+    """say_to: asked for out loud, so Ultron says it's done too."""
     await ultron.new_conversation()
     await hub.emit(events.conversation_new("button"))
+    if say_to:
+        done: asyncio.Queue[str | None] = asyncio.Queue()
+        for item in ("New chat started.", None):
+            done.put_nowait(item)
+        await speak(say_to, done)
     await brain.start()  # ready before your next message
 
 
@@ -558,6 +574,13 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 files = [f for f in msg.get("files") or [] if isinstance(f, str)
                          and (upload_store.UPLOAD_ID.match(f) or image_store.IMAGE_ID.match(f))]
                 if not text and not files:
+                    continue
+                if not files and wants_new_chat(text):  # same as the button
+                    for task in turns:
+                        task.cancel()
+                    task = asyncio.create_task(start_new_chat(send if msg.get("voice") is True else None))
+                    background.add(task)
+                    task.add_done_callback(background.discard)
                     continue
                 # Run the turn in the background so this loop keeps listening
                 # (confirmations, your voice). The brain runs one turn at a time.

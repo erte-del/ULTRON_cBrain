@@ -33,6 +33,7 @@ only look things up.
   You can talk over it: what you say stops the reply and Ultron carries on from where it
   was cut off; "stop" or "never mind" on its own just stops it, and so does a click on the
   orb. Its own voice coming back through the mic is recognised and ignored.
+  "Start a new chat" (said or typed, on its own) does what the new-chat button does.
   Works in Chrome on this Mac and on your phone through Tailscale; Esc or "back to typing"
   ends it.
 - **"Hey Ultron".** The switch under the orb ("HEY ULTRON · ON") keeps the mic listening
