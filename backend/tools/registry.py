@@ -41,7 +41,7 @@ from .notes import read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
 from .pc import leaves_folder as leaves_pc_folder, only_launches, opens_link, pc_change, pc_read, pc_run
-from .phone import phone_taxi, phone_volume
+from .phone import phone_food, phone_taxi, phone_volume
 from .reels import reel_edit
 from .library3d import search_3d_library, show_3d_asset, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
@@ -98,9 +98,10 @@ TOOLS: list[UltronTool] = [
     # Playing music and reading your own playlists change nothing that matters.
     UltronTool(spotify_control, "read"),
     UltronTool(spotify_playlist_tracks, "read"),
-    # Only your own phone's media volume. The taxi only opens Careem: you book and pay.
+    # Only your own phone's media volume. Taxi and food only open Careem: you book and pay.
     UltronTool(phone_volume, "read"),
     UltronTool(phone_taxi, "read"),
+    UltronTool(phone_food, "read"),
     # Looks people up in Contacts; never changes them.
     UltronTool(find_contact, "read"),
     # Only reads the school's Assignments page, in a tab it opens and closes itself.

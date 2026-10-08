@@ -114,6 +114,21 @@ class TalkOverTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await woken(""), [{"type": "voice.wake", "text": ""}])
         self.assertEqual(await woken("turn it down"), [{"type": "voice.wake", "text": "turn it down"}])
 
+    async def test_background_wake(self):
+        from voice import wake
+
+        async def check(said: str | None) -> bool:
+            wake._opened_at = -wake.OPENING_S
+            with patch.object(wake.stt, "woken", return_value=said), patch.object(wake, "open_window") as opened:
+                await wake.check(np.zeros(1, np.float32))
+            return opened.called
+
+        self.assertFalse(await check(None))  # not for Ultron: no window
+        self.assertIsNone(wake.take())
+        self.assertTrue(await check("what's on tomorrow?"))
+        self.assertEqual(wake.take(), "what's on tomorrow?")  # for the window, once
+        self.assertIsNone(wake.take())
+
     def test_after_wake(self):
         for said, rest in [("Hey Ultron.", ""), ("Hey, Ultron, what's on tomorrow?", "what's on tomorrow?"),
                            ("Ultron, turn the music down.", "turn the music down."),

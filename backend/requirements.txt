@@ -16,3 +16,4 @@ yt-dlp[default]==2026.8.19
 truststore==0.10.4
 faster-whisper==1.2.1
 kokoro-onnx==0.6.1
+sounddevice==0.5.2; sys_platform == "win32"

@@ -67,6 +67,8 @@ STT_MODEL = os.getenv("JARVIS_STT_MODEL", "").strip() or "small.en"
 # With a Groq key (console.groq.com, free), your speech goes to Groq's Whisper large-v3-turbo
 # instead: more accurate and faster. The local model above stays the fallback.
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+# Windows: listen for "Hey Ultron" with no window open, and open Ultron when heard (voice/wake.py).
+BACKGROUND_WAKE = sys.platform == "win32" and os.getenv("JARVIS_BACKGROUND_WAKE", "on").strip().lower() != "off"
 # Ultron's voice when it answers you in voice mode (voice/tts.py): a Kokoro voice, the same
 # ones as Reels. b = British, a = American; m = man, f = woman. bm_lewis: low and steady.
 VOICE = os.getenv("JARVIS_VOICE", "").strip() or "bm_lewis"

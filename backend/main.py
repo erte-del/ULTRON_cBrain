@@ -31,7 +31,7 @@ from PIL import Image, UnidentifiedImageError
 
 from storage import chat_store, image_store, job_store, memory_store, model_store, upload_store, video_store
 from tools import canvas, instagram, mac, spotify
-from voice import stt, tts, vad
+from voice import stt, tts, vad, wake
 
 log = logging.getLogger("ultron")
 
@@ -64,7 +64,10 @@ async def lifespan(app: FastAPI):
     jobs = asyncio.create_task(scheduler.loop())
     ig_token = asyncio.create_task(instagram.refresh_loop())
     ig_queue = asyncio.create_task(instagram.queue_loop())
+    ears = asyncio.create_task(wake.listen()) if config.BACKGROUND_WAKE else None
     yield
+    if ears:
+        ears.cancel()
     ig_queue.cancel()
     ig_token.cancel()
     jobs.cancel()
@@ -534,6 +537,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     await send(jobs_event())
     for request in gate.pending_requests():  # questions asked before this tab opened
         await send(request)
+    if (said := wake.take()) is not None:  # this is the window "Hey Ultron" opened
+        await send(events.voice_wake(said))
     model_override: ModelAlias | None = None
     selected_image: dict | None = None  # the image you clicked on the canvas
     device = device_of(ws)

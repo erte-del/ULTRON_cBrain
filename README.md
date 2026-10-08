@@ -42,6 +42,12 @@ only look things up.
   name on this computer (local Whisper), so nothing you say leaves it until you've said
   "Hey Ultron". After 20 seconds of quiet it goes back to waiting. The browser remembers the
   switch; if the page was opened without a click, it may need one click before it hears you.
+- **"Hey Ultron" with no window open (Windows).** With `scripts\autostart.ps1 on`, Ultron
+  starts hidden when you log in and listens on the default mic (your headphones, if they're
+  the default) while no Ultron tab is open. "Hey Ultron" opens him full screen in his own
+  Edge window, already in voice mode, with your question if you asked one. Allow the mic
+  once in that window the first time. F11 leaves full screen. `JARVIS_BACKGROUND_WAKE=off`
+  turns it off.
 - **Consult an expert.** For hard problems (multi-step reasoning, tricky maths, complex
   code, long writing) Sonnet hands the task to Opus with `ask_expert`. Long answers go
   straight onto the canvas.
@@ -129,6 +135,9 @@ only look things up.
 - **Taxis.** "Get me a Careem to Dubai Mall" opens Careem on your phone with the
   destination copied: paste it into "Where to?", check the price and book. Ultron never
   books or pays (Careem has no API). A second MacroDroid macro; setup in `.env.example`.
+- **Food.** "Find me sushi on Careem" lists a few places near you on the canvas (Careem
+  Food is app-only, so Ultron finds them with web search and maps). Pick one and Careem
+  opens on your phone with its name copied: tap Food, paste, order. Uses the taxi macro.
 - **Text you.** Ultron's own Telegram bot sends things to your phone ("send that list to
   my phone"). It can only ever reach your own chat. Setup is in `.env.example`.
 

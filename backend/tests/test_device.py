@@ -89,6 +89,14 @@ class DeviceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(called, ["https://trigger.macrodroid.com/abc-123/jarvis_careem?taxi_to=Dubai+Mall+%26+Co",
                                   "https://trigger.macrodroid.com/abc-123/jarvis_careem?taxi_to="])
 
+    async def test_phone_food(self):
+        called: list[str] = []
+        url = "https://trigger.macrodroid.com/abc-123/jarvis_volume"
+        with mock.patch.object(phone.config, "MACRODROID_WEBHOOK", url), mock.patch.object(phone, "_call", called.append):
+            out = await phone.phone_food.handler({"search": " Operation  Falafel "})
+        self.assertNotIn("is_error", out)
+        self.assertEqual(called, ["https://trigger.macrodroid.com/abc-123/jarvis_careem?taxi_to=Operation+Falafel"])
+
     async def test_locator_starts_from_the_phone(self):
         args: list[tuple] = []
 
