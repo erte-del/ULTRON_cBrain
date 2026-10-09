@@ -185,6 +185,17 @@ async def show_on_canvas(args: dict[str, Any]) -> dict[str, Any]:
 
 
 @tool(
+    "clear_canvas",
+    "Remove every card from the canvas (images, 3D models, tables, maps, videos...). "
+    "Use it when the user says to clear the canvas. Terminals stay open.",
+    {"type": "object", "properties": {}},
+)
+async def clear_canvas(args: dict[str, Any]) -> dict[str, Any]:
+    await hub.emit(events.canvas_clear())
+    return {"content": [{"type": "text", "text": "The canvas is cleared."}]}
+
+
+@tool(
     "open_terminal",
     "Open a fresh terminal (a real shell on this Mac) in a new canvas tab, for the user to "
     "type in, e.g. to work with Claude Code. Every call opens another one. You can't "

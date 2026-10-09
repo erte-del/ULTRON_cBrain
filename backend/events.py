@@ -53,6 +53,7 @@ Server -> client:
                          kind "image": data = {image_id, current, credit, versions[]}
                          kind "model3d": data = {model_id, current, versions[], exports[]}
                          kind "video": data = {video_id, status, progress, url, ...} (video_store)
+    canvas.clear         {}  remove every card from the canvas
     terminal.open        {claude}  open a new terminal tab (a fresh shell at /ws/terminal);
                          claude = start Claude Code in it
     voice.speech         {active}         voice mode: you started (true) or stopped (false) talking
@@ -186,6 +187,10 @@ def voice_audio(text: str, wav: bytes | None) -> Event:
 
 def canvas_card(card_id: str, kind: str, title: str, data: dict[str, Any]) -> Event:
     return {"type": "canvas.card", "id": card_id, "kind": kind, "title": title, "data": data}
+
+
+def canvas_clear() -> Event:
+    return {"type": "canvas.clear"}
 
 
 def from_brain(ev: BrainEvent, reply_id: str) -> Event:

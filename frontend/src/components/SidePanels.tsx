@@ -179,6 +179,7 @@ const COMMANDS: Record<string, string> = {
   ToolSearch: 'find-tool',
   ask_expert: 'consult-opus',
   show_on_canvas: 'display',
+  clear_canvas: 'clear-canvas',
   search_3d_library: 'find-3d',
   show_from_3d_library: 'open-3d',
   show_3d_asset: 'fetch-3d',

@@ -99,6 +99,7 @@ export type ServerEvent =
   | { type: 'notice'; message: string }
   | { type: 'confirm.request'; id: string; title: string; summary: string; details: [string, string][] }
   | { type: 'confirm.resolved'; id: string; status: ConfirmStatus }
+  | { type: 'canvas.clear' }
   | { type: 'canvas.card'; id: string; kind: string; title: string; data: Record<string, unknown> }
   | { type: 'terminal.open'; claude: boolean }
   | { type: 'conversation.new'; reason: 'button' | 'idle' | 'provider' | 'ultron' }
@@ -615,6 +616,10 @@ function baseReducer(state: ChatState, action: Action): ChatState {
               { id: nextLocalId(), role: 'assistant', text: `**${ev.title}**\n\n${ev.text}`, done: true },
             ],
           }
+        case 'canvas.clear': {
+          const onTerminal = state.terminals.some((t) => t.id === state.stageTab)
+          return { ...state, cards: [], selectedImage: null, stageTab: onTerminal ? state.stageTab : 'core' }
+        }
         case 'canvas.card': {
           const card: CanvasCard = { id: ev.id, kind: ev.kind, title: ev.title, data: ev.data }
           const i = state.cards.findIndex((c) => c.id === ev.id)
