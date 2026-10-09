@@ -338,6 +338,7 @@ only look things up.
 
 - **Amazon**: search, orders, cart and wish lists; adds and removes items, never checks out.
 - **Flights**: Google Flights options with prices and the booking link; never books.
+- **GitHub**: your repos, issues, pull requests and files, through the `gh` tool on this computer; read-only. Needs `gh` installed and `gh auth login` once.
 - **Maps**: places near you, travel times (car, walk, transit), when to leave, live map on the canvas.
 - **YouTube**: search and play on the canvas; study Shorts for Reel ideas.
 

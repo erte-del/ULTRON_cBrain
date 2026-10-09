@@ -30,6 +30,7 @@ from .canvas import clear_canvas, open_terminal, read_terminal, show_on_canvas
 from .contacts import find_contact
 from .expert import ask_expert
 from .flights import flights
+from .github import github
 from .homework import check_homework
 from .imagegen import generate_image, image_ai_edit
 from .instagram import (instagram_cancel, instagram_comments, instagram_post, instagram_preview, instagram_queue,
@@ -179,6 +180,8 @@ TOOLS: list[UltronTool] = [
     UltronTool(maps, "read"),
     # Google Flights: only searches, can't book.
     UltronTool(flights, "read"),
+    # GitHub through the signed-in gh tool: lists and reads only, nothing is changed.
+    UltronTool(github, "read"),
     # YouTube: only searches. watch_short downloads one Short into a temp folder it deletes.
     UltronTool(youtube, "read"),
     UltronTool(watch_short, "read"),
