@@ -360,6 +360,8 @@ only look things up.
 - **Instagram Reels**: edits Reels with FFmpeg (stock clips, licensed music, voice-overs, word
   captions), previews them on the canvas, posts and replies to comments (always asks first),
   and reads stats to learn what works.
+  Two jobs run on their own: a Sunday 18:00 stats recap, and a daily 19:00 list of comments that
+  look like real questions (spam is skipped), so you only review the ones worth answering.
 
 ### This computer and your PC
 
