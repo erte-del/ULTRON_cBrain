@@ -144,13 +144,14 @@ class TalkOverTest(unittest.IsolatedAsyncioTestCase):
                              ("Yes, but change the time to five please", None)]:
             self.assertEqual(main.yes_or_no(said), answer, said)
 
-    def test_wants_new_chat(self):
-        import main
+    def test_new_chat_tool_asks_for_a_restart_once(self):
+        import asyncio
 
-        for said, wanted in [("Start a new chat.", True), ("New conversation", True),
-                             ("Hey Ultron, let's start a fresh chat please", True), ("new chat", True),
-                             ("Start a new chat about my homework", False), ("What's new in chat apps?", False)]:
-            self.assertEqual(main.wants_new_chat(said), wanted, said)
+        from tools import chat
+
+        asyncio.run(chat.new_chat.handler({}))
+        self.assertTrue(chat.take())
+        self.assertFalse(chat.take())
 
 
 class GroqTest(unittest.TestCase):

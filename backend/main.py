@@ -31,6 +31,7 @@ from PIL import Image, UnidentifiedImageError
 
 from storage import chat_store, image_store, job_store, memory_store, model_store, upload_store, video_store
 from tools import canvas, instagram, mac, spotify
+from tools import chat as chat_tool
 from voice import stt, tts, vad, wake
 
 log = logging.getLogger("ultron")
@@ -284,10 +285,13 @@ async def run_turn(
                 sentences.put_nowait(sentence)
             sentences.put_nowait(None)
             await mouth  # the last sentence is on its way before "idle"
+        if chat_tool.take():  # Ultron called new_chat during this reply
+            await start_new_chat(send if voice else None, by_ultron=True)
     finally:
         if mouth:
             hub.disconnect(ask_aloud)
             mouth.cancel()  # stopped: say no more
+        chat_tool.take()  # stopped before it could restart: forget the request
         mac.phone_here = mac.phone_status = None
         try:
             await send(events.status("idle"))
@@ -313,16 +317,6 @@ def yes_or_no(text: str) -> bool | None:
     if _NO.match(start):
         return False
     return True if _YES.match(start) else None
-
-
-_NEW_CHAT = re.compile(r"(?:(?:hey )?ultron )?(?:please )?(?:(?:let'?s |can you |could you )?(?:start|open|begin|make) )?"
-                       r"(?:a )?(?:new|fresh) (?:chat|conversation)(?: please)?", re.I)
-
-
-def wants_new_chat(text: str) -> bool:
-    """True when the whole message just asks for a new chat ("Start a new chat.", said or typed),
-    so it does what the button does instead of going to Claude."""
-    return bool(_NEW_CHAT.fullmatch(" ".join(re.sub(r"[^\w\s']", " ", text).split())))
 
 
 async def speak(send: hub.Sender, sentences: asyncio.Queue) -> None:
@@ -412,10 +406,13 @@ def settings_event() -> events.Event:
     return events.settings_state(brain.provider, config.GATEWAY_URL, brain.gateway_model, config.GATEWAY_MODELS)
 
 
-async def start_new_chat(say_to: hub.Sender | None = None) -> None:
+async def start_new_chat(say_to: hub.Sender | None = None, by_ultron: bool = False) -> None:
     """say_to: asked for out loud, so Ultron says it's done too."""
     await ultron.new_conversation()
-    await hub.emit(events.conversation_new("button"))
+    await hub.emit(events.conversation_new("ultron" if by_ultron else "button"))
+    await hub.emit(events.notice("New chat started."))
+    await hub.emit(events.notice("New chat started."))
+    await hub.emit(events.status("idle"))  # the page was waiting for a reply to the message you sent
     if say_to:
         done: asyncio.Queue[str | None] = asyncio.Queue()
         for item in ("New chat started.", None):
@@ -591,13 +588,6 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 files = [f for f in msg.get("files") or [] if isinstance(f, str)
                          and (upload_store.UPLOAD_ID.match(f) or image_store.IMAGE_ID.match(f))]
                 if not text and not files:
-                    continue
-                if not files and wants_new_chat(text):  # same as the button
-                    for task in turns:
-                        task.cancel()
-                    task = asyncio.create_task(start_new_chat(send if msg.get("voice") is True else None))
-                    background.add(task)
-                    task.add_done_callback(background.discard)
                     continue
                 # Run the turn in the background so this loop keeps listening
                 # (confirmations, your voice). The brain runs one turn at a time.

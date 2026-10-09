@@ -25,6 +25,7 @@ from storage import job_store, memory_store
 
 from . import connectors, important, mac, web
 from .amazon import amazon_change, amazon_read
+from .chat import new_chat
 from .canvas import open_terminal, read_terminal, show_on_canvas
 from .contacts import find_contact
 from .expert import ask_expert
@@ -74,6 +75,8 @@ TOOLS: list[UltronTool] = [
     UltronTool(ask_expert, "read"),
     UltronTool(show_on_canvas, "read"),
     # Only opens the tab: what runs in the shell is up to you, typing in it.
+    # Restarts the chat after the reply, like the button: nothing outside Ultron changes.
+    UltronTool(new_chat, "act"),
     UltronTool(open_terminal, "read"),
     # Only reads the screen text the page sent; never types in the shell.
     UltronTool(read_terminal, "read"),

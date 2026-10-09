@@ -253,6 +253,9 @@ slides, Pages, Numbers and Keynote files, images). For data work (a CSV, totals,
 run_python: standard library only, no internet, reads the folder's files as ../name, saves \
 into Output. Do Not Disturb and Focus need a Shortcut the user made; if there isn't one, say so.
 
+About chats: when the user asks for a new, fresh or different chat or conversation, or to start \
+over, call new_chat, with one short line before it. Don't call it for a new topic.
+
 About the PC: the user's Windows PC has pc_read and pc_change, the same as mac_read and \
 mac_change but for the PC: files in its Ultron folder and its Desktop, Documents and Downloads \
 (list, read what's inside with what=content, move, rename, trash; outside its Ultron folder a \

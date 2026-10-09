@@ -101,7 +101,7 @@ export type ServerEvent =
   | { type: 'confirm.resolved'; id: string; status: ConfirmStatus }
   | { type: 'canvas.card'; id: string; kind: string; title: string; data: Record<string, unknown> }
   | { type: 'terminal.open'; claude: boolean }
-  | { type: 'conversation.new'; reason: 'button' | 'idle' | 'provider' }
+  | { type: 'conversation.new'; reason: 'button' | 'idle' | 'provider' | 'ultron' }
   | { type: 'conversation.loaded'; messages: Pick<ChatMessage, 'role' | 'text' | 'files' | 'model'>[]; cards: CanvasCard[] }
   | { type: 'chats.list'; chats: SavedChat[]; max: number }
   | { type: 'memory.list'; memories: Memory[]; categories: string[] }
@@ -570,6 +570,8 @@ function baseReducer(state: ChatState, action: Action): ChatState {
           }
         case 'conversation.new': {
           if (ev.reason === 'button') return { ...state, messages: [] }
+          if (ev.reason === 'ultron')
+            return { ...state, messages: [{ id: nextLocalId(), role: 'notice', info: true, text: 'New chat started.' }] }
           // Started over by itself after a long break: say so above your new message.
           const notice: ChatMessage = {
             id: nextLocalId(),
