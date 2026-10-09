@@ -356,5 +356,27 @@ class StatsTest(unittest.TestCase):
         self.assertEqual(registry.classify("mcp__ultron__instagram_stats"), "read")
 
 
+class BlockedTest(unittest.TestCase):
+    def test_daily_check_alerts_when_meta_blocks_access(self):
+        pushed = []
+
+        async def push(title, text):
+            pushed.append((title, text))
+
+        async def stop(_):
+            raise asyncio.CancelledError
+
+        blocked = mock.Mock(side_effect=RuntimeError("Instagram: API access blocked. (code 200)"))
+        with mock.patch.object(instagram, "refresh_if_due", return_value=False), \
+             mock.patch.object(instagram, "token", return_value="t"), \
+             mock.patch.object(instagram, "_graph", blocked), \
+             mock.patch.object(instagram.notify, "push", push), \
+             mock.patch.object(instagram.asyncio, "sleep", stop):
+            with self.assertRaises(asyncio.CancelledError):
+                asyncio.run(instagram.refresh_loop())
+        self.assertEqual(pushed[0][0], "Instagram not reachable")
+        self.assertIn("code 200", pushed[0][1])
+
+
 if __name__ == "__main__":
     unittest.main()

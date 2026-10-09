@@ -110,12 +110,19 @@ def refresh_if_due() -> bool:
 
 
 async def refresh_loop() -> None:
-    """Started by main.py: check once at start and then daily, so the token never lapses."""
+    """Started by main.py: check once at start and then daily, so the token never lapses,
+    and tell the user if Meta stops answering (blocked app, revoked access, ...)."""
     while True:
         try:
             await asyncio.to_thread(refresh_if_due)
         except (OSError, ValueError, KeyError) as e:  # e.g. the token is under a day old
             log.warning("Instagram token not renewed: %s", e)
+        if token():
+            try:
+                await asyncio.to_thread(_graph, "GET", "me", fields="username")
+            except (RuntimeError, OSError) as e:
+                await notify.push("Instagram not reachable", f"{e}. Posting, stats and comments won't "
+                                  "work until it's fixed (see developers.facebook.com/apps).")
         await asyncio.sleep(24 * 3600)
 
 
@@ -130,7 +137,8 @@ def _graph(method: str, path: str, **params: Any) -> dict[str, Any]:
             return json.load(r)
     except urllib.error.HTTPError as e:
         try:
-            msg = json.load(e).get("error", {}).get("message") or str(e)
+            err = json.load(e).get("error", {})
+            msg = f"{err.get('message') or e} (code {err.get('code')})"
         except ValueError:
             msg = str(e)
         raise RuntimeError(f"Instagram: {msg}") from None
