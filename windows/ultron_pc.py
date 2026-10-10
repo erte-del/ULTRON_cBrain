@@ -1,6 +1,6 @@
 """Ultron on a Windows PC: the same reads and changes as mac_read / mac_change, over Tailscale.
 
-  POST /read   {"what": "status" | "clipboard" | "files" | "content" | "name", "query", "folder", "path"}
+  POST /read   {"what": "status" | "clipboard" | "files" | "content" | "folder" | "name", "query", "folder", "path"}
                                                                              = mac_read
   POST /change {"action": "open_app" | "open_url" | "open_file" | "open_terminal" | "copy" |
                 "volume" | "mute" | "dark_mode" | "media" | "move" | "trash", ...}  = mac_change
@@ -136,6 +136,35 @@ def find_files(query: str, where: str = "all") -> list[dict[str, Any]]:
             found.append({"path": show(p) + ("/" if p.is_dir() else ""), "size": st.st_size,
                           "modified": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="minutes")})
     return sorted(found, key=lambda f: f["modified"], reverse=True)
+
+
+def tree_size(d: Path) -> int:
+    """Bytes in a folder, all the way down. Unreadable folders are skipped. (Same as tools/mac.py.)"""
+    total = 0
+    for top, _, files in os.walk(d):
+        for f in files:
+            try:
+                total += os.lstat(os.path.join(top, f)).st_size
+            except OSError:
+                pass
+    return total
+
+
+def list_folder(d: Path) -> dict[str, Any]:
+    """What's in a folder (no hidden files), folders first, each folder with its full size."""
+    items, total = [], 0
+    for p in sorted(d.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+        try:
+            st = p.lstat()
+        except OSError:
+            continue
+        size = tree_size(p) if p.is_dir() and not p.is_symlink() else st.st_size
+        total += size
+        if not p.name.startswith("."):
+            items.append({"name": p.name + ("/" if p.is_dir() else ""), "size": size,
+                          "modified": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="minutes")})
+    return {"folder": show(d), "total_size": total, "items": items[:MAX_FILES],
+            **({"more": len(items) - MAX_FILES} if len(items) > MAX_FILES else {})}
 
 
 def move(path: str, to: str, outside_ok: bool = False) -> str:
@@ -285,6 +314,11 @@ def read(args: dict[str, Any]) -> str | dict[str, Any]:
         more = f" (newest {MAX_FILES} of {len(found)})" if len(found) > MAX_FILES else ""
         return f"Found{more}: " + json.dumps(found[:MAX_FILES], ensure_ascii=False) if found else \
             f"Nothing matches in {'any folder' if where == 'all' else where}."
+    if what == "folder":
+        p = allowed(str(args.get("path") or ""))
+        if not p.is_dir():
+            raise ValueError(f"{args.get('path')!r} isn't a folder.")
+        return json.dumps(list_folder(p), ensure_ascii=False)
     if what == "content":  # the bytes: the Mac reads PDFs, Office files and images
         p = allowed(str(args.get("path") or ""))
         if not p.is_file():
@@ -294,7 +328,7 @@ def read(args: dict[str, Any]) -> str | dict[str, Any]:
         return {"text": show(p), "data": base64.b64encode(p.read_bytes()).decode()}
     if what == "name":  # Spotify calls the PC by this name
         return platform.node()
-    raise ValueError(f"what must be one of status, clipboard, files, content (got {what!r}).")
+    raise ValueError(f"what must be one of status, clipboard, files, content, folder (got {what!r}).")
 
 
 def change(args: dict[str, Any]) -> str:

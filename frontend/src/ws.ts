@@ -136,7 +136,7 @@ export type ClientEvent =
 // voice: voice mode; wake: listening only for "Hey Ultron"; off: the mic is off.
 export type ListenMode = 'voice' | 'wake' | 'off'
 
-export type ConfirmStatus = 'pending' | 'approved' | 'denied' | 'expired'
+export type ConfirmStatus = 'pending' | 'approved' | 'denied' | 'expired' | 'stopped'
 
 export interface Confirmation {
   title: string

@@ -108,17 +108,19 @@ def only_launches(args: dict[str, Any]) -> bool:
     "Read things on the user's Windows PC. what: 'status' (battery, volume, dark mode, Wi-Fi), "
     "'clipboard' (the PC's copied text), 'files' (files whose name or folder has every word of query, "
     "newest first, in the PC's Ultron folder and its Desktop, Documents and Downloads; folder narrows it "
-    "to one; an empty query lists all of the Ultron folder but only the top level of the others), or "
+    "to one; an empty query lists all of the Ultron folder but only the top level of the others; it finds "
+    "names, it doesn't open folders), 'folder' (what's inside the folder at path, with each subfolder's full "
+    "size and the folder's total in bytes: for \"what's in X\" or \"how big is X\"), or "
     f"'content' (what's inside the file at path: {READABLE}; images come back as a picture). Paths come "
     "back ready for pc_change: plain for the Ultron folder, '~/...' for the others.",
     {
         "type": "object",
         "properties": {
-            "what": {"type": "string", "enum": ["status", "clipboard", "files", "content"]},
+            "what": {"type": "string", "enum": ["status", "clipboard", "files", "content", "folder"]},
             "query": {"type": "string", "description": "For files: words in the name or folder."},
             "folder": {"type": "string", "enum": ["all", "ultron", "Desktop", "Documents", "Downloads"],
                        "description": "For files: where to look (default all)."},
-            "path": {"type": "string", "description": "For content: a path pc_read what=files gave."},
+            "path": {"type": "string", "description": "For content or folder: a path pc_read what=files gave."},
         },
         "required": ["what"],
     },

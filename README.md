@@ -301,7 +301,9 @@ only look things up.
 - **Voice mode**: Ultron hears when you stop talking, writes it down (Groq Whisper, or
   faster-whisper on this computer), and answers out loud sentence by sentence (Kokoro voice,
   ~2 s to the first word). Spoken answers are 1–3 sentences; anything longer goes on the canvas.
-  Say "yes" / "no" to confirmation cards. Talk over it to interrupt; "stop" just stops it.
+  Say "yes" / "no" to confirmation cards. Talk over it to interrupt; "stop" just stops it. A card
+  still waiting when you interrupt ends as "Stopped — not done", and Ultron is told how its cards
+  ended, so it never guesses whether something (an Instagram post) went out.
 - **"Hey Ultron"** wake word, checked on this computer so nothing leaves it until you say it.
 - **Smart model choice**: Haiku for quick things, Sonnet by default, Opus when you say "think
   hard". Sonnet can hand a hard task to Opus (`ask_expert`).
@@ -354,7 +356,7 @@ only look things up.
 - **Images**: find photos on Pexels; edit them (crop, resize, rotate, colour, text, borders…)
   with undo and versions; click one to select it, then say "this one".
 - **AI images**: create and change pictures with FLUX.2 Klein on this Mac (~20 s, free, private).
-- **Screen clipping** (`capture`): a rolling replay buffer of your screen (video only). The replay buffer runs from the moment Ultron starts (last 5 minutes, deleted when Ultron stops; `JARVIS_CAPTURE_ALWAYS_ON=0` turns this off), so just say "clip the last 30 seconds" or "bookmark that"; clips appear on the canvas and can be trimmed and merged. "Record" saves a full recording instead. The **library app** (`http://127.0.0.1:8000/?captures=1`, or ask Ultron to "open my captures"): recordings and clips by date with thumbnails, search, favourites, a player with a trim bar ("Save as new clip"), rename, download, delete and a Record button. Game sound needs a loopback device set in `JARVIS_CAPTURE_AUDIO` (BlackHole on the Mac, Stereo Mix on Windows; steps in `.env.example`); without it recordings are silent. Needs `ffmpeg`; on the Mac give Ultron Screen Recording permission and set `JARVIS_CAPTURE_SCREEN` if the wrong display records. The buffer is deleted on stop.
+- **Screen clipping** (`capture`): a rolling replay buffer of your screen (video only). The replay buffer runs from the moment Ultron starts (last 5 minutes, deleted when Ultron stops; `JARVIS_CAPTURE_ALWAYS_ON=0` turns this off), so just say "clip the last 30 seconds" or "bookmark that"; clips appear on the canvas and can be trimmed and merged. "Record" saves a full recording instead. The **library app** (`http://127.0.0.1:8000/?captures=1`, or ask Ultron to "open my captures"): recordings and clips by date with thumbnails, search, favourites, a player with a trim bar ("Save as new clip"), rename, download, delete and a Record button. Game sound needs a loopback device set in `JARVIS_CAPTURE_AUDIO` (BlackHole on the Mac, Stereo Mix on Windows; steps in `.env.example`); without it recordings are silent. Needs `ffmpeg`; on the Mac give Ultron Screen Recording permission and set `JARVIS_CAPTURE_SCREEN` (a device *name*, default `Capture screen 0`: numbers shift when a camera like Desk View appears) if the wrong display records. If ffmpeg runs but no footage arrives, `status` and `clip` say so instead of pretending it records. The buffer is deleted on stop.
 - **AI video**: 5-second clips with Wan 2.1/2.2 on this Mac, running in the background.
 - **3D objects**: ready-made models from your library or [3DAssets.dev](https://3dassets.dev);
   otherwise a fast preview you can spin and zoom, changed through the chat, checked by rendering
@@ -392,6 +394,8 @@ only look things up.
 
 - **Mac**: Shortcuts, opening apps, pages and documents, clipboard, battery, volume, dark mode,
   Wi-Fi, location. File moves, renames and Trash in one folder (`~/Jarvis Files`), never overwriting.
+  Finds files by name, reads what's in them, and lists a folder's contents with each subfolder's full
+  size ("what's in ACC TRACKS?", "how big is it?").
 - **Sandboxed Python** for data work: no internet, reads only that folder, writes only to `Output/`.
 - **Terminal tabs**: a real shell (optionally with Claude Code) for *you* on the canvas. Ultron
   opens it but never types in it. Mac only, never from the phone.

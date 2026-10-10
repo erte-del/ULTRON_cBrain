@@ -1498,7 +1498,8 @@
 }
 .confirm-card.confirm-approved { border-color: var(--haiku); background: var(--panel); }
 .confirm-card.confirm-denied,
-.confirm-card.confirm-expired { border-color: var(--border); background: var(--panel); opacity: 0.75; }
+.confirm-card.confirm-expired,
+.confirm-card.confirm-stopped { border-color: var(--border); background: var(--panel); opacity: 0.75; }
 
 .confirm-head {
   display: flex;
@@ -1519,7 +1520,8 @@
 }
 .confirm-approved .confirm-icon { background: var(--haiku); }
 .confirm-denied .confirm-icon,
-.confirm-expired .confirm-icon { background: var(--text-dim); }
+.confirm-expired .confirm-icon,
+.confirm-stopped .confirm-icon { background: var(--text-dim); }
 
 .confirm-title {
   font-weight: 600;

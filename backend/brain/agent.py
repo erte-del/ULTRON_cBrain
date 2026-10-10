@@ -20,6 +20,7 @@ from config import STORAGE_DIR
 from storage import memory_store, upload_store
 from tools import connectors, registry, web
 
+from . import confirm
 from .base import Brain, Done, Error, ModelAlias, TextDelta, ToolResult, ToolStart
 from .router import STICKY_CONTEXT_TOKENS, Route, route
 
@@ -155,6 +156,9 @@ class Ultron:
         # didn't write it, and "that email" may be about it.
         if told := notify.take_unseen():
             prompt = "[Since the user's last message, your scheduled jobs notified them:\n" + "\n".join(told)[:3000] + "]\n" + prompt
+        # Your last reply was cut short while a confirmation card was out: how it ended.
+        if cards := confirm.take_outcomes():
+            prompt = "[Your last reply was cut short. Its confirmation cards: " + "; ".join(cards) + ".]\n" + prompt
         # The system prompt replaces Claude Code's, which carried the date: without this
         # "tomorrow" or "next Friday" can't be resolved.
         prompt = f"[Now: {now_note()}]\n{prompt}"
@@ -196,6 +200,7 @@ class Ultron:
                         yield events.from_brain(ev, reply_id)
 
                     case Done():
+                        confirm.take_outcomes()  # the reply ran to the end: Claude saw how its cards went
                         if not self.transcript:
                             self.started = time.time()
                         self.transcript += [f"User: {text}", f"Ultron: {reply_text}"]

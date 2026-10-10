@@ -85,6 +85,19 @@ class GateTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.gate.pending_requests(), [])
         self.assertFalse(self.gate.resolve("t1", True))  # already answered
 
+    async def test_stopped_reply_ends_its_card_and_tells_the_next_message(self):
+        confirm.take_outcomes()
+        task = await self.ask()
+        await self.wait_for_request()
+        self.gate.stop_waiting()  # you talked over the reply ("yeah go ahead and post it now")
+        self.assertIsInstance(await task, PermissionResultDeny)
+        self.assertEqual(self.sent[-1]["status"], "stopped")
+        self.assertEqual(self.gate.pending_requests(), [])  # a later "yes" can't answer it
+        told = confirm.take_outcomes()
+        self.assertEqual(len(told), 1)
+        self.assertIn("did not happen", told[0])
+        self.assertEqual(confirm.take_outcomes(), [])  # told once
+
 
 if __name__ == "__main__":
     unittest.main()

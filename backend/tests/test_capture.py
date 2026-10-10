@@ -28,6 +28,18 @@ class CaptureTest(unittest.TestCase):
         start.assert_called_once()
         self.assertTrue(out.get("is_error"))
 
+    def test_running_without_footage_is_reported(self):
+        # ffmpeg alive on a device that sends nothing (it opened the Desk View camera): no segments
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(capture, "BUF", Path(tmp)), \
+                mock.patch.object(capture, "running", return_value=True):
+            (Path(tmp) / "ffmpeg.log").write_text("", encoding="utf-8")
+            capture._started = time.time()
+            self.assertFalse(capture.stalled())  # just started: give it a moment
+            capture._started = time.time() - 60
+            self.assertTrue(capture.stalled())
+            out = asyncio.run(capture.capture.handler({"action": "status"}))
+            self.assertTrue(out.get("is_error"))
+            self.assertIn("no footage", out["content"][0]["text"])
 
     def test_last_n_seconds_is_exact(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(capture, "BUF", Path(tmp)):

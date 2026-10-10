@@ -27,11 +27,21 @@ log = logging.getLogger("ultron.confirm")
 
 CONFIRM_TIMEOUT_S = 300
 
+# How each card ended, for the next message: a reply cut short (you talked over it, or said
+# "stop") never shows Claude the answer or the action's result. Cleared when a reply finishes.
+_outcomes: list[str] = []
+
+
+def take_outcomes() -> list[str]:
+    told = _outcomes[:]
+    _outcomes.clear()
+    return told
+
 
 @dataclass
 class _Pending:
     request: events.Event  # the confirm.request event, re-sent to tabs that open later
-    answer: asyncio.Future[bool]
+    answer: asyncio.Future[bool | None]  # None: the reply it belongs to was stopped
 
 
 class ConfirmationGate:
@@ -53,7 +63,7 @@ class ConfirmationGate:
         request_id = context.tool_use_id or f"confirm-{id(tool_input)}"
         title, summary, details = registry.describe_call(tool_name, tool_input)
         request = events.confirm_request(request_id, title, summary, details)
-        answer: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
+        answer: asyncio.Future[bool | None] = asyncio.get_running_loop().create_future()
         self._pending[request_id] = _Pending(request, answer)
         log.info("Asking for confirmation: %s", title)
 
@@ -61,11 +71,18 @@ class ConfirmationGate:
         try:
             await hub.emit(request)
             approved = await asyncio.wait_for(answer, CONFIRM_TIMEOUT_S)
-            status = "approved" if approved else "denied"
+            status = "stopped" if approved is None else "approved" if approved else "denied"
         except TimeoutError:
             pass
         finally:
             self._pending.pop(request_id, None)
+            _outcomes.append(f'"{title}": ' + {
+                "approved": "the user approved it, so it ran. If you never saw its result, the reply was cut off "
+                            "while it ran: check with a read tool before saying it worked or trying again",
+                "denied": "the user declined it, so it did not happen",
+                "stopped": "the reply was stopped before the user answered, so it did not happen",
+                "expired": "no answer in time, so it did not happen",
+            }[status])
             await hub.emit(events.confirm_resolved(request_id, status))
 
         log.info("Confirmation %s: %s", status, title)
@@ -75,6 +92,8 @@ class ConfirmationGate:
             return PermissionResultDeny(
                 message="The user declined this action. Don't retry it unless they ask again."
             )
+        if status == "stopped":
+            return PermissionResultDeny(message="The user stopped the reply before answering; the action was not performed.")
         return PermissionResultDeny(
             message=f"No answer from the user within {CONFIRM_TIMEOUT_S // 60} minutes; "
             "the action was not performed."
@@ -87,6 +106,13 @@ class ConfirmationGate:
             return False
         pending.answer.set_result(approved)
         return True
+
+    def stop_waiting(self) -> None:
+        """The reply was stopped: its cards end now (as not done), instead of lingering until
+        the timeout where a later "yes" could answer a question Claude has moved past."""
+        for pending in self._pending.values():
+            if not pending.answer.done():
+                pending.answer.set_result(None)
 
     def pending_requests(self) -> list[events.Event]:
         """Open questions, for a tab that connects while they're waiting."""

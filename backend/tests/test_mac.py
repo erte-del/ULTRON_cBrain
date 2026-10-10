@@ -115,6 +115,20 @@ class MacTest(unittest.TestCase):
         self.assertTrue(read(config.ROOT_DIR / ".env.example")["is_error"])  # Ultron's code is off limits
         self.assertFalse(registry.needs_ok("mcp__ultron__mac_read", {"what": "content", "path": "x"}))
 
+    def test_lists_a_folder_with_full_sizes(self):
+        # "ACC TRACKS": the folder's own entry is tiny; the tracks inside are what count
+        tracks = self.downloads / "ACC TRACKS"
+        (tracks / "Spa/setups").mkdir(parents=True)
+        (tracks / "Spa/setups/wet.json").write_bytes(b"x" * 300)
+        (tracks / "Spa/layout.png").write_bytes(b"x" * 200)
+        (tracks / "notes.txt").write_bytes(b"x" * 50)
+        (tracks / ".DS_Store").write_bytes(b"x" * 10)
+        found = json.loads(call(mac.mac_read, what="folder", path=str(tracks))["content"][0]["text"])
+        self.assertEqual(found["total_size"], 560)
+        self.assertEqual([(i["name"], i["size"]) for i in found["items"]], [("Spa/", 500), ("notes.txt", 50)])
+        self.assertTrue(call(mac.mac_read, what="folder", path=str(tracks / "notes.txt"))["is_error"])
+        self.assertTrue(call(mac.mac_read, what="folder", path=str(config.ROOT_DIR))["is_error"])
+
     def test_only_documents_web_pages_and_real_apps_open(self):
         self.root.mkdir()
         (self.root / "run.command").write_text("echo hi")

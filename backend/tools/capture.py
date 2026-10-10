@@ -38,6 +38,7 @@ _proc: subprocess.Popen | None = None
 _log = None
 _marks: list[dict[str, Any]] = []
 _recording = False  # True: keep every segment as a full recording, not a ring
+_started = 0.0
 
 
 def window(a: float, b: float, buffer_end: float, total: float) -> tuple[float, float]:
@@ -67,9 +68,19 @@ def running() -> bool:
     return _proc is not None and _proc.poll() is None
 
 
+def stalled() -> bool:
+    """Running, but no new footage for a while: ffmpeg opened a device that sends nothing
+    (a camera instead of the screen, or no Screen Recording permission)."""
+    if not running():
+        return False
+    segs = _segments()
+    newest = segs[-1].stat().st_mtime if segs else _started
+    return time.time() - newest > 3 * SEG
+
+
 def start(minutes: int) -> str:
     """minutes > 0: rolling buffer. minutes == 0: record everything until stopped."""
-    global _proc, _log, _recording
+    global _proc, _log, _recording, _started
     if running():
         if _recording == (minutes == 0):
             return "Already recording."
@@ -80,6 +91,7 @@ def start(minutes: int) -> str:
     _recording = minutes == 0
     wrap = [] if _recording else ["-segment_wrap", str(math.ceil(minutes * 60 / SEG) + 1)]
     _log = open(BUF / "ffmpeg.log", "wb")
+    _started = time.time()
     _proc = subprocess.Popen(
         ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *_source(), "-vf", "scale=-2:1080",
          "-pix_fmt", "yuv420p", *_encoder(), "-g", "30", "-f", "segment", "-segment_time", str(SEG),
@@ -234,6 +246,11 @@ async def capture(args: dict[str, Any]) -> dict[str, Any]:
                 rec = await finish_recording()
                 return _text(f"Saved the recording ({rec.seconds} s) to the library.")
             return _text(await asyncio.to_thread(stop))
+        if act in ("status", "clip") and stalled():
+            log = (BUF / "ffmpeg.log").read_text(encoding="utf-8", errors="replace")[-500:]
+            return _text(f"Started but no footage is arriving from {config.CAPTURE_SCREEN!r} (wrong device in "
+                         "JARVIS_CAPTURE_SCREEN, or no Screen Recording permission). ffmpeg says: "
+                         f"{log.strip() or 'nothing'}", is_error=True)
         if act == "status":
             marks = "; ".join(f"{m['id']} {m['label']} ({int(time.time() - m['at'])} s ago)" for m in _marks)
             return _text(("Recording. " if running() else "Not recording. ") + (f"Bookmarks: {marks}" if marks else "No bookmarks."))

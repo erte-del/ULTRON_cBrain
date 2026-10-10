@@ -14,6 +14,7 @@ const STATUS_LABEL: Record<ConfirmStatus, string> = {
   approved: 'Approved',
   denied: 'Declined',
   expired: 'Expired — not done',
+  stopped: 'Stopped — not done',
 }
 
 export default function ConfirmCard({ confirm, onAnswer }: ConfirmCardProps) {

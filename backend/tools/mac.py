@@ -248,6 +248,35 @@ async def find_files(query: str, folder: str = "all") -> list[dict[str, Any]]:
     return sorted(found, key=lambda f: f["modified"], reverse=True)
 
 
+def tree_size(d: Path) -> int:
+    """Bytes in a folder, counted all the way down (Finder's "size"). Unreadable folders are skipped."""
+    total = 0
+    for top, _, files in os.walk(d):
+        for f in files:
+            try:
+                total += os.lstat(os.path.join(top, f)).st_size
+            except OSError:
+                pass
+    return total
+
+
+def list_folder(d: Path, show) -> dict[str, Any]:
+    """What's in a folder (like Finder: no hidden files), folders first, each folder with its full size."""
+    items, total = [], 0
+    for p in sorted(d.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+        try:
+            st = p.lstat()
+        except OSError:
+            continue
+        size = tree_size(p) if p.is_dir() and not p.is_symlink() else st.st_size
+        total += size  # hidden files count towards the total, like Finder
+        if not p.name.startswith("."):
+            items.append({"name": p.name + ("/" if p.is_dir() else ""), "size": size,
+                          "modified": datetime.fromtimestamp(st.st_mtime).isoformat(timespec="minutes")})
+    return {"folder": show(d), "total_size": total, "items": items[:MAX_FILES],
+            **({"more": len(items) - MAX_FILES} if len(items) > MAX_FILES else {})}
+
+
 @tool(
     "mac_read",
     "Read things on this Mac. what: 'status' (battery, volume, dark mode, Wi-Fi; the phone's first when "
@@ -258,14 +287,16 @@ async def find_files(query: str, folder: str = "all") -> list[dict[str, Any]]:
     f"'content' (what's inside the file at path: {READABLE}; images come back as a picture), or "
     "'files' (files whose name or folder has every word of query, newest first, in Ultron's folder and "
     "the user's Desktop, Documents and Downloads; folder narrows it to one; an empty query lists all of "
-    "Ultron's folder but only the top level of the others). Paths come back ready for mac_change: "
+    "Ultron's folder but only the top level of the others; it finds names, it doesn't open folders), or "
+    "'folder' (what's inside the folder at path, like Finder, with each subfolder's full size and the "
+    "folder's total in bytes: for \"what's in X\" or \"how big is X\"). Paths come back ready for mac_change: "
     "plain for Ultron's folder, '~/Downloads/...' for the others. For sums over a CSV in Ultron's "
     "folder, use run_python.",
     {
         "type": "object",
         "properties": {
-            "what": {"type": "string", "enum": ["status", "location", "clipboard", "shortcuts", "files", "content"]},
-            "path": {"type": "string", "description": "For content: a path mac_read what=files gave."},
+            "what": {"type": "string", "enum": ["status", "location", "clipboard", "shortcuts", "files", "content", "folder"]},
+            "path": {"type": "string", "description": "For content or folder: a path mac_read what=files gave."},
             "query": {"type": "string", "description": "For files: words in the name or folder."},
             "folder": {"type": "string", "enum": ["all", "ultron", *(d.name for d in config.ALLOWED_DIRS)],
                        "description": "For files: where to look (default all)."},
@@ -296,6 +327,11 @@ async def mac_read(args: dict[str, Any]) -> dict[str, Any]:
             more = f" (newest {MAX_FILES} of {len(found)})" if len(found) > MAX_FILES else ""
             return _text(f"Found{more}: " + json.dumps(found[:MAX_FILES], ensure_ascii=False) if found else
                          f"Nothing matches in {'any folder' if folder == 'all' else folder}.")
+        if what == "folder":
+            p = allowed_path(str(args.get("path") or ""))
+            if not p.is_dir():
+                return _text(f"mac_read: {args.get('path')!r} isn't a folder.", True)
+            return _text(json.dumps(await asyncio.to_thread(list_folder, p, _show), ensure_ascii=False))
         if what == "content":
             p = allowed_path(str(args.get("path") or ""))
             if not (p.is_file() or p.suffix.lower() in IWORK and p.exists()):  # old iWork files are folders
@@ -306,7 +342,7 @@ async def mac_read(args: dict[str, Any]) -> dict[str, Any]:
             return _text(f"{_show(p)}:\n\n{await asyncio.to_thread(text_of, p)}")
     except (RuntimeError, OSError, ValueError, PdfReadError) as e:
         return _text(f"mac_read: {_why(e)}", True)
-    return _text(f"mac_read: what must be one of status, location, clipboard, shortcuts, files, content (got {what!r}).", True)
+    return _text(f"mac_read: what must be one of status, location, clipboard, shortcuts, files, content, folder (got {what!r}).", True)
 
 
 # --- changing ------------------------------------------------------------------------

@@ -16,6 +16,7 @@ backend/storage/assets/*
 backend/storage/models/
 backend/storage/uploads/
 backend/storage/videos/
+backend/storage/capture_buffer/
 backend/storage/wan/
 backend/storage/voice/
 backend/storage/flux/

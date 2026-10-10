@@ -61,7 +61,8 @@ BLENDER_PATH = os.getenv("BLENDER_PATH", "/Applications/Blender.app/Contents/Mac
 # own Python and the model weights here.
 WAN_DIR = Path(os.getenv("JARVIS_WAN_DIR") or STORAGE_DIR / "wan")
 # Screen clipping (tools/capture.py): the avfoundation display index on the Mac (`ffmpeg -f avfoundation -list_devices true -i ""`).
-CAPTURE_SCREEN = os.getenv("JARVIS_CAPTURE_SCREEN", "1")
+# By name: device numbers shift when a camera (Desk View, an iPhone) shows up, and then the camera records.
+CAPTURE_SCREEN = os.getenv("JARVIS_CAPTURE_SCREEN", "Capture screen 0")
 # Game sound for `capture`: a loopback audio device (Mac: its avfoundation index, e.g. BlackHole; Windows: its dshow
 # name, e.g. "Stereo Mix (Realtek Audio)"). Empty = video only.
 # Always-on replay buffer: starts with Ultron so "clip the last 30 seconds" works without starting anything.

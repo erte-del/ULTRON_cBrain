@@ -351,14 +351,18 @@ async def run_turn(
     try:
         # aclosing: if sending fails (browser gone), end the brain turn right away.
         async with aclosing(ultron.handle_text(text, model_override, voice, selected_image, files, device)) as stream:
-            async for ev in stream:
-                await send(ev)
-                if mouth and ev["type"] == "assistant.text_delta":
-                    for sentence in parts.feed(ev["text"]):
-                        sentences.put_nowait(sentence)
-                elif mouth and ev["type"] == "tool.started":  # "Let me check." is said before the tool runs
-                    for sentence in parts.flush():
-                        sentences.put_nowait(sentence)
+            try:
+                async for ev in stream:
+                    await send(ev)
+                    if mouth and ev["type"] == "assistant.text_delta":
+                        for sentence in parts.feed(ev["text"]):
+                            sentences.put_nowait(sentence)
+                    elif mouth and ev["type"] == "tool.started":  # "Let me check." is said before the tool runs
+                        for sentence in parts.flush():
+                            sentences.put_nowait(sentence)
+            except asyncio.CancelledError:
+                gate.stop_waiting()  # a card this reply waits on ends with it (before Claude Code is interrupted)
+                raise
         if mouth:
             for sentence in parts.flush():
                 sentences.put_nowait(sentence)
