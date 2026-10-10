@@ -39,8 +39,15 @@ plutil -insert UltronRoot -string "$ROOT" "$APP/Contents/Info.plist"
 "$ROOT/backend/.venv/bin/python" "$ROOT/scripts/make_icon.py" "$TMP/Ultron.iconset"
 iconutil -c icns "$TMP/Ultron.iconset" -o "$APP/Contents/Resources/Ultron.icns"
 
-# Sign it locally ("ad hoc"): macOS won't open an unsigned app on Apple silicon.
-codesign --force --sign - "$APP"
+# Sign it locally: macOS won't open an unsigned app on Apple silicon. With the certificate from
+# scripts/make_cert.sh the app keeps the same identity on every rebuild, so macOS remembers its
+# Screen Recording permission. Without it, "ad hoc" works but macOS asks for that permission again.
+if security find-certificate -c "Ultron Local Signing" >/dev/null 2>&1; then
+  codesign --force --sign "Ultron Local Signing" "$APP"
+else
+  echo "No signing certificate: run scripts/make_cert.sh once so macOS stops asking for Screen Recording." >&2
+  codesign --force --sign - "$APP"
+fi
 codesign --verify "$APP"
 touch "$APP"  # tells Finder to pick up the new icon
 

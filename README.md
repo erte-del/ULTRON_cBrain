@@ -173,6 +173,7 @@ Each script is safe to run again; finished steps are skipped.
 | `scripts/setup_voice.sh` | Reel voice-overs (Kokoro, Piper Turkish) and word-timed captions | ~2 GB |
 | `scripts/setup_location.sh` | "near me", weather, travel times (asks for Location once) | small |
 | `scripts/make_app.sh` | `Ultron.app`, the menu-bar orb and the screen overlay | none |
+| `scripts/make_cert.sh` | a signing certificate, once, so macOS remembers Ultron's Screen Recording permission after a rebuild (`make_app.sh` uses it) | none |
 
 The voice mode itself (speech-to-text and Ultron's voice) needs no script: its models
 (~250 MB + ~350 MB) download the first time you turn voice on.
