@@ -4,6 +4,8 @@
                                                                              = mac_read
   POST /change {"action": "open_app" | "open_url" | "open_file" | "open_terminal" | "copy" |
                 "volume" | "mute" | "dark_mode" | "media" | "move" | "trash", ...}  = mac_change
+  POST /capture {"action": "start" | "stop" | "status" | "clip", "minutes", "seconds"}
+                rolling screen buffer on the PC; clip sends the last N seconds back as mp4 bytes
   POST /run    {"code", "lang": "python" | "powershell"}                       = run_python
   -> {"text": "...", "is_error": bool}. Every call needs "Authorization: Bearer <token.txt>".
 
@@ -19,6 +21,7 @@ Updates: every start (logon, or Stop/Start-ScheduledTask Ultron) git-pulls this 
 the new code. Offline or local edits: it keeps running the code it has.
 """
 
+import atexit
 import base64
 import ctypes
 import difflib
@@ -27,7 +30,10 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
+import tempfile
+import time
 import sys
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -452,7 +458,90 @@ def update() -> bool:
         return False
 
 
-ROUTES = {"/read": read, "/change": change, "/run": run}
+SEG = 5  # seconds per buffer segment
+MAX_CLIP_S = 60  # keeps the reply (base64 over Tailscale) to a sane size
+_cap: subprocess.Popen | None = None
+_cap_log = None
+
+
+def _buf() -> Path:
+    return folder() / "capture_buffer"
+
+
+def _segments() -> list[Path]:
+    return sorted(_buf().glob("s*.ts"), key=lambda p: p.stat().st_mtime)
+
+
+def _stop_capture() -> bool:
+    global _cap
+    was = _cap is not None and _cap.poll() is None
+    if was:
+        _cap.terminate()
+        try:
+            _cap.wait(5)
+        except subprocess.TimeoutExpired:
+            _cap.kill()
+    _cap = None
+    if _cap_log:
+        _cap_log.close()
+    return was
+
+
+atexit.register(_stop_capture)
+
+
+def capture(args: dict[str, Any]) -> str | dict[str, Any]:
+    """The whole PC desktop into a rolling buffer of 5 s segments (video only), like the Mac's capture."""
+    global _cap, _cap_log
+    act = args.get("action")
+    ffmpeg = shutil.which("ffmpeg")
+    if act in ("start", "clip") and not ffmpeg:
+        raise RuntimeError("ffmpeg isn't installed on the PC: winget install -e --id Gyan.FFmpeg, then restart Ultron.")
+    running = _cap is not None and _cap.poll() is None
+    if act == "stop":
+        was = _stop_capture()
+        shutil.rmtree(_buf(), ignore_errors=True)
+        return "Stopped; the PC buffer is deleted." if was else "The PC wasn't recording."
+    if act == "status":
+        if _cap is not None and not running:
+            return f"ffmpeg stopped by itself on the PC: {(_buf() / 'ffmpeg.log').read_text(encoding='utf-8', errors='replace')[-500:].strip() or 'nothing'}"
+        return "The PC is recording." if running else "The PC isn't recording."
+    if act == "start" or (act == "clip" and not running):
+        _stop_capture()  # closes a dead ffmpeg's log: Windows can't delete an open file
+        shutil.rmtree(_buf(), ignore_errors=True)
+        _buf().mkdir(parents=True)
+        minutes = min(max(int(args.get("minutes") or 5), 1), 10)
+        _cap_log = open(_buf() / "ffmpeg.log", "wb")
+        _cap = subprocess.Popen(
+            [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "gdigrab", "-framerate", "30", "-i", "desktop",
+             "-vf", "scale=-2:1080", "-pix_fmt", "yuv420p", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-an",
+             "-g", "30", "-f", "segment", "-segment_time", str(SEG), "-segment_format", "mpegts",
+             "-segment_wrap", str(minutes * 60 // SEG + 1), "-reset_timestamps", "1", str(_buf() / "s%05d.ts")],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=_cap_log, creationflags=NO_WINDOW)
+        if act == "clip":
+            raise RuntimeError("The PC wasn't recording, so there is nothing to clip yet: it has started now. Ask again afterwards.")
+        return f"Recording the PC screen into a {minutes}-minute buffer."
+    if act == "clip":
+        if not running:
+            raise RuntimeError("ffmpeg stopped by itself on the PC; say 'status' to see why.")
+        want = min(max(float(args.get("seconds") or 30), 1), MAX_CLIP_S)
+        segs = _segments()[-(int(want // SEG) + 2):]  # a spare for the partly written newest one
+        if not segs:
+            raise RuntimeError("No footage has arrived on the PC yet; wait a few seconds.")
+        with tempfile.TemporaryDirectory() as tmp:
+            lst, joined, out = Path(tmp, "l.txt"), Path(tmp, "j.mp4"), Path(tmp, "clip.mp4")
+            lst.write_text("".join(f"file '{f.as_posix()}'\n" for f in segs), encoding="utf-8")
+            for cmd in (["-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(joined)],
+                        ["-sseof", f"-{want}", "-i", str(joined), "-c", "copy", "-movflags", "+faststart", str(out)]):
+                r = subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", *cmd], capture_output=True,
+                                   encoding="utf-8", errors="replace", timeout=60, creationflags=NO_WINDOW)
+                if r.returncode:
+                    raise RuntimeError(f"ffmpeg: {r.stderr.strip()[-300:]}")
+            return {"text": "clip.mp4", "data": base64.b64encode(out.read_bytes()).decode()}
+    raise ValueError("action must be start, stop, status or clip.")
+
+
+ROUTES = {"/read": read, "/change": change, "/run": run, "/capture": capture}
 
 
 class Handler(BaseHTTPRequestHandler):

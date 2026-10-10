@@ -11,6 +11,7 @@ Windows: gdigrab. Game sound needs a loopback device: set JARVIS_CAPTURE_AUDIO (
 
 import asyncio
 import atexit
+import base64
 import math
 import shutil
 import subprocess
@@ -27,6 +28,7 @@ import config
 import reel
 from storage import video_store
 
+from . import pc
 from .video import _show, _text
 
 BUF = config.STORAGE_DIR / "capture_buffer"
@@ -78,13 +80,22 @@ def stalled() -> bool:
     return time.time() - newest > 3 * SEG
 
 
+def died() -> bool:
+    """ffmpeg exited on its own (bad device, missing codec...): its log says why."""
+    return _proc is not None and _proc.poll() is not None
+
+
+def _ffmpeg_log() -> str:
+    return (BUF / "ffmpeg.log").read_text(encoding="utf-8", errors="replace")[-500:].strip() or "nothing"
+
+
 def start(minutes: int) -> str:
     """minutes > 0: rolling buffer. minutes == 0: record everything until stopped."""
     global _proc, _log, _recording, _started
     if running():
         if _recording == (minutes == 0):
             return "Already recording."
-        stop_process()  # switching between the rolling buffer and a full recording
+    stop_process()  # also closes a dead ffmpeg's log: Windows can't delete an open file
     shutil.rmtree(BUF, ignore_errors=True)
     BUF.mkdir(parents=True)
     _marks.clear()
@@ -216,11 +227,12 @@ def _clip_span(args: dict[str, Any]) -> tuple[float, float | None]:
     "it shows on the canvas as a video) · trim (video id, `start`, `end` in seconds) · merge (`videos`: "
     "list of video ids, joined in order). Clips and edits are new videos; originals stay. Nothing is "
     "recorded until start, so start it before the moment you want to catch; say so if the user asks "
-    "for a clip while it's off. Tell the user it records their whole screen.",
+    "for a clip while it's off. where='pc' records the user's Windows PC instead (start/stop/status/clip; the PC must be on; start it first).  Tell the user it records their whole screen.",
     {
         "type": "object",
         "properties": {
             "action": {"type": "string", "enum": ["start", "record", "open", "stop", "status", "bookmark", "clip", "trim", "merge"]},
+            "where": {"type": "string", "enum": ["mac", "pc"], "description": "pc: the user's Windows PC screen (start, stop, status, clip only; default mac)."},
             "minutes": {"type": "integer"}, "label": {"type": "string"},
             "seconds": {"type": "number"}, "bookmark": {"type": "string"},
             "before": {"type": "number"}, "after": {"type": "number"},
@@ -233,6 +245,14 @@ def _clip_span(args: dict[str, Any]) -> tuple[float, float | None]:
 async def capture(args: dict[str, Any]) -> dict[str, Any]:
     act = args.get("action")
     try:
+        if args.get("where") == "pc":
+            if act not in ("start", "stop", "status", "clip"):
+                return _text("On the PC only start, stop, status and clip work.", is_error=True)
+            found = await pc._ask("/capture", args)
+            if act != "clip" or found.get("is_error"):
+                return _text(str(found.get("text", "")), bool(found.get("is_error")))
+            rec = await _new(str(args.get("label") or "PC clip"), lambda out: Path(out).write_bytes(base64.b64decode(found["data"])))
+            return _text(f"{rec.id}: a {rec.seconds} s clip of the PC screen is on the canvas.")
         if act == "start":
             minutes = min(max(int(args.get("minutes") or 3), 1), MAX_MINUTES)
             return _text(await asyncio.to_thread(start, minutes))
@@ -246,11 +266,12 @@ async def capture(args: dict[str, Any]) -> dict[str, Any]:
                 rec = await finish_recording()
                 return _text(f"Saved the recording ({rec.seconds} s) to the library.")
             return _text(await asyncio.to_thread(stop))
+        if act in ("status", "clip", "bookmark") and died():
+            return _text(f"ffmpeg stopped by itself, so nothing is recording. ffmpeg says: {_ffmpeg_log()}", is_error=True)
         if act in ("status", "clip") and stalled():
-            log = (BUF / "ffmpeg.log").read_text(encoding="utf-8", errors="replace")[-500:]
-            return _text(f"Started but no footage is arriving from {config.CAPTURE_SCREEN!r} (wrong device in "
-                         "JARVIS_CAPTURE_SCREEN, or no Screen Recording permission). ffmpeg says: "
-                         f"{log.strip() or 'nothing'}", is_error=True)
+            why = ("wrong device in JARVIS_CAPTURE_SCREEN, or no Screen Recording permission"
+                   if sys.platform != "win32" else "gdigrab opened but sends nothing (a locked or secure desktop?)")
+            return _text(f"Started but no footage is arriving ({why}). ffmpeg says: {_ffmpeg_log()}", is_error=True)
         if act == "status":
             marks = "; ".join(f"{m['id']} {m['label']} ({int(time.time() - m['at'])} s ago)" for m in _marks)
             return _text(("Recording. " if running() else "Not recording. ") + (f"Bookmarks: {marks}" if marks else "No bookmarks."))

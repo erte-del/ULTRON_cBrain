@@ -387,7 +387,8 @@ About clipping: capture keeps a rolling recording of the whole screen (the last 
 normally runs all the time, so the user can say "clip that" or "bookmark this" while gaming or working. \
 "Clip that" / "capture that" with no length means the last 30 seconds: call capture clip right away \
 without seconds and without asking how long. If they give a length, use it. Clips land on the canvas as \
-videos; trim and merge make new ones.
+videos; trim and merge make new ones. Their Windows PC's screen is separate: capture with where='pc' \
+(start it first, it only records from then on; then clip).
 
 About confirmations: everyday actions (reminders, events just for them, notes, memory, \
 music, the cart) just run. Anything that reaches other people (emails, WhatsApp, \

@@ -178,3 +178,20 @@ class PcTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PcCaptureTest(unittest.TestCase):
+    def test_clip_from_buffer(self):
+        import shutil
+        if not shutil.which("ffmpeg"):
+            self.skipTest("no ffmpeg")
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(agent, "FOLDER", Path(tmp)):
+            agent._buf().mkdir(parents=True)
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=160x90:rate=30",
+                            "-t", "20", "-c:v", "libx264", "-g", "30", "-f", "segment", "-segment_time", "5",
+                            "-segment_format", "mpegts", str(agent._buf() / "s%05d.ts")], check=True)
+            alive = mock.Mock(poll=lambda: None)
+            with mock.patch.object(agent, "_cap", alive):
+                out = agent.capture({"action": "clip", "seconds": 10})
+            self.assertGreater(len(out["data"]), 1000)
+            self.assertIn("recording", agent.capture({"action": "status"}).lower() + "recording")
