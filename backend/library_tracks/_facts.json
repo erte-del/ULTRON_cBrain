@@ -1,0 +1,540 @@
+{
+ "barcelona": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "4.657 km (2.894 miles)",
+   "elevation": "29.6M",
+   "turns": "16",
+   "continent": "Europe",
+   "country": "Spain",
+   "region": "Barcelona",
+   "location": "Circuit de Barcelona-Catalunya S.L., Mas \"La Moreneta\", PD 27 08160, Montmeló, Barcelona",
+   "english_name": "Circuit de Barcelona-Catalunya",
+   "also_known_as": "Montmeló Circuit, Barcelona GP Circuit"
+  },
+  "aliases": [
+   "Barcelona GP Circuit",
+   "Circuit de Barcelona-Catalunya",
+   "Montmeló Circuit",
+   "barcelona",
+   "catalunya",
+   "circuit de barcelona catalunya",
+   "montmelo"
+  ]
+ },
+ "brands-hatch": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "3.916 km (2.433 miles)",
+   "elevation": "30M",
+   "turns": "11",
+   "continent": "Europe",
+   "country": "United Kingdom",
+   "region": "Kent",
+   "location": "Brands Hatch Circuit, Fawkham, Longfield, Kent DA3 8NG, United Kingdom",
+   "english_name": "Brands Hatch Circuit",
+   "also_known_as": "Brands Hatch, Brands Hatch Grand Prix Circuit, Brands Hatch IndyCircuit"
+  },
+  "aliases": [
+   "Brands Hatch",
+   "Brands Hatch Circuit",
+   "Brands Hatch Grand Prix Circuit",
+   "Brands Hatch IndyCircuit",
+   "brands",
+   "brands hatch"
+  ]
+ },
+ "cota": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "3.792 km (2.356 miles)",
+   "elevation": "30.9 m",
+   "turns": "19",
+   "continent": "North America",
+   "country": "United States",
+   "region": "Texas",
+   "location": "9201 Circuit of the Americas Blvd, Austin, TX 78617",
+   "english_name": "Circuit of the Americas",
+   "also_known_as": "COTA"
+  },
+  "aliases": [
+   "COTA",
+   "Circuit of the Americas",
+   "austin",
+   "circuit of the americas",
+   "cota"
+  ]
+ },
+ "donington": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "4.020 km (2.498 miles)",
+   "elevation": "30M",
+   "turns": "12",
+   "continent": "Europe",
+   "country": "United Kingdom",
+   "location": "Donington Park, Castle Donington, Derby, DE74 2RP, England",
+   "english_name": "Donington Park",
+   "also_known_as": "Donington Park Circuit, Castle Donington Circuit"
+  },
+  "aliases": [
+   "Castle Donington Circuit",
+   "Donington Park",
+   "Donington Park Circuit",
+   "donington",
+   "donington park"
+  ]
+ },
+ "hungaroring": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "4.381 km (2.722 miles)",
+   "elevation": "34.6M",
+   "turns": "14",
+   "continent": "Europe",
+   "country": "Hungary",
+   "location": "Hungaroring Circuit, 2146 Mogyoród, Hungaroring Pf. 10, Hungary",
+   "english_name": "Hungaroring",
+   "also_known_as": "Hungaroring RT, Monaco without the barriers"
+  },
+  "aliases": [
+   "Hungaroring",
+   "Hungaroring RT",
+   "Monaco without the barriers",
+   "budapest",
+   "hungaroring",
+   "hungary"
+  ]
+ },
+ "imola": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "4.909 km (3.050 miles)",
+   "elevation": "34.4M",
+   "turns": "19",
+   "continent": "Europe",
+   "country": "Italy",
+   "region": "Emilia-Romagna",
+   "location": "Imola, Emilia-Romagna, Italy",
+   "english_name": "Autodromo Enzo e Dino Ferrari (Imola Circuit)",
+   "also_known_as": "Imola, Imola Circuit, Autodromo Internazionale Enzo e Dino Ferrari"
+  },
+  "aliases": [
+   "Autodromo Enzo e Dino Ferrari (Imola Circuit)",
+   "Autodromo Internazionale Enzo e Dino Ferrari",
+   "Imola",
+   "Imola Circuit",
+   "enzo e dino ferrari",
+   "imola"
+  ]
+ },
+ "indianapolis": {
+  "facts": {
+   "grade": "FIA 1",
+   "length": "3.925 km (2.439 miles)",
+   "elevation": "12M",
+   "turns": "15",
+   "continent": "North America",
+   "country": "United States",
+   "region": "Indiana",
+   "english_name": "Indianapolis Motor Speedway",
+   "also_known_as": "The Brickyard, IMS, The Racing Capital of the World, The Speedway"
+  },
+  "aliases": [
+   "IMS",
+   "Indianapolis Motor Speedway",
+   "The Brickyard",
+   "The Racing Capital of the World",
+   "The Speedway",
+   "ims",
+   "indianapolis",
+   "indy"
+  ]
+ },
+ "kyalami": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "4.580 km (2.846 miles)",
+   "elevation": "30M",
+   "turns": "16",
+   "continent": "Africa",
+   "country": "South Africa",
+   "location": "Kyalami Grand Prix Circuit, Cnr R55 & Allandale Road, Kyalami, Midrand 1684, South Africa",
+   "english_name": "Kyalami Grand Prix Circuit",
+   "also_known_as": "Kyalami Racing Circuit"
+  },
+  "aliases": [
+   "Kyalami Grand Prix Circuit",
+   "Kyalami Racing Circuit",
+   "kyalami"
+  ]
+ },
+ "laguna-seca": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "3.602 km (2.238 miles)",
+   "elevation": "55M",
+   "turns": "12",
+   "continent": "North America",
+   "country": "United States",
+   "region": "California",
+   "location": "WeatherTech Raceway Laguna Seca, 1021 Monterey-Salinas Highway, Salinas, CA 93908 USA",
+   "english_name": "WeatherTech Raceway Laguna Seca",
+   "also_known_as": "Laguna Seca Raceway, Mazda Raceway Laguna Seca, Laguna Seca"
+  },
+  "aliases": [
+   "Laguna Seca",
+   "Laguna Seca Raceway",
+   "Mazda Raceway Laguna Seca",
+   "WeatherTech Raceway Laguna Seca",
+   "laguna",
+   "laguna seca",
+   "weathertech raceway"
+  ]
+ },
+ "misano": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "4.245 km (2.638 miles)",
+   "elevation": "14M",
+   "turns": "16",
+   "continent": "Europe",
+   "country": "Italy",
+   "location": "Misano World Circuit, Via Daijiro Kato, 10 47843 Misano Adriatico, Italy",
+   "english_name": "Misano World Circuit",
+   "also_known_as": "Misano World Circuit Marco Simoncelli,Circuito Internazionale Santa Monica, Autodromo di Santamonica, Autodromo Santa Monica"
+  },
+  "aliases": [
+   "Autodromo Santa Monica",
+   "Autodromo di Santamonica",
+   "Circuito Internazionale Santa Monica",
+   "Misano World Circuit",
+   "Misano World Circuit Marco Simoncelli",
+   "misano"
+  ]
+ },
+ "monza": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "5.793 km (3.600 miles)",
+   "elevation": "12.8M",
+   "turns": "11",
+   "continent": "Europe",
+   "country": "Italy",
+   "region": "Monza and Brianza",
+   "location": "Monza, Italy",
+   "english_name": "Autodromo Nazionale Monza",
+   "also_known_as": "Monza Circuit, Temple of Speed, La Pista Magica"
+  },
+  "aliases": [
+   "Autodromo Nazionale Monza",
+   "La Pista Magica",
+   "Monza Circuit",
+   "Temple of Speed",
+   "monza"
+  ]
+ },
+ "mount-panorama": {
+  "facts": {
+   "grade": "FIA 3",
+   "length": "6.213 km (3.861 miles)",
+   "elevation": "174M",
+   "turns": "23",
+   "continent": "Oceania",
+   "country": "Australia",
+   "region": "New South Wales",
+   "location": "Mountain Straight, Mount Panorama NSW 2795, Australia",
+   "english_name": "Mount Panorama Circuit",
+   "also_known_as": "Mount Panorama Motor Racing Circuit Bathurst"
+  },
+  "aliases": [
+   "Mount Panorama Circuit",
+   "Mount Panorama Motor Racing Circuit Bathurst",
+   "bathurst",
+   "mount panorama",
+   "the mountain"
+  ]
+ },
+ "nurburgring-24h": {
+  "facts": {
+   "grade": "FIA 1",
+   "length": "25.378 km (15.769 miles)",
+   "elevation": "300 m",
+   "turns": "170",
+   "continent": "Europe",
+   "country": "Germany",
+   "region": "Rhineland-Palatinate",
+   "location": "Nürburgring, 53520 Nürburg, Germany",
+   "english_name": "Nürburgring Nordschleife + Grand Prix Circuit (24h Layout)",
+   "also_known_as": "Nürburgring 24h Circuit, Nürburgring 24h Layout, Nürburgring 24-Hour Circuit, Nürburgring 24h-Rennen Layout, Nürburgring 24h Gesamtstrecke, Nürburgring Gesamtstrecke, Nürburgring Combined Circuit, Nordschleife + Grand Prix Circuit, Nordschleife + GP-Strecke"
+  },
+  "aliases": [
+   "24 hours",
+   "24h",
+   "Nordschleife + GP-Strecke",
+   "Nordschleife + Grand Prix Circuit",
+   "Nürburgring 24-Hour Circuit",
+   "Nürburgring 24h Circuit",
+   "Nürburgring 24h Gesamtstrecke",
+   "Nürburgring 24h Layout",
+   "Nürburgring 24h-Rennen Layout",
+   "Nürburgring Combined Circuit",
+   "Nürburgring Gesamtstrecke",
+   "Nürburgring Nordschleife + Grand Prix Circuit (24h Layout)",
+   "green hell",
+   "nordschleife",
+   "nurburgring 24h",
+   "nurburgring nordschleife",
+   "the ring"
+  ]
+ },
+ "nurburgring": {
+  "facts": {
+   "grade": "FIA 1",
+   "length": "5.148 km (3.199 miles)",
+   "elevation": "56 m",
+   "turns": "15",
+   "continent": "Europe",
+   "country": "Germany",
+   "region": "Rhineland-Palatinate",
+   "location": "Nürburg, Germany",
+   "english_name": "Nürburgring Grand Prix Circuit",
+   "also_known_as": "Nürburgring, Nürburgring GP-Strecke"
+  },
+  "aliases": [
+   "Nürburgring",
+   "Nürburgring GP-Strecke",
+   "Nürburgring Grand Prix Circuit",
+   "nurburg",
+   "nurburgring",
+   "nurburgring gp",
+   "nurburgring grand prix"
+  ]
+ },
+ "oulton-park": {
+  "facts": {
+   "grade": "FIA 3",
+   "length": "4.333 km (2.692 miles)",
+   "elevation": "30M",
+   "turns": "12",
+   "continent": "Europe",
+   "country": "United Kingdom",
+   "region": "England",
+   "location": "Oulton Park Circuit, Little Budworth, Tarporley, Cheshire, England CW6 9BW",
+   "english_name": "Oulton Park International Circuit",
+   "also_known_as": "Oulton Park, Oulton Park Circuit"
+  },
+  "aliases": [
+   "Oulton Park",
+   "Oulton Park Circuit",
+   "Oulton Park International Circuit",
+   "oulton",
+   "oulton park"
+  ]
+ },
+ "paul-ricard": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "5.842 km (3.630 miles)",
+   "elevation": "30.4M",
+   "turns": "15",
+   "continent": "Europe",
+   "country": "France",
+   "region": "Var",
+   "location": "Le Castellet, Var, France",
+   "english_name": "Paul Ricard Circuit",
+   "also_known_as": "Circuit Paul Ricard, Le Castellet, Circuit Paul Ricard HTTT"
+  },
+  "aliases": [
+   "Circuit Paul Ricard",
+   "Circuit Paul Ricard HTTT",
+   "Le Castellet",
+   "Paul Ricard Circuit",
+   "le castellet",
+   "paul ricard",
+   "ricard"
+  ]
+ },
+ "red-bull-ring": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "4.318 km (2.683 miles)",
+   "elevation": "63.5M",
+   "turns": "10",
+   "continent": "Europe",
+   "country": "Austria",
+   "region": "Styria",
+   "location": "Spielberg, Styria, Austria",
+   "english_name": "Red Bull Ring",
+   "also_known_as": "Spielberg circuit, A1-Ring, Österreichring, Steiermarkring"
+  },
+  "aliases": [
+   "A1-Ring",
+   "Red Bull Ring",
+   "Spielberg circuit",
+   "Steiermarkring",
+   "a1 ring",
+   "osterreichring",
+   "red bull ring",
+   "spielberg",
+   "Österreichring"
+  ]
+ },
+ "silverstone": {
+  "facts": {},
+  "aliases": [
+   "silverstone",
+   "silverstone circuit"
+  ]
+ },
+ "snetterton": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "3.219 km (2.000 miles)",
+   "elevation": "14M",
+   "turns": "8",
+   "continent": "Europe",
+   "country": "United Kingdom",
+   "region": "Norfolk",
+   "location": "Snetterton Circuit, Norwich, Norfolk NR16 2JU, United Kingdom",
+   "english_name": "Snetterton Circuit",
+   "also_known_as": "Snetterton Motor Racing Circuit, Snetterton 300 Circuit,Snetterton 200 Circuit, Snetterton 100 Circuit"
+  },
+  "aliases": [
+   "Snetterton 100 Circuit",
+   "Snetterton 200 Circuit",
+   "Snetterton 300 Circuit",
+   "Snetterton Circuit",
+   "Snetterton Motor Racing Circuit",
+   "snetterton"
+  ]
+ },
+ "spa": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "7.004 km (4.352 miles)",
+   "elevation": "102.2M",
+   "turns": "20",
+   "continent": "Europe",
+   "country": "Belgium",
+   "location": "Stavelot, Belgium",
+   "english_name": "Circuit de Spa-Francorchamps",
+   "also_known_as": "Spa, Spa-Francorchamps"
+  },
+  "aliases": [
+   "Circuit de Spa-Francorchamps",
+   "Spa",
+   "Spa-Francorchamps",
+   "francorchamps",
+   "spa",
+   "spa francorchamps"
+  ]
+ },
+ "suzuka": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "5.807 km (3.608 miles)",
+   "elevation": "40.4M",
+   "turns": "18",
+   "continent": "Asia",
+   "country": "Japan",
+   "location": "Suzuka Circuit, 510-0295 Suzuka, Mie Prefecture, Ino-cho 7992, Japan",
+   "english_name": "Suzuka Circuit",
+   "also_known_as": "Suzuka International Racing Course"
+  },
+  "aliases": [
+   "Suzuka Circuit",
+   "Suzuka International Racing Course",
+   "suzuka"
+  ]
+ },
+ "valencia": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "4.005 km (2.489 miles)",
+   "elevation": "12M",
+   "turns": "14",
+   "continent": "Europe",
+   "country": "Spain",
+   "location": "Cheste, Valencian Community, Spain",
+   "english_name": "Circuit Ricardo Tormo",
+   "also_known_as": "Circuit de Valencia, Circuit de la Comunitat Valenciana RicardoTormo, Circuito Ricardo Tormo, Circuit de Xest"
+  },
+  "aliases": [
+   "Circuit Ricardo Tormo",
+   "Circuit de Valencia",
+   "Circuit de Xest",
+   "Circuit de la Comunitat Valenciana RicardoTormo",
+   "Circuito Ricardo Tormo",
+   "cheste",
+   "ricardo tormo",
+   "valencia"
+  ]
+ },
+ "watkins-glen": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "5.552 km (3.450 miles)",
+   "elevation": "41M",
+   "turns": "11",
+   "continent": "North America",
+   "country": "United States",
+   "region": "New York",
+   "location": "Watkins Glen, New York",
+   "english_name": "Watkins Glen International",
+   "also_known_as": "The Glen, Watkins Glen International Raceway, Watkins Glen Grand Prix Circuit"
+  },
+  "aliases": [
+   "The Glen",
+   "Watkins Glen Grand Prix Circuit",
+   "Watkins Glen International",
+   "Watkins Glen International Raceway",
+   "the glen",
+   "watkins",
+   "watkins glen"
+  ]
+ },
+ "zandvoort": {
+  "facts": {
+   "grade": "FIA-1",
+   "length": "4.259 km (2.646 miles)",
+   "elevation": "8.7M",
+   "turns": "14",
+   "continent": "Europe",
+   "country": "Netherlands",
+   "region": "North Holland",
+   "location": "Zandvoort, North Holland, Netherlands",
+   "english_name": "Circuit Zandvoort",
+   "also_known_as": "Mascot Circuit Zandvoort, CM.com Circuit Zandvoort, Circuit van Zandvoort, Zandvoort GP"
+  },
+  "aliases": [
+   "CM.com Circuit Zandvoort",
+   "Circuit Zandvoort",
+   "Circuit van Zandvoort",
+   "Mascot Circuit Zandvoort",
+   "Zandvoort GP",
+   "zandvoort",
+   "zandvoort gp"
+  ]
+ },
+ "zolder": {
+  "facts": {
+   "grade": "FIA-2",
+   "length": "4.010 km (2.492 miles)",
+   "elevation": "14M",
+   "turns": "11",
+   "continent": "Europe",
+   "country": "Belgium",
+   "location": "Heusden-Zolder, Belgium",
+   "english_name": "Circuit Zolder",
+   "also_known_as": "Circuit Terlamen, Omloop van Terlaemen,Zolder GP"
+  },
+  "aliases": [
+   "Circuit Terlamen",
+   "Circuit Zolder",
+   "Omloop van Terlaemen",
+   "Zolder GP",
+   "zolder"
+  ]
+ }
+}

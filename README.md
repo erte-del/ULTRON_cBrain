@@ -354,6 +354,7 @@ only look things up.
 - **Images**: find photos on Pexels; edit them (crop, resize, rotate, colour, text, borders…)
   with undo and versions; click one to select it, then say "this one".
 - **AI images**: create and change pictures with FLUX.2 Klein on this Mac (~20 s, free, private).
+- **Screen clipping** (`capture`): a rolling replay buffer of your screen (video only). The replay buffer runs from the moment Ultron starts (last 5 minutes, deleted when Ultron stops; `JARVIS_CAPTURE_ALWAYS_ON=0` turns this off), so just say "clip the last 30 seconds" or "bookmark that"; clips appear on the canvas and can be trimmed and merged. "Record" saves a full recording instead. The **library app** (`http://127.0.0.1:8000/?captures=1`, or ask Ultron to "open my captures"): recordings and clips by date with thumbnails, search, favourites, a player with a trim bar ("Save as new clip"), rename, download, delete and a Record button. Game sound needs a loopback device set in `JARVIS_CAPTURE_AUDIO` (BlackHole on the Mac, Stereo Mix on Windows; steps in `.env.example`); without it recordings are silent. Needs `ffmpeg`; on the Mac give Ultron Screen Recording permission and set `JARVIS_CAPTURE_SCREEN` if the wrong display records. The buffer is deleted on stop.
 - **AI video**: 5-second clips with Wan 2.1/2.2 on this Mac, running in the background.
 - **3D objects**: ready-made models from your library or [3DAssets.dev](https://3dassets.dev);
   otherwise a fast preview you can spin and zoom, changed through the chat, checked by rendering
@@ -363,6 +364,29 @@ only look things up.
   and reads stats to learn what works.
   Two jobs run on their own: a Sunday 18:00 stats recap, and a daily 19:00 list of comments that
   look like real questions (spam is skipped), so you only review the ones worth answering.
+
+### ACC tracks (Assetto Corsa Competizione)
+
+- **Show a track**: say "I'm racing Imola" and the layout opens on the canvas, with heavy and medium
+  braking zones (red, orange), overtaking spots (green star), the start line and numbered corners.
+  Tap a corner number for its direction, radius and estimated slowest speed.
+- **Ask about a track**: length, turns, elevation, country, location, grade, other names and the
+  history from the 51GT3 info text. "What's corner 5 at Imola?" answers from the numbered corners.
+  If a fact isn't in the files, Ultron searches the web for it and says where it came from.
+- **What the data is**: the layouts come from F1 timing data (12 tracks), the TUM racetrack
+  database (Brands Hatch) and OpenStreetMap (the rest). The corner numbers come from FastF1 (for the
+  tracks whose official count matches) or the 51GT3 HD maps. Braking zones and speeds are **estimates**
+  from a simple GT3-like model, not recorded GT3 data.
+- **Corner numbers**: all tracks have them except Snetterton (300) and the Nordschleife (named corners
+  on the map, no numbers), by design. 11 tracks use FastF1's official corners; 12 are read from the
+  51GT3 HD maps and cross-checked by lining the map outline up with our layout (each track's status
+  says how well). Indianapolis is the weakest match: its positions are approximate.
+- **Rebuild the data**: `scripts/build_tracks.py` (layouts, zones), `scripts/match_map_corners.py`
+  (reads the 51GT3 map PDFs), `scripts/check_numbering_geometry.py` (cross-checks them by shape), `scripts/number_corners.py` (decides the numbers),
+  `scripts/import_track_info.py` (copies the info texts). Needs `fastf1`, `numpy`, `matplotlib` and the
+  ACC TRACKS folder. The info texts are 51GT3's and stay out of git (`backend/library_tracks/info/`).
+- **Tools**: `show_track` and `track_info` (both read). Tests: `tests/test_tracks.py`.
+- **Windows setup**: nothing to set up. The data is files in the project; the rebuild scripts only run once.
 
 ### This computer and your PC
 

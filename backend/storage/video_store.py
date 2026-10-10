@@ -7,7 +7,9 @@
 
 import json
 import re
+import shutil
 import threading
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -17,6 +19,7 @@ from config import STORAGE_DIR
 VIDEOS_DIR = STORAGE_DIR / "videos"
 VIDEO_ID = re.compile(r"^vid_\d{3,6}$")
 FILE = "video.mp4"
+THUMB = "thumb.jpg"
 
 _lock = threading.Lock()
 
@@ -32,6 +35,9 @@ class VideoRecord:
     status: str = "rendering"  # rendering | done | failed
     progress: float = 0.0  # 0–1 while rendering
     error: str = ""
+    kind: str = ""  # "capture" for the clipping library
+    created: float = 0.0
+    fav: bool = False
 
 
 def folder(video_id: str) -> Path:
@@ -51,11 +57,12 @@ def load(video_id: str) -> VideoRecord:
     return VideoRecord(**json.loads(path.read_text()))
 
 
-def create(title: str, prompt: str, seconds: float, width: int, height: int) -> VideoRecord:
+def create(title: str, prompt: str, seconds: float, width: int, height: int, kind: str = "") -> VideoRecord:
     with _lock:
         VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
         numbers = [int(p.name[4:]) for p in VIDEOS_DIR.glob("vid_*") if VIDEO_ID.match(p.name)]
-        rec = VideoRecord(f"vid_{max(numbers, default=0) + 1:03d}", title[:80], prompt, seconds, width, height)
+        rec = VideoRecord(f"vid_{max(numbers, default=0) + 1:03d}", title[:80], prompt, seconds, width, height,
+                          kind=kind, created=time.time())
         folder(rec.id).mkdir()
         save(rec)
     return rec
@@ -63,9 +70,9 @@ def create(title: str, prompt: str, seconds: float, width: int, height: int) -> 
 
 def file_path(video_id: str, filename: str) -> Path:
     """Path of a finished video, for the web server. Anything else is refused."""
-    if filename != FILE:
+    if filename not in (FILE, THUMB):
         raise KeyError(filename)
-    path = folder(video_id) / FILE
+    path = folder(video_id) / filename
     if not path.exists():
         raise KeyError(filename)
     return path
@@ -89,3 +96,13 @@ def card_data(rec: VideoRecord) -> dict[str, Any]:
         "url": f"/videos/{rec.id}/{FILE}" if rec.status == "done" else "",
         "download_name": download_name(rec),
     }
+
+
+def all_records(kind: str) -> list[VideoRecord]:
+    """Finished videos of one kind, newest first."""
+    recs = [load(p.name) for p in VIDEOS_DIR.glob("vid_*") if VIDEO_ID.match(p.name) and (p / "meta.json").exists()]
+    return sorted((r for r in recs if r.kind == kind and r.status == "done"), key=lambda r: -r.created)
+
+
+def delete(video_id: str) -> None:
+    shutil.rmtree(folder(video_id))

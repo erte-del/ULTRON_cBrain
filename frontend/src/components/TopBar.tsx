@@ -496,6 +496,12 @@ export default function TopBar({
             </svg>
           </button>
         )}
+        <a className="icon-btn" href="/?captures=1" target="_blank" rel="noopener" aria-label="Recordings" title="Recordings: open your saved captures and clips">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <rect x="3" y="6" width="13" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M16 10l5-3v10l-5-3z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+          </svg>
+        </a>
         <SavedChats {...chats} />
         <MemoryMenu
           memories={memories}

@@ -158,6 +158,7 @@ Every tool is labelled **read** (runs freely, also in scheduled jobs) or **act**
 | Notes | `search_notes`, `read_note`, `write_note` (Obsidian vault, never `#private`) | read / act |
 | Jobs | `list_jobs`, `schedule_job`, `change_job` | read / act |
 | Protection | `mark_important`, `unmark_important` | act |
+| ACC tracks | `show_track` (layout, braking zones, numbered corners on the canvas), `track_info` (facts, corner answers, info text) | read |
 | This Mac | `mac_read`, `mac_change`, `run_python` (sandbox-exec: no network, reads only `JARVIS_FILES_DIR`, writes only its `Output/`) | read / act |
 | Windows PC | `pc_read`, `pc_change`, `pc_run` (via `windows/ultron_pc.py` over Tailscale; `pc_run` always asks) | read / act |
 

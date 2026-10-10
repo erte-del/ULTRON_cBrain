@@ -30,7 +30,7 @@ from brain.confirm import ConfirmationGate
 from PIL import Image, UnidentifiedImageError
 
 from storage import chat_store, image_store, job_store, memory_store, model_store, upload_store, video_store
-from tools import canvas, instagram, mac, spotify
+from tools import canvas, capture, instagram, mac, spotify
 from tools import chat as chat_tool
 from voice import stt, tts, vad, wake
 
@@ -66,6 +66,11 @@ async def lifespan(app: FastAPI):
     ig_token = asyncio.create_task(instagram.refresh_loop())
     ig_queue = asyncio.create_task(instagram.queue_loop())
     ears = asyncio.create_task(wake.listen()) if config.BACKGROUND_WAKE else None
+    if config.CAPTURE_ALWAYS_ON:
+        try:
+            await asyncio.to_thread(capture.start, config.CAPTURE_MINUTES)
+        except OSError as e:  # no ffmpeg
+            log.warning("Capture buffer not started: %s", e)
     yield
     if ears:
         ears.cancel()
@@ -188,7 +193,81 @@ async def video_file(video_id: str, filename: str, download: bool = False) -> Fi
     except KeyError:
         raise HTTPException(404) from None
     name = video_store.download_name(video_store.load(video_id)) if download else None
-    return FileResponse(path, media_type="video/mp4", filename=name)
+    return FileResponse(path, media_type="image/jpeg" if filename == video_store.THUMB else "video/mp4", filename=name)
+
+
+def _capture_item(r: video_store.VideoRecord) -> dict:
+    return {"id": r.id, "title": r.title, "created": r.created, "seconds": r.seconds, "fav": r.fav,
+            "width": r.width, "height": r.height, "url": f"/videos/{r.id}/{video_store.FILE}",
+            "thumb": f"/videos/{r.id}/{video_store.THUMB}"}
+
+
+def _capture_guard(request: Request, video_id: str | None = None) -> video_store.VideoRecord | None:
+    if request.headers.get("origin") not in ALLOWED_ORIGINS:
+        raise HTTPException(403)
+    if video_id is None:
+        return None
+    try:
+        rec = video_store.load(video_id)
+    except KeyError:
+        raise HTTPException(404) from None
+    if rec.kind != "capture":
+        raise HTTPException(404)
+    return rec
+
+
+@app.get("/api/captures")
+async def captures_list() -> dict:
+    """The clipping library: recordings and clips, newest first, and what the recorder is doing."""
+    items = await asyncio.to_thread(video_store.all_records, "capture")
+    mode = ("recording" if capture._recording else "buffer") if capture.running() else "off"
+    return {"items": [_capture_item(r) for r in items], "mode": mode}
+
+
+@app.post("/api/captures/recorder")
+async def captures_recorder(request: Request, body: dict) -> dict:
+    """Start or stop the recorder from the library page: action is record, buffer or stop."""
+    _capture_guard(request)
+    action = body.get("action")
+    if action == "stop" and capture._recording and capture.running():
+        await capture.finish_recording()
+    elif action == "stop":
+        await asyncio.to_thread(capture.stop)
+    elif action in ("record", "buffer"):
+        await asyncio.to_thread(capture.start, 0 if action == "record" else config.CAPTURE_MINUTES)
+    else:
+        raise HTTPException(400)
+    return await captures_list()
+
+
+@app.post("/api/captures/{video_id}")
+async def captures_edit(request: Request, video_id: str, body: dict) -> dict:
+    """Rename (title) or favourite (fav) one item."""
+    rec = _capture_guard(request, video_id)
+    if isinstance(body.get("title"), str) and body["title"].strip():
+        rec.title = body["title"].strip()[:80]
+    if isinstance(body.get("fav"), bool):
+        rec.fav = body["fav"]
+    await asyncio.to_thread(video_store.save, rec)
+    return _capture_item(rec)
+
+
+@app.post("/api/captures/{video_id}/clip")
+async def captures_clip(request: Request, video_id: str, body: dict) -> dict:
+    """Save start..end seconds of an item as a new clip."""
+    _capture_guard(request, video_id)
+    try:
+        rec = await capture.trim_to_library(video_id, float(body["start"]), float(body["end"]), str(body.get("title") or ""))
+    except (KeyError, TypeError, ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e)) from None
+    return _capture_item(rec)
+
+
+@app.post("/api/captures/{video_id}/delete")
+async def captures_delete(request: Request, video_id: str) -> dict:
+    _capture_guard(request, video_id)
+    await asyncio.to_thread(video_store.delete, video_id)
+    return {"ok": True}
 
 
 @app.get("/spotify/callback", response_class=PlainTextResponse)

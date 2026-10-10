@@ -1,0 +1,244 @@
+{
+  "_about": "Official turn counts and turn numbering from the 51GT3.com HD track maps (copyright 51GT3.com; facts only, no images or descriptions). Numbering runs in direction of travel, from the first turn after the start/finish line. 'letters' are sub-corners such as 8A. Used later to label corners in the track files.",
+  "_source": "https://51gt3.com/en/track",
+  "_note": "Turn counts are read from the numbered HD map. Where the site's info text disagrees with the map, the map count is used and the disagreement is listed in 'info_disagrees'.",
+  "tracks": {
+    "barcelona": {
+      "turns": 16,
+      "length_km_site": 4.657,
+      "numbering": "numbered 1-16",
+      "letters": [],
+      "name_hints_unverified": [
+        "T3 'La Caixa'",
+        "T9 'Campsa'"
+      ]
+    },
+    "brands-hatch": {
+      "turns": 11,
+      "length_km_site": 3.916,
+      "numbering": "numbered 1-11",
+      "letters": [],
+      "name_hints_unverified": [
+        "Paddock Hill Bend",
+        "Brabham Straight"
+      ]
+    },
+    "cota": {
+      "turns": 20,
+      "length_km_site": 3.792,
+      "numbering": "numbered 1-20",
+      "letters": [],
+      "info_disagrees": "info text says 19 and 20 turns; the numbered map shows 20, the training sheet has only T1-T19 columns"
+    },
+    "donington": {
+      "turns": 12,
+      "length_km_site": 4.02,
+      "numbering": "numbered 1-12",
+      "letters": [],
+      "name_hints_unverified": [
+        "Craner Curves",
+        "Old Hairpin",
+        "Melbourne Hairpin"
+      ]
+    },
+    "hungaroring": {
+      "turns": 14,
+      "length_km_site": 4.381,
+      "numbering": "numbered 1-14",
+      "letters": [
+        "1a",
+        "12a"
+      ],
+      "name_hints_unverified": [
+        "Limited overtaking"
+      ]
+    },
+    "imola": {
+      "turns": 19,
+      "length_km_site": 4.909,
+      "numbering": "numbered 1-19",
+      "letters": [],
+      "name_hints_unverified": [
+        "Tamburello",
+        "Acque Minerali",
+        "Rivazza"
+      ]
+    },
+    "indianapolis": {
+      "turns": 15,
+      "length_km_site": 3.925,
+      "numbering": "numbered 1-15",
+      "letters": []
+    },
+    "kyalami": {
+      "turns": 16,
+      "length_km_site": 4.58,
+      "numbering": "numbered 1-16",
+      "letters": [],
+      "name_hints_unverified": [
+        "Crowthorne"
+      ]
+    },
+    "laguna-seca": {
+      "turns": 11,
+      "length_km_site": 3.602,
+      "numbering": "numbered 1-11",
+      "letters": [
+        "8A"
+      ],
+      "info_disagrees": "info text says 11 and 12 turns",
+      "name_hints_unverified": [
+        "Corkscrew = turns 8 and 8A"
+      ]
+    },
+    "misano": {
+      "turns": 16,
+      "length_km_site": 4.245,
+      "numbering": "numbered 1-16",
+      "letters": [],
+      "name_hints_unverified": [
+        "Curvone"
+      ]
+    },
+    "monza": {
+      "turns": 11,
+      "length_km_site": 5.793,
+      "numbering": "numbered 1-11",
+      "letters": [],
+      "name_hints_unverified": [
+        "Rettifilo Tribunale",
+        "Variante del Rettifilo",
+        "Curva Grande",
+        "Lesmo 1",
+        "Lesmo 2",
+        "Variante Ascari",
+        "Parabolica"
+      ]
+    },
+    "mount-panorama": {
+      "turns": 23,
+      "length_km_site": 6.213,
+      "numbering": "numbered 1-23",
+      "letters": []
+    },
+    "nurburgring-24h": {
+      "turns": null,
+      "length_km_site": 25.378,
+      "numbering": "named, not numbered (Nordschleife + GP, 24h layout). Site info says 170 turns; its training sheet has only T1-T24 columns.",
+      "letters": []
+    },
+    "oulton-park": {
+      "turns": 12,
+      "length_km_site": 4.333,
+      "numbering": "numbered 1-12",
+      "letters": [],
+      "name_hints_unverified": [
+        "Cascades",
+        "Druids",
+        "Knickerbrook"
+      ]
+    },
+    "paul-ricard": {
+      "turns": 15,
+      "length_km_site": 5.842,
+      "numbering": "numbered 1-15",
+      "letters": []
+    },
+    "red-bull-ring": {
+      "turns": 10,
+      "length_km_site": 4.318,
+      "numbering": "numbered 1-10",
+      "letters": [],
+      "name_hints_unverified": [
+        "Overtaking opportunities (long straights, tight corners)"
+      ]
+    },
+    "silverstone": {
+      "turns": 18,
+      "length_km_site": null,
+      "numbering": "numbered 1-18",
+      "letters": [],
+      "info_disagrees": "site info file is empty; count is from the map"
+    },
+    "snetterton": {
+      "turns": 8,
+      "length_km_site": 3.219,
+      "numbering": "numbered 1-8 on the short 3.2 km configuration. Our layout is the 300 circuit; the user will not race it, so no 300 numbering is needed.",
+      "letters": [],
+      "name_hints_unverified": [
+        "Bentley Straight (half mile, overtaking)"
+      ]
+    },
+    "spa": {
+      "turns": 20,
+      "length_km_site": 7.004,
+      "numbering": "numbered 1-20",
+      "letters": [],
+      "name_hints_unverified": [
+        "Eau Rouge",
+        "Raidillon"
+      ]
+    },
+    "suzuka": {
+      "turns": 18,
+      "length_km_site": 5.807,
+      "numbering": "numbered 1-18",
+      "letters": []
+    },
+    "valencia": {
+      "turns": 14,
+      "length_km_site": 4.005,
+      "numbering": "numbered 1-14",
+      "letters": []
+    },
+    "watkins-glen": {
+      "turns": 11,
+      "length_km_site": 5.552,
+      "numbering": "numbered 1-11",
+      "letters": [],
+      "name_hints_unverified": [
+        "The Esses",
+        "Bus Stop chicane on the back straight"
+      ]
+    },
+    "zandvoort": {
+      "turns": 14,
+      "length_km_site": 4.259,
+      "numbering": "numbered 1-14",
+      "letters": [],
+      "name_hints_unverified": [
+        "Tarzanbocht (turn 1 hairpin, overtaking)"
+      ]
+    },
+    "zolder": {
+      "turns": 11,
+      "length_km_site": 4.01,
+      "numbering": "numbered 1-11",
+      "letters": [],
+      "info_disagrees": "info text says 10 and 11 turns",
+      "name_hints_unverified": [
+        "Terlamenbocht hairpin"
+      ]
+    },
+    "nurburgring": {
+      "turns": 15,
+      "length_km_site": 5.148,
+      "numbering": "numbered 1-15 (Grand Prix circuit only)",
+      "letters": [],
+      "name_hints_unverified": [
+        "Turn 1 is an overtaking opportunity",
+        "Mercedes-AMG Arena",
+        "Dunlop-Kehre",
+        "Michael-Schumacher-S",
+        "Veedol Chicane"
+      ]
+    }
+  },
+  "_gaps": [
+    "Reference Lap Times on the training sheets are NOT usable: random cars from different games (McLaren F1, Ferrari 296 Challenge, Tatuus F4...) and inconsistent (Brands Hatch Ferrari 296 0:45.8 vs GT3 R 1:22.7; COTA Ferrari 296 2:02.9). Not used for calibration.",
+    "Training sheets are blank lap sheets with no corner data; one is filed in the wrong folder ('WeatherTech Raceway Laguna Seca' sits in Hungaroring)",
+    "Silverstone info file is empty (turn count taken from its map)",
+    "Snetterton 300 numbering skipped on purpose (not raced)"
+  ],
+  "_name_hints_note": "'name_hints_unverified' come from the site's info texts, which are generic prose and sometimes wrong (e.g. Brands Hatch Paddock Hill described as a left turn; Indianapolis text describes the oval). Treat as hints only."
+}

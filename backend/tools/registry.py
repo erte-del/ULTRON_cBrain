@@ -26,6 +26,7 @@ from storage import job_store, memory_store
 from . import connectors, important, mac, web
 from .amazon import amazon_change, amazon_read
 from .chat import new_chat
+from .capture import capture
 from .canvas import clear_canvas, open_terminal, read_terminal, show_on_canvas
 from .contacts import find_contact
 from .expert import ask_expert
@@ -53,6 +54,7 @@ from .slides import lectures, make_slides, open_slides
 from .syllabus import syllabus
 from .telegram import text_me
 from .textbook import textbook
+from .tracks import show_track, track_info
 from .uploads import read_upload
 from .video import generate_video
 from .whatsapp import whatsapp_send
@@ -128,6 +130,8 @@ TOOLS: list[UltronTool] = [
     UltronTool(read_upload, "read"),
     # A video ties up the Mac for minutes, but only makes Ultron's own copy: no card.
     UltronTool(generate_video, "act"),
+    # Records this screen into a short rolling buffer on this computer; only adds Ultron's own clips.
+    UltronTool(capture, "act"),
     # Sends a message in your name.
     UltronTool(whatsapp_send, "act"),
     # Instagram: the preview only shows the Reel (and its cover) on the canvas, comments are only
@@ -185,6 +189,9 @@ TOOLS: list[UltronTool] = [
     # YouTube: only searches. watch_short downloads one Short into a temp folder it deletes.
     UltronTool(youtube, "read"),
     UltronTool(watch_short, "read"),
+    # ACC tracks: the layouts and facts are local files; reading them changes nothing.
+    UltronTool(show_track, "read"),
+    UltronTool(track_info, "read"),
 ]
 
 # In chat, an 'act' tool asks you first only when it reaches other people or touches

@@ -1,0 +1,2570 @@
+{
+ "id": "silverstone",
+ "name": "Silverstone Circuit",
+ "length_m": 5890,
+ "layout_source": "f1",
+ "layout_note": "2024 British Grand Prix qualifying fastest lap",
+ "sectors": [
+  {
+   "name": "1",
+   "marker": 0.32
+  },
+  {
+   "name": "2",
+   "marker": 0.709
+  },
+  {
+   "name": "3",
+   "marker": 1
+  }
+ ],
+ "corners": [
+  {
+   "fraction": 0.0667,
+   "direction": "right",
+   "radius_m": 103,
+   "est_min_speed_kmh": 149
+  },
+  {
+   "fraction": 0.0752,
+   "direction": "right",
+   "radius_m": 148,
+   "est_min_speed_kmh": 160
+  },
+  {
+   "fraction": 0.0855,
+   "direction": "right",
+   "radius_m": 305,
+   "est_min_speed_kmh": 187
+  },
+  {
+   "fraction": 0.106,
+   "direction": "left",
+   "radius_m": 131,
+   "est_min_speed_kmh": 171
+  },
+  {
+   "fraction": 0.1154,
+   "direction": "left",
+   "radius_m": 183,
+   "est_min_speed_kmh": 182
+  },
+  {
+   "fraction": 0.1496,
+   "direction": "right",
+   "radius_m": 40,
+   "est_min_speed_kmh": 89
+  },
+  {
+   "fraction": 0.1761,
+   "direction": "left",
+   "radius_m": 24,
+   "est_min_speed_kmh": 69
+  },
+  {
+   "fraction": 0.2068,
+   "direction": "left",
+   "radius_m": 132,
+   "est_min_speed_kmh": 172
+  },
+  {
+   "fraction": 0.2145,
+   "direction": "left",
+   "radius_m": 161,
+   "est_min_speed_kmh": 179
+  },
+  {
+   "fraction": 0.2239,
+   "direction": "left",
+   "radius_m": 240,
+   "est_min_speed_kmh": 195
+  },
+  {
+   "fraction": 0.3205,
+   "direction": "left",
+   "radius_m": 123,
+   "est_min_speed_kmh": 144
+  },
+  {
+   "fraction": 0.3299,
+   "direction": "left",
+   "radius_m": 81,
+   "est_min_speed_kmh": 113
+  },
+  {
+   "fraction": 0.3376,
+   "direction": "left",
+   "radius_m": 56,
+   "est_min_speed_kmh": 104
+  },
+  {
+   "fraction": 0.3607,
+   "direction": "right",
+   "radius_m": 52,
+   "est_min_speed_kmh": 90
+  },
+  {
+   "fraction": 0.3684,
+   "direction": "right",
+   "radius_m": 39,
+   "est_min_speed_kmh": 84
+  },
+  {
+   "fraction": 0.3872,
+   "direction": "right",
+   "radius_m": 134,
+   "est_min_speed_kmh": 138
+  },
+  {
+   "fraction": 0.406,
+   "direction": "right",
+   "radius_m": 315,
+   "est_min_speed_kmh": 192
+  },
+  {
+   "fraction": 0.4145,
+   "direction": "right",
+   "radius_m": 323,
+   "est_min_speed_kmh": 208
+  },
+  {
+   "fraction": 0.512,
+   "direction": "right",
+   "radius_m": 132,
+   "est_min_speed_kmh": 151
+  },
+  {
+   "fraction": 0.5265,
+   "direction": "right",
+   "radius_m": 109,
+   "est_min_speed_kmh": 141
+  },
+  {
+   "fraction": 0.5376,
+   "direction": "right",
+   "radius_m": 190,
+   "est_min_speed_kmh": 164
+  },
+  {
+   "fraction": 0.6274,
+   "direction": "right",
+   "radius_m": 112,
+   "est_min_speed_kmh": 157
+  },
+  {
+   "fraction": 0.6479,
+   "direction": "left",
+   "radius_m": 215,
+   "est_min_speed_kmh": 142
+  },
+  {
+   "fraction": 0.6581,
+   "direction": "left",
+   "radius_m": 98,
+   "est_min_speed_kmh": 142
+  },
+  {
+   "fraction": 0.6769,
+   "direction": "right",
+   "radius_m": 73,
+   "est_min_speed_kmh": 124
+  },
+  {
+   "fraction": 0.6915,
+   "direction": "right",
+   "radius_m": 93,
+   "est_min_speed_kmh": 141
+  },
+  {
+   "fraction": 0.7026,
+   "direction": "left",
+   "radius_m": 144,
+   "est_min_speed_kmh": 160
+  },
+  {
+   "fraction": 0.7137,
+   "direction": "left",
+   "radius_m": 216,
+   "est_min_speed_kmh": 189
+  },
+  {
+   "fraction": 0.8308,
+   "direction": "right",
+   "radius_m": 409,
+   "est_min_speed_kmh": 194
+  },
+  {
+   "fraction": 0.8453,
+   "direction": "right",
+   "radius_m": 100,
+   "est_min_speed_kmh": 131
+  },
+  {
+   "fraction": 0.8564,
+   "direction": "right",
+   "radius_m": 81,
+   "est_min_speed_kmh": 131
+  },
+  {
+   "fraction": 0.8667,
+   "direction": "right",
+   "radius_m": 124,
+   "est_min_speed_kmh": 139
+  },
+  {
+   "fraction": 0.8872,
+   "direction": "left",
+   "radius_m": 303,
+   "est_min_speed_kmh": 191
+  },
+  {
+   "fraction": 0.9342,
+   "direction": "left",
+   "radius_m": 46,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "fraction": 0.9453,
+   "direction": "right",
+   "radius_m": 42,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "fraction": 0.9607,
+   "direction": "right",
+   "radius_m": 103,
+   "est_min_speed_kmh": 137
+  },
+  {
+   "fraction": 0.9778,
+   "direction": "right",
+   "radius_m": 113,
+   "est_min_speed_kmh": 156
+  }
+ ],
+ "apexes": [
+  {
+   "fraction": 0.0496,
+   "direction": "right",
+   "radius_m": 520,
+   "est_min_speed_kmh": 223
+  },
+  {
+   "fraction": 0.0667,
+   "direction": "right",
+   "radius_m": 103,
+   "est_min_speed_kmh": 149
+  },
+  {
+   "fraction": 0.0752,
+   "direction": "right",
+   "radius_m": 148,
+   "est_min_speed_kmh": 160
+  },
+  {
+   "fraction": 0.0855,
+   "direction": "right",
+   "radius_m": 305,
+   "est_min_speed_kmh": 187
+  },
+  {
+   "fraction": 0.106,
+   "direction": "left",
+   "radius_m": 131,
+   "est_min_speed_kmh": 171
+  },
+  {
+   "fraction": 0.1154,
+   "direction": "left",
+   "radius_m": 183,
+   "est_min_speed_kmh": 182
+  },
+  {
+   "fraction": 0.1316,
+   "direction": "right",
+   "radius_m": 677,
+   "est_min_speed_kmh": 170
+  },
+  {
+   "fraction": 0.1496,
+   "direction": "right",
+   "radius_m": 40,
+   "est_min_speed_kmh": 89
+  },
+  {
+   "fraction": 0.1761,
+   "direction": "left",
+   "radius_m": 24,
+   "est_min_speed_kmh": 69
+  },
+  {
+   "fraction": 0.2068,
+   "direction": "left",
+   "radius_m": 132,
+   "est_min_speed_kmh": 172
+  },
+  {
+   "fraction": 0.2145,
+   "direction": "left",
+   "radius_m": 161,
+   "est_min_speed_kmh": 179
+  },
+  {
+   "fraction": 0.2239,
+   "direction": "left",
+   "radius_m": 240,
+   "est_min_speed_kmh": 195
+  },
+  {
+   "fraction": 0.3205,
+   "direction": "left",
+   "radius_m": 123,
+   "est_min_speed_kmh": 144
+  },
+  {
+   "fraction": 0.3299,
+   "direction": "left",
+   "radius_m": 81,
+   "est_min_speed_kmh": 113
+  },
+  {
+   "fraction": 0.3376,
+   "direction": "left",
+   "radius_m": 56,
+   "est_min_speed_kmh": 104
+  },
+  {
+   "fraction": 0.3607,
+   "direction": "right",
+   "radius_m": 52,
+   "est_min_speed_kmh": 90
+  },
+  {
+   "fraction": 0.3684,
+   "direction": "right",
+   "radius_m": 39,
+   "est_min_speed_kmh": 84
+  },
+  {
+   "fraction": 0.3872,
+   "direction": "right",
+   "radius_m": 134,
+   "est_min_speed_kmh": 138
+  },
+  {
+   "fraction": 0.406,
+   "direction": "right",
+   "radius_m": 315,
+   "est_min_speed_kmh": 192
+  },
+  {
+   "fraction": 0.4145,
+   "direction": "right",
+   "radius_m": 323,
+   "est_min_speed_kmh": 208
+  },
+  {
+   "fraction": 0.4308,
+   "direction": "right",
+   "radius_m": 203,
+   "est_min_speed_kmh": 223
+  },
+  {
+   "fraction": 0.4393,
+   "direction": "right",
+   "radius_m": 339,
+   "est_min_speed_kmh": 227
+  },
+  {
+   "fraction": 0.4479,
+   "direction": "right",
+   "radius_m": 371,
+   "est_min_speed_kmh": 237
+  },
+  {
+   "fraction": 0.512,
+   "direction": "right",
+   "radius_m": 132,
+   "est_min_speed_kmh": 151
+  },
+  {
+   "fraction": 0.5265,
+   "direction": "right",
+   "radius_m": 109,
+   "est_min_speed_kmh": 141
+  },
+  {
+   "fraction": 0.5376,
+   "direction": "right",
+   "radius_m": 190,
+   "est_min_speed_kmh": 164
+  },
+  {
+   "fraction": 0.5564,
+   "direction": "right",
+   "radius_m": 704,
+   "est_min_speed_kmh": 206
+  },
+  {
+   "fraction": 0.6,
+   "direction": "left",
+   "radius_m": 362,
+   "est_min_speed_kmh": 256
+  },
+  {
+   "fraction": 0.6094,
+   "direction": "left",
+   "radius_m": 412,
+   "est_min_speed_kmh": 233
+  },
+  {
+   "fraction": 0.6274,
+   "direction": "right",
+   "radius_m": 112,
+   "est_min_speed_kmh": 157
+  },
+  {
+   "fraction": 0.6479,
+   "direction": "left",
+   "radius_m": 215,
+   "est_min_speed_kmh": 142
+  },
+  {
+   "fraction": 0.6581,
+   "direction": "left",
+   "radius_m": 98,
+   "est_min_speed_kmh": 142
+  },
+  {
+   "fraction": 0.6769,
+   "direction": "right",
+   "radius_m": 73,
+   "est_min_speed_kmh": 124
+  },
+  {
+   "fraction": 0.6915,
+   "direction": "right",
+   "radius_m": 93,
+   "est_min_speed_kmh": 141
+  },
+  {
+   "fraction": 0.7026,
+   "direction": "left",
+   "radius_m": 144,
+   "est_min_speed_kmh": 160
+  },
+  {
+   "fraction": 0.7137,
+   "direction": "left",
+   "radius_m": 216,
+   "est_min_speed_kmh": 189
+  },
+  {
+   "fraction": 0.8308,
+   "direction": "right",
+   "radius_m": 409,
+   "est_min_speed_kmh": 194
+  },
+  {
+   "fraction": 0.8453,
+   "direction": "right",
+   "radius_m": 100,
+   "est_min_speed_kmh": 131
+  },
+  {
+   "fraction": 0.8564,
+   "direction": "right",
+   "radius_m": 81,
+   "est_min_speed_kmh": 131
+  },
+  {
+   "fraction": 0.8667,
+   "direction": "right",
+   "radius_m": 124,
+   "est_min_speed_kmh": 139
+  },
+  {
+   "fraction": 0.8872,
+   "direction": "left",
+   "radius_m": 303,
+   "est_min_speed_kmh": 191
+  },
+  {
+   "fraction": 0.9068,
+   "direction": "left",
+   "radius_m": 655,
+   "est_min_speed_kmh": 225
+  },
+  {
+   "fraction": 0.9342,
+   "direction": "left",
+   "radius_m": 46,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "fraction": 0.9453,
+   "direction": "right",
+   "radius_m": 42,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "fraction": 0.9607,
+   "direction": "right",
+   "radius_m": 103,
+   "est_min_speed_kmh": 137
+  },
+  {
+   "fraction": 0.9778,
+   "direction": "right",
+   "radius_m": 113,
+   "est_min_speed_kmh": 156
+  },
+  {
+   "fraction": 0.9974,
+   "direction": "right",
+   "radius_m": 494,
+   "est_min_speed_kmh": 187
+  }
+ ],
+ "f1_corners": [
+  {
+   "number": 1,
+   "letter": "",
+   "fraction": 0.0761
+  },
+  {
+   "number": 2,
+   "letter": "",
+   "fraction": 0.1034
+  },
+  {
+   "number": 3,
+   "letter": "",
+   "fraction": 0.147
+  },
+  {
+   "number": 4,
+   "letter": "",
+   "fraction": 0.1761
+  },
+  {
+   "number": 5,
+   "letter": "",
+   "fraction": 0.2085
+  },
+  {
+   "number": 6,
+   "letter": "",
+   "fraction": 0.3342
+  },
+  {
+   "number": 7,
+   "letter": "",
+   "fraction": 0.3718
+  },
+  {
+   "number": 8,
+   "letter": "",
+   "fraction": 0.4308
+  },
+  {
+   "number": 9,
+   "letter": "",
+   "fraction": 0.5205
+  },
+  {
+   "number": 10,
+   "letter": "",
+   "fraction": 0.6145
+  },
+  {
+   "number": 11,
+   "letter": "",
+   "fraction": 0.6308
+  },
+  {
+   "number": 12,
+   "letter": "",
+   "fraction": 0.6556
+  },
+  {
+   "number": 13,
+   "letter": "",
+   "fraction": 0.6795
+  },
+  {
+   "number": 14,
+   "letter": "",
+   "fraction": 0.7043
+  },
+  {
+   "number": 15,
+   "letter": "",
+   "fraction": 0.8521
+  },
+  {
+   "number": 16,
+   "letter": "",
+   "fraction": 0.9291
+  },
+  {
+   "number": 17,
+   "letter": "",
+   "fraction": 0.9444
+  },
+  {
+   "number": 18,
+   "letter": "",
+   "fraction": 0.9709
+  }
+ ],
+ "braking_zones": [
+  {
+   "start": 0.1291,
+   "end": 0.1538,
+   "apex": 0.1496,
+   "class": "heavy",
+   "speed_from_kmh": 216,
+   "speed_to_kmh": 89,
+   "straight_before_m": 30,
+   "f1_brake_confirmed": true,
+   "overtaking_candidate": false
+  },
+  {
+   "start": 0.9103,
+   "end": 0.935,
+   "apex": 0.9342,
+   "class": "heavy",
+   "speed_from_kmh": 235,
+   "speed_to_kmh": 91,
+   "straight_before_m": 120,
+   "f1_brake_confirmed": true,
+   "overtaking_candidate": false
+  }
+ ],
+ "notes": [],
+ "layout": {
+  "step_m": 15.0,
+  "points": [
+   [
+    427.5,
+    -479.2
+   ],
+   [
+    415.3,
+    -470.4
+   ],
+   [
+    403.2,
+    -461.6
+   ],
+   [
+    391.0,
+    -452.8
+   ],
+   [
+    378.8,
+    -444.1
+   ],
+   [
+    366.4,
+    -435.7
+   ],
+   [
+    354.0,
+    -427.3
+   ],
+   [
+    341.6,
+    -418.9
+   ],
+   [
+    329.1,
+    -410.5
+   ],
+   [
+    316.7,
+    -402.1
+   ],
+   [
+    304.3,
+    -393.7
+   ],
+   [
+    291.8,
+    -385.4
+   ],
+   [
+    279.3,
+    -377.1
+   ],
+   [
+    266.7,
+    -369.0
+   ],
+   [
+    254.0,
+    -361.0
+   ],
+   [
+    241.2,
+    -353.1
+   ],
+   [
+    228.5,
+    -345.2
+   ],
+   [
+    215.8,
+    -337.2
+   ],
+   [
+    203.1,
+    -329.2
+   ],
+   [
+    190.6,
+    -321.0
+   ],
+   [
+    178.3,
+    -312.5
+   ],
+   [
+    166.2,
+    -303.6
+   ],
+   [
+    154.4,
+    -294.3
+   ],
+   [
+    142.7,
+    -285.0
+   ],
+   [
+    131.7,
+    -274.7
+   ],
+   [
+    121.6,
+    -263.7
+   ],
+   [
+    112.8,
+    -251.5
+   ],
+   [
+    105.2,
+    -238.7
+   ],
+   [
+    100.2,
+    -224.5
+   ],
+   [
+    95.8,
+    -210.2
+   ],
+   [
+    92.5,
+    -195.6
+   ],
+   [
+    91.5,
+    -180.7
+   ],
+   [
+    91.2,
+    -165.7
+   ],
+   [
+    91.4,
+    -150.7
+   ],
+   [
+    92.3,
+    -135.7
+   ],
+   [
+    93.7,
+    -120.8
+   ],
+   [
+    95.3,
+    -105.9
+   ],
+   [
+    96.1,
+    -90.9
+   ],
+   [
+    95.9,
+    -75.9
+   ],
+   [
+    95.1,
+    -60.9
+   ],
+   [
+    93.2,
+    -46.1
+   ],
+   [
+    89.8,
+    -31.5
+   ],
+   [
+    85.0,
+    -17.3
+   ],
+   [
+    78.6,
+    -3.7
+   ],
+   [
+    71.8,
+    9.6
+   ],
+   [
+    63.3,
+    22.0
+   ],
+   [
+    53.8,
+    33.6
+   ],
+   [
+    43.8,
+    44.8
+   ],
+   [
+    33.0,
+    55.2
+   ],
+   [
+    22.0,
+    65.4
+   ],
+   [
+    11.0,
+    75.6
+   ],
+   [
+    0.2,
+    86.0
+   ],
+   [
+    -10.5,
+    96.5
+   ],
+   [
+    -20.8,
+    107.4
+   ],
+   [
+    -31.0,
+    118.3
+   ],
+   [
+    -41.1,
+    129.5
+   ],
+   [
+    -50.1,
+    141.4
+   ],
+   [
+    -57.0,
+    154.7
+   ],
+   [
+    -58.8,
+    169.5
+   ],
+   [
+    -56.1,
+    184.2
+   ],
+   [
+    -48.5,
+    197.0
+   ],
+   [
+    -37.3,
+    207.0
+   ],
+   [
+    -23.3,
+    212.1
+   ],
+   [
+    -8.7,
+    215.3
+   ],
+   [
+    6.2,
+    217.2
+   ],
+   [
+    20.8,
+    220.2
+   ],
+   [
+    34.5,
+    226.4
+   ],
+   [
+    45.7,
+    236.2
+   ],
+   [
+    53.7,
+    248.8
+   ],
+   [
+    53.5,
+    263.3
+   ],
+   [
+    44.5,
+    275.2
+   ],
+   [
+    32.5,
+    284.1
+   ],
+   [
+    19.4,
+    291.3
+   ],
+   [
+    5.4,
+    296.8
+   ],
+   [
+    -9.0,
+    300.9
+   ],
+   [
+    -23.6,
+    304.2
+   ],
+   [
+    -38.4,
+    306.7
+   ],
+   [
+    -53.3,
+    308.2
+   ],
+   [
+    -68.3,
+    308.1
+   ],
+   [
+    -83.2,
+    306.6
+   ],
+   [
+    -98.0,
+    303.8
+   ],
+   [
+    -112.3,
+    299.3
+   ],
+   [
+    -126.1,
+    293.5
+   ],
+   [
+    -139.2,
+    286.3
+   ],
+   [
+    -151.8,
+    278.2
+   ],
+   [
+    -163.6,
+    268.9
+   ],
+   [
+    -174.4,
+    258.5
+   ],
+   [
+    -184.5,
+    247.5
+   ],
+   [
+    -193.8,
+    235.7
+   ],
+   [
+    -202.7,
+    223.6
+   ],
+   [
+    -211.4,
+    211.4
+   ],
+   [
+    -220.0,
+    199.2
+   ],
+   [
+    -229.0,
+    187.2
+   ],
+   [
+    -238.2,
+    175.3
+   ],
+   [
+    -247.4,
+    163.5
+   ],
+   [
+    -256.7,
+    151.7
+   ],
+   [
+    -266.0,
+    139.9
+   ],
+   [
+    -275.4,
+    128.3
+   ],
+   [
+    -284.7,
+    116.5
+   ],
+   [
+    -294.1,
+    104.8
+   ],
+   [
+    -303.5,
+    93.1
+   ],
+   [
+    -312.8,
+    81.3
+   ],
+   [
+    -322.2,
+    69.6
+   ],
+   [
+    -331.6,
+    57.9
+   ],
+   [
+    -341.0,
+    46.3
+   ],
+   [
+    -350.5,
+    34.7
+   ],
+   [
+    -360.1,
+    23.1
+   ],
+   [
+    -369.6,
+    11.5
+   ],
+   [
+    -379.0,
+    -0.1
+   ],
+   [
+    -388.5,
+    -11.7
+   ],
+   [
+    -398.0,
+    -23.3
+   ],
+   [
+    -407.5,
+    -34.9
+   ],
+   [
+    -417.0,
+    -46.6
+   ],
+   [
+    -426.4,
+    -58.2
+   ],
+   [
+    -435.8,
+    -70.0
+   ],
+   [
+    -445.2,
+    -81.6
+   ],
+   [
+    -454.7,
+    -93.2
+   ],
+   [
+    -464.2,
+    -104.8
+   ],
+   [
+    -473.8,
+    -116.3
+   ],
+   [
+    -483.4,
+    -127.9
+   ],
+   [
+    -493.1,
+    -139.3
+   ],
+   [
+    -502.7,
+    -150.8
+   ],
+   [
+    -512.0,
+    -162.6
+   ],
+   [
+    -521.1,
+    -174.6
+   ],
+   [
+    -529.9,
+    -186.7
+   ],
+   [
+    -537.1,
+    -199.8
+   ],
+   [
+    -543.2,
+    -213.5
+   ],
+   [
+    -547.0,
+    -228.0
+   ],
+   [
+    -549.4,
+    -242.7
+   ],
+   [
+    -549.1,
+    -257.7
+   ],
+   [
+    -546.7,
+    -272.5
+   ],
+   [
+    -541.5,
+    -286.5
+   ],
+   [
+    -532.6,
+    -298.4
+   ],
+   [
+    -521.2,
+    -308.2
+   ],
+   [
+    -507.8,
+    -314.7
+   ],
+   [
+    -493.4,
+    -319.0
+   ],
+   [
+    -478.5,
+    -320.4
+   ],
+   [
+    -463.5,
+    -320.7
+   ],
+   [
+    -448.5,
+    -321.1
+   ],
+   [
+    -433.7,
+    -323.3
+   ],
+   [
+    -420.0,
+    -329.3
+   ],
+   [
+    -408.4,
+    -338.7
+   ],
+   [
+    -399.6,
+    -350.8
+   ],
+   [
+    -394.7,
+    -364.9
+   ],
+   [
+    -395.5,
+    -379.7
+   ],
+   [
+    -402.6,
+    -392.8
+   ],
+   [
+    -413.1,
+    -403.3
+   ],
+   [
+    -426.2,
+    -410.6
+   ],
+   [
+    -440.5,
+    -415.1
+   ],
+   [
+    -455.4,
+    -416.7
+   ],
+   [
+    -470.4,
+    -416.0
+   ],
+   [
+    -485.1,
+    -413.4
+   ],
+   [
+    -499.8,
+    -410.2
+   ],
+   [
+    -514.0,
+    -405.4
+   ],
+   [
+    -527.9,
+    -399.9
+   ],
+   [
+    -541.5,
+    -393.6
+   ],
+   [
+    -555.0,
+    -387.1
+   ],
+   [
+    -568.4,
+    -380.3
+   ],
+   [
+    -581.6,
+    -373.2
+   ],
+   [
+    -594.2,
+    -365.1
+   ],
+   [
+    -606.5,
+    -356.5
+   ],
+   [
+    -618.7,
+    -347.7
+   ],
+   [
+    -630.1,
+    -338.0
+   ],
+   [
+    -641.1,
+    -327.9
+   ],
+   [
+    -651.9,
+    -317.5
+   ],
+   [
+    -662.1,
+    -306.5
+   ],
+   [
+    -671.8,
+    -295.0
+   ],
+   [
+    -681.2,
+    -283.3
+   ],
+   [
+    -689.6,
+    -270.9
+   ],
+   [
+    -697.2,
+    -258.0
+   ],
+   [
+    -703.9,
+    -244.6
+   ],
+   [
+    -710.1,
+    -230.9
+   ],
+   [
+    -715.5,
+    -216.9
+   ],
+   [
+    -720.4,
+    -202.8
+   ],
+   [
+    -724.9,
+    -188.5
+   ],
+   [
+    -728.7,
+    -174.0
+   ],
+   [
+    -731.9,
+    -159.3
+   ],
+   [
+    -734.8,
+    -144.6
+   ],
+   [
+    -737.5,
+    -129.8
+   ],
+   [
+    -739.7,
+    -115.0
+   ],
+   [
+    -741.8,
+    -100.1
+   ],
+   [
+    -743.9,
+    -85.3
+   ],
+   [
+    -746.0,
+    -70.5
+   ],
+   [
+    -748.0,
+    -55.6
+   ],
+   [
+    -750.0,
+    -40.7
+   ],
+   [
+    -752.1,
+    -25.9
+   ],
+   [
+    -754.2,
+    -11.0
+   ],
+   [
+    -756.4,
+    3.8
+   ],
+   [
+    -758.5,
+    18.7
+   ],
+   [
+    -760.7,
+    33.5
+   ],
+   [
+    -763.0,
+    48.3
+   ],
+   [
+    -765.3,
+    63.1
+   ],
+   [
+    -767.7,
+    77.9
+   ],
+   [
+    -770.3,
+    92.7
+   ],
+   [
+    -772.8,
+    107.5
+   ],
+   [
+    -775.2,
+    122.3
+   ],
+   [
+    -777.4,
+    137.1
+   ],
+   [
+    -779.1,
+    152.0
+   ],
+   [
+    -780.5,
+    167.0
+   ],
+   [
+    -780.5,
+    181.9
+   ],
+   [
+    -779.0,
+    196.9
+   ],
+   [
+    -776.6,
+    211.6
+   ],
+   [
+    -771.2,
+    225.6
+   ],
+   [
+    -765.2,
+    239.3
+   ],
+   [
+    -758.6,
+    252.8
+   ],
+   [
+    -749.9,
+    264.9
+   ],
+   [
+    -740.0,
+    276.2
+   ],
+   [
+    -728.5,
+    285.8
+   ],
+   [
+    -716.3,
+    294.4
+   ],
+   [
+    -703.6,
+    302.4
+   ],
+   [
+    -689.9,
+    308.4
+   ],
+   [
+    -676.0,
+    314.1
+   ],
+   [
+    -661.9,
+    319.1
+   ],
+   [
+    -647.6,
+    323.8
+   ],
+   [
+    -633.2,
+    328.0
+   ],
+   [
+    -618.8,
+    332.0
+   ],
+   [
+    -604.3,
+    335.9
+   ],
+   [
+    -589.7,
+    339.3
+   ],
+   [
+    -575.0,
+    342.4
+   ],
+   [
+    -560.3,
+    345.3
+   ],
+   [
+    -545.6,
+    348.0
+   ],
+   [
+    -530.8,
+    350.4
+   ],
+   [
+    -515.9,
+    352.6
+   ],
+   [
+    -501.0,
+    354.6
+   ],
+   [
+    -486.1,
+    356.3
+   ],
+   [
+    -471.2,
+    357.7
+   ],
+   [
+    -456.3,
+    359.0
+   ],
+   [
+    -441.3,
+    359.9
+   ],
+   [
+    -426.3,
+    360.7
+   ],
+   [
+    -411.4,
+    361.7
+   ],
+   [
+    -396.4,
+    362.7
+   ],
+   [
+    -381.4,
+    363.9
+   ],
+   [
+    -366.6,
+    365.7
+   ],
+   [
+    -351.7,
+    367.9
+   ],
+   [
+    -337.0,
+    370.8
+   ],
+   [
+    -322.4,
+    374.1
+   ],
+   [
+    -307.9,
+    378.1
+   ],
+   [
+    -293.6,
+    382.6
+   ],
+   [
+    -279.4,
+    387.4
+   ],
+   [
+    -265.3,
+    392.5
+   ],
+   [
+    -251.5,
+    398.2
+   ],
+   [
+    -237.8,
+    404.3
+   ],
+   [
+    -224.0,
+    410.3
+   ],
+   [
+    -210.2,
+    416.1
+   ],
+   [
+    -196.0,
+    421.0
+   ],
+   [
+    -181.3,
+    424.1
+   ],
+   [
+    -166.5,
+    425.5
+   ],
+   [
+    -151.5,
+    424.9
+   ],
+   [
+    -136.6,
+    423.0
+   ],
+   [
+    -121.9,
+    420.3
+   ],
+   [
+    -107.2,
+    417.2
+   ],
+   [
+    -92.5,
+    414.1
+   ],
+   [
+    -77.8,
+    411.3
+   ],
+   [
+    -62.9,
+    409.1
+   ],
+   [
+    -48.0,
+    408.1
+   ],
+   [
+    -33.0,
+    408.2
+   ],
+   [
+    -18.1,
+    409.3
+   ],
+   [
+    -4.2,
+    414.7
+   ],
+   [
+    9.3,
+    421.3
+   ],
+   [
+    22.5,
+    428.4
+   ],
+   [
+    34.8,
+    437.0
+   ],
+   [
+    47.5,
+    445.0
+   ],
+   [
+    60.8,
+    451.7
+   ],
+   [
+    74.9,
+    456.9
+   ],
+   [
+    89.6,
+    459.4
+   ],
+   [
+    104.5,
+    458.9
+   ],
+   [
+    119.2,
+    455.7
+   ],
+   [
+    133.3,
+    450.6
+   ],
+   [
+    146.6,
+    443.8
+   ],
+   [
+    159.1,
+    435.5
+   ],
+   [
+    169.7,
+    424.9
+   ],
+   [
+    178.7,
+    413.0
+   ],
+   [
+    186.4,
+    400.1
+   ],
+   [
+    193.8,
+    387.1
+   ],
+   [
+    201.9,
+    374.5
+   ],
+   [
+    211.7,
+    363.1
+   ],
+   [
+    222.8,
+    353.0
+   ],
+   [
+    233.8,
+    342.9
+   ],
+   [
+    245.5,
+    333.5
+   ],
+   [
+    257.8,
+    324.9
+   ],
+   [
+    270.5,
+    316.9
+   ],
+   [
+    283.5,
+    309.5
+   ],
+   [
+    296.9,
+    302.8
+   ],
+   [
+    310.5,
+    296.3
+   ],
+   [
+    324.1,
+    290.0
+   ],
+   [
+    337.8,
+    283.9
+   ],
+   [
+    351.5,
+    277.8
+   ],
+   [
+    365.2,
+    271.7
+   ],
+   [
+    378.9,
+    265.7
+   ],
+   [
+    392.6,
+    259.7
+   ],
+   [
+    406.4,
+    253.7
+   ],
+   [
+    420.2,
+    247.8
+   ],
+   [
+    433.9,
+    241.8
+   ],
+   [
+    447.7,
+    235.8
+   ],
+   [
+    461.4,
+    229.8
+   ],
+   [
+    475.1,
+    223.7
+   ],
+   [
+    488.9,
+    217.7
+   ],
+   [
+    502.6,
+    211.7
+   ],
+   [
+    516.3,
+    205.6
+   ],
+   [
+    530.0,
+    199.5
+   ],
+   [
+    543.7,
+    193.5
+   ],
+   [
+    557.5,
+    187.4
+   ],
+   [
+    571.2,
+    181.4
+   ],
+   [
+    584.9,
+    175.4
+   ],
+   [
+    598.7,
+    169.4
+   ],
+   [
+    612.4,
+    163.3
+   ],
+   [
+    626.1,
+    157.2
+   ],
+   [
+    639.8,
+    151.2
+   ],
+   [
+    653.5,
+    145.1
+   ],
+   [
+    667.2,
+    139.0
+   ],
+   [
+    680.9,
+    132.8
+   ],
+   [
+    694.5,
+    126.6
+   ],
+   [
+    708.2,
+    120.4
+   ],
+   [
+    721.9,
+    114.2
+   ],
+   [
+    735.5,
+    107.9
+   ],
+   [
+    749.0,
+    101.5
+   ],
+   [
+    762.6,
+    95.1
+   ],
+   [
+    776.2,
+    88.7
+   ],
+   [
+    789.7,
+    82.2
+   ],
+   [
+    803.2,
+    75.6
+   ],
+   [
+    816.6,
+    69.0
+   ],
+   [
+    830.0,
+    62.2
+   ],
+   [
+    843.3,
+    55.4
+   ],
+   [
+    856.5,
+    48.2
+   ],
+   [
+    869.6,
+    40.9
+   ],
+   [
+    882.4,
+    33.1
+   ],
+   [
+    894.7,
+    24.5
+   ],
+   [
+    906.7,
+    15.5
+   ],
+   [
+    917.8,
+    5.5
+   ],
+   [
+    927.9,
+    -5.6
+   ],
+   [
+    936.3,
+    -18.0
+   ],
+   [
+    943.7,
+    -31.0
+   ],
+   [
+    948.6,
+    -45.2
+   ],
+   [
+    951.6,
+    -59.8
+   ],
+   [
+    951.3,
+    -74.8
+   ],
+   [
+    949.6,
+    -89.7
+   ],
+   [
+    944.8,
+    -103.8
+   ],
+   [
+    938.3,
+    -117.4
+   ],
+   [
+    929.8,
+    -129.7
+   ],
+   [
+    920.0,
+    -141.0
+   ],
+   [
+    908.9,
+    -151.1
+   ],
+   [
+    896.9,
+    -160.1
+   ],
+   [
+    884.5,
+    -168.5
+   ],
+   [
+    871.4,
+    -175.8
+   ],
+   [
+    858.5,
+    -183.4
+   ],
+   [
+    845.6,
+    -191.0
+   ],
+   [
+    833.1,
+    -199.4
+   ],
+   [
+    820.8,
+    -207.9
+   ],
+   [
+    809.0,
+    -217.2
+   ],
+   [
+    797.4,
+    -226.6
+   ],
+   [
+    785.6,
+    -236.0
+   ],
+   [
+    773.9,
+    -245.3
+   ],
+   [
+    762.2,
+    -254.7
+   ],
+   [
+    750.6,
+    -264.2
+   ],
+   [
+    739.1,
+    -273.8
+   ],
+   [
+    727.7,
+    -283.6
+   ],
+   [
+    716.8,
+    -293.8
+   ],
+   [
+    705.8,
+    -304.1
+   ],
+   [
+    694.9,
+    -314.4
+   ],
+   [
+    684.0,
+    -324.7
+   ],
+   [
+    673.2,
+    -335.1
+   ],
+   [
+    662.6,
+    -345.7
+   ],
+   [
+    653.1,
+    -357.3
+   ],
+   [
+    645.8,
+    -370.3
+   ],
+   [
+    642.5,
+    -384.8
+   ],
+   [
+    643.6,
+    -399.7
+   ],
+   [
+    650.3,
+    -413.1
+   ],
+   [
+    659.9,
+    -424.6
+   ],
+   [
+    668.0,
+    -437.2
+   ],
+   [
+    670.2,
+    -451.7
+   ],
+   [
+    667.4,
+    -466.4
+   ],
+   [
+    661.4,
+    -480.1
+   ],
+   [
+    652.4,
+    -492.0
+   ],
+   [
+    641.6,
+    -502.4
+   ],
+   [
+    629.7,
+    -511.5
+   ],
+   [
+    617.3,
+    -519.9
+   ],
+   [
+    603.7,
+    -526.1
+   ],
+   [
+    589.3,
+    -530.1
+   ],
+   [
+    574.7,
+    -533.8
+   ],
+   [
+    559.8,
+    -534.5
+   ],
+   [
+    544.8,
+    -534.6
+   ],
+   [
+    529.9,
+    -532.9
+   ],
+   [
+    515.3,
+    -529.7
+   ],
+   [
+    501.3,
+    -524.4
+   ],
+   [
+    487.5,
+    -518.5
+   ],
+   [
+    474.6,
+    -510.9
+   ],
+   [
+    461.9,
+    -502.9
+   ],
+   [
+    449.4,
+    -494.6
+   ],
+   [
+    437.0,
+    -486.2
+   ],
+   [
+    424.7,
+    -477.6
+   ]
+  ],
+  "start_finish": 0
+ },
+ "corner_numbers": "not added yet",
+ "estimate_warning": "Corner speeds and braking/overtaking zones are estimates from a simple GT3-like model on the layout, not recorded GT3 data.",
+ "attribution": "Layout: F1 timing data via FastF1. Start line/direction aided by Lovely Sim Racing track data (CC BY-NC-SA 4.0).",
+ "numbered_corners": [
+  {
+   "number": 1,
+   "letter": "",
+   "fraction": 0.0761,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 148,
+   "est_min_speed_kmh": 160
+  },
+  {
+   "number": 2,
+   "letter": "",
+   "fraction": 0.1034,
+   "source": "FastF1 official",
+   "direction": "left",
+   "radius_m": 131,
+   "est_min_speed_kmh": 171
+  },
+  {
+   "number": 3,
+   "letter": "",
+   "fraction": 0.147,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 40,
+   "est_min_speed_kmh": 89
+  },
+  {
+   "number": 4,
+   "letter": "",
+   "fraction": 0.1761,
+   "source": "FastF1 official",
+   "direction": "left",
+   "radius_m": 24,
+   "est_min_speed_kmh": 69
+  },
+  {
+   "number": 5,
+   "letter": "",
+   "fraction": 0.2085,
+   "source": "FastF1 official",
+   "direction": "left",
+   "radius_m": 132,
+   "est_min_speed_kmh": 172
+  },
+  {
+   "number": 6,
+   "letter": "",
+   "fraction": 0.3342,
+   "source": "FastF1 official",
+   "direction": "left",
+   "radius_m": 56,
+   "est_min_speed_kmh": 104
+  },
+  {
+   "number": 7,
+   "letter": "",
+   "fraction": 0.3718,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 39,
+   "est_min_speed_kmh": 84
+  },
+  {
+   "number": 8,
+   "letter": "",
+   "fraction": 0.4308,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 203,
+   "est_min_speed_kmh": 223
+  },
+  {
+   "number": 9,
+   "letter": "",
+   "fraction": 0.5205,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 109,
+   "est_min_speed_kmh": 141
+  },
+  {
+   "number": 10,
+   "letter": "",
+   "fraction": 0.6145,
+   "source": "FastF1 official",
+   "direction": "left",
+   "radius_m": 412,
+   "est_min_speed_kmh": 233
+  },
+  {
+   "number": 11,
+   "letter": "",
+   "fraction": 0.6308,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 112,
+   "est_min_speed_kmh": 157
+  },
+  {
+   "number": 12,
+   "letter": "",
+   "fraction": 0.6556,
+   "source": "FastF1 official",
+   "direction": "left",
+   "radius_m": 98,
+   "est_min_speed_kmh": 142
+  },
+  {
+   "number": 13,
+   "letter": "",
+   "fraction": 0.6795,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 73,
+   "est_min_speed_kmh": 124
+  },
+  {
+   "number": 14,
+   "letter": "",
+   "fraction": 0.7043,
+   "source": "FastF1 official",
+   "direction": "left",
+   "radius_m": 144,
+   "est_min_speed_kmh": 160
+  },
+  {
+   "number": 15,
+   "letter": "",
+   "fraction": 0.8521,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 81,
+   "est_min_speed_kmh": 131
+  },
+  {
+   "number": 16,
+   "letter": "",
+   "fraction": 0.9291,
+   "source": "FastF1 official",
+   "direction": "left",
+   "radius_m": 46,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "number": 17,
+   "letter": "",
+   "fraction": 0.9444,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 42,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "number": 18,
+   "letter": "",
+   "fraction": 0.9709,
+   "source": "FastF1 official",
+   "direction": "right",
+   "radius_m": 113,
+   "est_min_speed_kmh": 156
+  }
+ ],
+ "numbering_status": "official: 18 corners from FastF1",
+ "map_corners_raw": [
+  {
+   "number": 1,
+   "letter": "",
+   "fraction": 0.0673
+  },
+  {
+   "number": 2,
+   "letter": "",
+   "fraction": 0.0936
+  },
+  {
+   "number": 3,
+   "letter": "",
+   "fraction": 0.1423
+  },
+  {
+   "number": 4,
+   "letter": "",
+   "fraction": 0.1473
+  },
+  {
+   "number": 5,
+   "letter": "",
+   "fraction": 0.169
+  },
+  {
+   "number": 6,
+   "letter": "",
+   "fraction": 0.3306
+  },
+  {
+   "number": 7,
+   "letter": "",
+   "fraction": 0.3706
+  },
+  {
+   "number": 8,
+   "letter": "",
+   "fraction": 0.4274
+  },
+  {
+   "number": 9,
+   "letter": "",
+   "fraction": 0.5168
+  },
+  {
+   "number": 10,
+   "letter": "",
+   "fraction": 0.6003
+  },
+  {
+   "number": 11,
+   "letter": "",
+   "fraction": 0.604
+  },
+  {
+   "number": 12,
+   "letter": "",
+   "fraction": 0.6266
+  },
+  {
+   "number": 13,
+   "letter": "",
+   "fraction": 0.6744
+  },
+  {
+   "number": 14,
+   "letter": "",
+   "fraction": 0.7078
+  },
+  {
+   "number": 15,
+   "letter": "",
+   "fraction": 0.8547
+  },
+  {
+   "number": 16,
+   "letter": "",
+   "fraction": 0.9384
+  },
+  {
+   "number": 17,
+   "letter": "",
+   "fraction": 0.9476
+  },
+  {
+   "number": 18,
+   "letter": "",
+   "fraction": 0.9767
+  }
+ ],
+ "map_corners_snapped": [
+  {
+   "number": 1,
+   "letter": "",
+   "fraction": 0.0667
+  },
+  {
+   "number": 2,
+   "letter": "",
+   "fraction": 0.0855
+  },
+  {
+   "number": 3,
+   "letter": "",
+   "fraction": 0.1496
+  },
+  {
+   "number": 4,
+   "letter": "",
+   "fraction": 0.1496
+  },
+  {
+   "number": 5,
+   "letter": "",
+   "fraction": 0.1761
+  },
+  {
+   "number": 6,
+   "letter": "",
+   "fraction": 0.3299
+  },
+  {
+   "number": 7,
+   "letter": "",
+   "fraction": 0.3684
+  },
+  {
+   "number": 8,
+   "letter": "",
+   "fraction": 0.4308
+  },
+  {
+   "number": 9,
+   "letter": "",
+   "fraction": 0.512
+  },
+  {
+   "number": 10,
+   "letter": "",
+   "fraction": 0.6
+  },
+  {
+   "number": 11,
+   "letter": "",
+   "fraction": 0.6
+  },
+  {
+   "number": 12,
+   "letter": "",
+   "fraction": 0.6274
+  },
+  {
+   "number": 13,
+   "letter": "",
+   "fraction": 0.6769
+  },
+  {
+   "number": 14,
+   "letter": "",
+   "fraction": 0.7026
+  },
+  {
+   "number": 15,
+   "letter": "",
+   "fraction": 0.8564
+  },
+  {
+   "number": 16,
+   "letter": "",
+   "fraction": 0.9342
+  },
+  {
+   "number": 17,
+   "letter": "",
+   "fraction": 0.9453
+  },
+  {
+   "number": 18,
+   "letter": "",
+   "fraction": 0.9778
+  }
+ ],
+ "numbering_check": {
+  "outline_fit_pct": 1.3,
+  "agree": 17,
+  "total": 18,
+  "worst": 0.022
+ }
+}

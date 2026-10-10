@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 BACKEND_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BACKEND_DIR.parent
 STORAGE_DIR = BACKEND_DIR / "storage"
+# ACC track data (layouts, braking zones, numbered corners, facts): built by scripts/build_tracks.py
+TRACKS_DIR = BACKEND_DIR / "library_tracks"
 
 load_dotenv(ROOT_DIR / ".env")
 
@@ -58,6 +60,14 @@ BLENDER_PATH = os.getenv("BLENDER_PATH", "/Applications/Blender.app/Contents/Mac
 # Local video generation (Wan 2.1 through mlx-video). scripts/setup_video.sh puts its
 # own Python and the model weights here.
 WAN_DIR = Path(os.getenv("JARVIS_WAN_DIR") or STORAGE_DIR / "wan")
+# Screen clipping (tools/capture.py): the avfoundation display index on the Mac (`ffmpeg -f avfoundation -list_devices true -i ""`).
+CAPTURE_SCREEN = os.getenv("JARVIS_CAPTURE_SCREEN", "1")
+# Game sound for `capture`: a loopback audio device (Mac: its avfoundation index, e.g. BlackHole; Windows: its dshow
+# name, e.g. "Stereo Mix (Realtek Audio)"). Empty = video only.
+# Always-on replay buffer: starts with Ultron so "clip the last 30 seconds" works without starting anything.
+CAPTURE_ALWAYS_ON = os.getenv("JARVIS_CAPTURE_ALWAYS_ON", "1") != "0"
+CAPTURE_MINUTES = min(max(int(os.getenv("JARVIS_CAPTURE_MINUTES", "5")), 1), 10)
+CAPTURE_AUDIO = os.getenv("JARVIS_CAPTURE_AUDIO", "").strip()
 # Local image generation (FLUX.2 Klein through mflux): scripts/setup_images.sh.
 FLUX_DIR = Path(os.getenv("JARVIS_FLUX_DIR") or STORAGE_DIR / "flux")
 

@@ -157,6 +157,13 @@ async def show_text(title: str, content: str) -> str:
     return card_id
 
 
+async def show_card(kind: str, title: str, data: dict[str, Any]) -> str:
+    """Put a card of any kind on the canvas from Ultron's own code. Returns the card id."""
+    card_id = _new_card_id()
+    await hub.emit(events.canvas_card(card_id, kind, title, data))
+    return card_id
+
+
 async def show_table(title: str, columns: list[str], rows: list[list[str]]) -> str:
     """Put a table card on the canvas from Ultron's own code. Returns the card id."""
     card_id = _new_card_id()

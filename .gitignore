@@ -19,6 +19,7 @@ backend/storage/videos/
 backend/storage/wan/
 backend/storage/voice/
 backend/storage/flux/
+backend/storage/f1cache/
 backend/storage/UltronLocation.app/
 backend/storage/ultron.log
 backend/storage/ultron.pid
@@ -52,3 +53,6 @@ windows/wake_pc.env
 windows/wake_pc.log*
 windows/whisper/
 windows/edge-profile/
+
+# 51GT3 info text (copyright 51GT3; kept on this Mac only)
+backend/library_tracks/info/

@@ -1,0 +1,1699 @@
+{
+ "id": "valencia",
+ "name": "Circuit Ricardo Tormo",
+ "length_m": 4005,
+ "layout_source": "osm",
+ "layout_note": "OpenStreetMap raceway ways",
+ "sectors": [
+  {
+   "name": "1",
+   "marker": 0.379
+  },
+  {
+   "name": "2",
+   "marker": 0.728
+  },
+  {
+   "name": "3",
+   "marker": 1
+  }
+ ],
+ "corners": [
+  {
+   "fraction": 0.1352,
+   "direction": "left",
+   "radius_m": 62,
+   "est_min_speed_kmh": 112
+  },
+  {
+   "fraction": 0.229,
+   "direction": "left",
+   "radius_m": 25,
+   "est_min_speed_kmh": 70
+  },
+  {
+   "fraction": 0.2741,
+   "direction": "left",
+   "radius_m": 34,
+   "est_min_speed_kmh": 83
+  },
+  {
+   "fraction": 0.3166,
+   "direction": "right",
+   "radius_m": 25,
+   "est_min_speed_kmh": 68
+  },
+  {
+   "fraction": 0.3492,
+   "direction": "right",
+   "radius_m": 61,
+   "est_min_speed_kmh": 87
+  },
+  {
+   "fraction": 0.3592,
+   "direction": "right",
+   "radius_m": 46,
+   "est_min_speed_kmh": 90
+  },
+  {
+   "fraction": 0.4255,
+   "direction": "left",
+   "radius_m": 30,
+   "est_min_speed_kmh": 77
+  },
+  {
+   "fraction": 0.4355,
+   "direction": "left",
+   "radius_m": 29,
+   "est_min_speed_kmh": 76
+  },
+  {
+   "fraction": 0.5169,
+   "direction": "left",
+   "radius_m": 69,
+   "est_min_speed_kmh": 117
+  },
+  {
+   "fraction": 0.5594,
+   "direction": "left",
+   "radius_m": 39,
+   "est_min_speed_kmh": 89
+  },
+  {
+   "fraction": 0.582,
+   "direction": "left",
+   "radius_m": 44,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "fraction": 0.6195,
+   "direction": "left",
+   "radius_m": 85,
+   "est_min_speed_kmh": 96
+  },
+  {
+   "fraction": 0.6483,
+   "direction": "right",
+   "radius_m": 50,
+   "est_min_speed_kmh": 101
+  },
+  {
+   "fraction": 0.6809,
+   "direction": "right",
+   "radius_m": 34,
+   "est_min_speed_kmh": 73
+  },
+  {
+   "fraction": 0.7685,
+   "direction": "right",
+   "radius_m": 23,
+   "est_min_speed_kmh": 65
+  },
+  {
+   "fraction": 0.7872,
+   "direction": "left",
+   "radius_m": 143,
+   "est_min_speed_kmh": 117
+  },
+  {
+   "fraction": 0.8148,
+   "direction": "left",
+   "radius_m": 136,
+   "est_min_speed_kmh": 175
+  },
+  {
+   "fraction": 0.8335,
+   "direction": "left",
+   "radius_m": 138,
+   "est_min_speed_kmh": 165
+  },
+  {
+   "fraction": 0.8536,
+   "direction": "left",
+   "radius_m": 129,
+   "est_min_speed_kmh": 170
+  },
+  {
+   "fraction": 0.8773,
+   "direction": "left",
+   "radius_m": 171,
+   "est_min_speed_kmh": 145
+  },
+  {
+   "fraction": 0.9036,
+   "direction": "left",
+   "radius_m": 21,
+   "est_min_speed_kmh": 61
+  },
+  {
+   "fraction": 0.9474,
+   "direction": "left",
+   "radius_m": 18,
+   "est_min_speed_kmh": 56
+  }
+ ],
+ "apexes": [
+  {
+   "fraction": 0.1352,
+   "direction": "left",
+   "radius_m": 62,
+   "est_min_speed_kmh": 112
+  },
+  {
+   "fraction": 0.1539,
+   "direction": "left",
+   "radius_m": 531,
+   "est_min_speed_kmh": 139
+  },
+  {
+   "fraction": 0.229,
+   "direction": "left",
+   "radius_m": 25,
+   "est_min_speed_kmh": 70
+  },
+  {
+   "fraction": 0.2741,
+   "direction": "left",
+   "radius_m": 34,
+   "est_min_speed_kmh": 83
+  },
+  {
+   "fraction": 0.3166,
+   "direction": "right",
+   "radius_m": 25,
+   "est_min_speed_kmh": 68
+  },
+  {
+   "fraction": 0.3492,
+   "direction": "right",
+   "radius_m": 61,
+   "est_min_speed_kmh": 87
+  },
+  {
+   "fraction": 0.3592,
+   "direction": "right",
+   "radius_m": 46,
+   "est_min_speed_kmh": 90
+  },
+  {
+   "fraction": 0.4255,
+   "direction": "left",
+   "radius_m": 30,
+   "est_min_speed_kmh": 77
+  },
+  {
+   "fraction": 0.4355,
+   "direction": "left",
+   "radius_m": 29,
+   "est_min_speed_kmh": 76
+  },
+  {
+   "fraction": 0.5169,
+   "direction": "left",
+   "radius_m": 69,
+   "est_min_speed_kmh": 117
+  },
+  {
+   "fraction": 0.5594,
+   "direction": "left",
+   "radius_m": 39,
+   "est_min_speed_kmh": 89
+  },
+  {
+   "fraction": 0.582,
+   "direction": "left",
+   "radius_m": 44,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "fraction": 0.6195,
+   "direction": "left",
+   "radius_m": 85,
+   "est_min_speed_kmh": 96
+  },
+  {
+   "fraction": 0.6483,
+   "direction": "right",
+   "radius_m": 50,
+   "est_min_speed_kmh": 101
+  },
+  {
+   "fraction": 0.6809,
+   "direction": "right",
+   "radius_m": 34,
+   "est_min_speed_kmh": 73
+  },
+  {
+   "fraction": 0.7685,
+   "direction": "right",
+   "radius_m": 23,
+   "est_min_speed_kmh": 65
+  },
+  {
+   "fraction": 0.7872,
+   "direction": "left",
+   "radius_m": 143,
+   "est_min_speed_kmh": 117
+  },
+  {
+   "fraction": 0.8148,
+   "direction": "left",
+   "radius_m": 136,
+   "est_min_speed_kmh": 175
+  },
+  {
+   "fraction": 0.8335,
+   "direction": "left",
+   "radius_m": 138,
+   "est_min_speed_kmh": 165
+  },
+  {
+   "fraction": 0.8536,
+   "direction": "left",
+   "radius_m": 129,
+   "est_min_speed_kmh": 170
+  },
+  {
+   "fraction": 0.8773,
+   "direction": "left",
+   "radius_m": 171,
+   "est_min_speed_kmh": 145
+  },
+  {
+   "fraction": 0.9036,
+   "direction": "left",
+   "radius_m": 21,
+   "est_min_speed_kmh": 61
+  },
+  {
+   "fraction": 0.9474,
+   "direction": "left",
+   "radius_m": 18,
+   "est_min_speed_kmh": 56
+  }
+ ],
+ "f1_corners": [],
+ "braking_zones": [
+  {
+   "start": 0.0926,
+   "end": 0.1339,
+   "apex": 0.1352,
+   "class": "heavy",
+   "speed_from_kmh": 265,
+   "speed_to_kmh": 112,
+   "straight_before_m": 545,
+   "f1_brake_confirmed": null,
+   "overtaking_candidate": true
+  },
+  {
+   "start": 0.1952,
+   "end": 0.229,
+   "apex": 0.229,
+   "class": "heavy",
+   "speed_from_kmh": 217,
+   "speed_to_kmh": 70,
+   "straight_before_m": 185,
+   "f1_brake_confirmed": null,
+   "overtaking_candidate": false
+  },
+  {
+   "start": 0.7422,
+   "end": 0.7672,
+   "apex": 0.7685,
+   "class": "heavy",
+   "speed_from_kmh": 203,
+   "speed_to_kmh": 65,
+   "straight_before_m": 180,
+   "f1_brake_confirmed": null,
+   "overtaking_candidate": false
+  },
+  {
+   "start": 0.8723,
+   "end": 0.9024,
+   "apex": 0.8773,
+   "class": "heavy",
+   "speed_from_kmh": 196,
+   "speed_to_kmh": 61,
+   "straight_before_m": 0,
+   "f1_brake_confirmed": null,
+   "overtaking_candidate": false
+  }
+ ],
+ "notes": [],
+ "layout": {
+  "step_m": 15.0,
+  "points": [
+   [
+    -51.5,
+    -252.9
+   ],
+   [
+    -39.2,
+    -244.4
+   ],
+   [
+    -26.8,
+    -236.0
+   ],
+   [
+    -14.4,
+    -227.5
+   ],
+   [
+    -2.1,
+    -219.0
+   ],
+   [
+    10.3,
+    -210.5
+   ],
+   [
+    22.7,
+    -202.0
+   ],
+   [
+    35.0,
+    -193.5
+   ],
+   [
+    47.4,
+    -185.0
+   ],
+   [
+    59.8,
+    -176.5
+   ],
+   [
+    72.1,
+    -168.0
+   ],
+   [
+    84.5,
+    -159.5
+   ],
+   [
+    96.9,
+    -151.0
+   ],
+   [
+    109.2,
+    -142.5
+   ],
+   [
+    121.6,
+    -134.0
+   ],
+   [
+    134.0,
+    -125.5
+   ],
+   [
+    146.3,
+    -117.0
+   ],
+   [
+    158.7,
+    -108.6
+   ],
+   [
+    171.1,
+    -100.1
+   ],
+   [
+    183.4,
+    -91.5
+   ],
+   [
+    195.8,
+    -83.0
+   ],
+   [
+    208.1,
+    -74.5
+   ],
+   [
+    220.5,
+    -65.9
+   ],
+   [
+    232.8,
+    -57.4
+   ],
+   [
+    245.1,
+    -48.9
+   ],
+   [
+    257.5,
+    -40.4
+   ],
+   [
+    269.8,
+    -31.8
+   ],
+   [
+    282.2,
+    -23.3
+   ],
+   [
+    294.5,
+    -14.8
+   ],
+   [
+    306.9,
+    -6.2
+   ],
+   [
+    319.2,
+    2.3
+   ],
+   [
+    331.5,
+    10.8
+   ],
+   [
+    343.9,
+    19.3
+   ],
+   [
+    356.2,
+    27.9
+   ],
+   [
+    366.9,
+    38.4
+   ],
+   [
+    375.5,
+    50.7
+   ],
+   [
+    380.9,
+    64.6
+   ],
+   [
+    383.0,
+    79.4
+   ],
+   [
+    382.0,
+    94.3
+   ],
+   [
+    377.9,
+    108.7
+   ],
+   [
+    373.0,
+    122.9
+   ],
+   [
+    368.1,
+    137.1
+   ],
+   [
+    362.6,
+    151.1
+   ],
+   [
+    357.1,
+    165.0
+   ],
+   [
+    351.5,
+    178.9
+   ],
+   [
+    346.0,
+    192.9
+   ],
+   [
+    340.4,
+    206.8
+   ],
+   [
+    334.9,
+    220.8
+   ],
+   [
+    329.3,
+    234.7
+   ],
+   [
+    323.8,
+    248.6
+   ],
+   [
+    318.2,
+    262.6
+   ],
+   [
+    312.7,
+    276.5
+   ],
+   [
+    307.1,
+    290.5
+   ],
+   [
+    301.6,
+    304.4
+   ],
+   [
+    296.0,
+    318.3
+   ],
+   [
+    290.5,
+    332.3
+   ],
+   [
+    284.9,
+    346.2
+   ],
+   [
+    279.4,
+    360.2
+   ],
+   [
+    273.8,
+    374.1
+   ],
+   [
+    267.3,
+    387.5
+   ],
+   [
+    256.2,
+    397.2
+   ],
+   [
+    241.9,
+    400.7
+   ],
+   [
+    228.0,
+    395.7
+   ],
+   [
+    217.9,
+    384.9
+   ],
+   [
+    213.0,
+    370.9
+   ],
+   [
+    210.6,
+    356.1
+   ],
+   [
+    208.2,
+    341.3
+   ],
+   [
+    205.9,
+    326.5
+   ],
+   [
+    203.5,
+    311.6
+   ],
+   [
+    201.1,
+    296.8
+   ],
+   [
+    198.7,
+    282.0
+   ],
+   [
+    196.3,
+    267.2
+   ],
+   [
+    194.4,
+    252.4
+   ],
+   [
+    196.4,
+    237.7
+   ],
+   [
+    204.3,
+    225.2
+   ],
+   [
+    213.9,
+    213.7
+   ],
+   [
+    223.5,
+    202.1
+   ],
+   [
+    233.0,
+    190.6
+   ],
+   [
+    242.6,
+    179.0
+   ],
+   [
+    252.2,
+    167.5
+   ],
+   [
+    261.8,
+    155.9
+   ],
+   [
+    271.4,
+    144.4
+   ],
+   [
+    280.9,
+    132.8
+   ],
+   [
+    289.8,
+    120.9
+   ],
+   [
+    293.2,
+    106.4
+   ],
+   [
+    287.7,
+    92.8
+   ],
+   [
+    276.4,
+    83.1
+   ],
+   [
+    264.2,
+    74.4
+   ],
+   [
+    251.9,
+    65.8
+   ],
+   [
+    239.6,
+    57.3
+   ],
+   [
+    227.2,
+    48.7
+   ],
+   [
+    214.9,
+    40.2
+   ],
+   [
+    202.6,
+    31.6
+   ],
+   [
+    189.5,
+    24.7
+   ],
+   [
+    175.0,
+    21.1
+   ],
+   [
+    160.1,
+    22.7
+   ],
+   [
+    146.4,
+    28.4
+   ],
+   [
+    135.5,
+    38.6
+   ],
+   [
+    127.6,
+    51.0
+   ],
+   [
+    123.6,
+    65.5
+   ],
+   [
+    122.7,
+    80.3
+   ],
+   [
+    122.6,
+    95.3
+   ],
+   [
+    122.4,
+    110.3
+   ],
+   [
+    122.3,
+    125.3
+   ],
+   [
+    122.2,
+    140.3
+   ],
+   [
+    122.1,
+    155.4
+   ],
+   [
+    122.0,
+    170.4
+   ],
+   [
+    121.9,
+    185.4
+   ],
+   [
+    121.8,
+    200.4
+   ],
+   [
+    121.7,
+    215.4
+   ],
+   [
+    121.6,
+    230.4
+   ],
+   [
+    121.4,
+    245.4
+   ],
+   [
+    121.3,
+    260.4
+   ],
+   [
+    119.5,
+    275.2
+   ],
+   [
+    110.5,
+    287.0
+   ],
+   [
+    98.3,
+    295.7
+   ],
+   [
+    84.1,
+    299.9
+   ],
+   [
+    69.6,
+    297.2
+   ],
+   [
+    56.0,
+    290.8
+   ],
+   [
+    43.4,
+    282.7
+   ],
+   [
+    31.1,
+    274.1
+   ],
+   [
+    18.8,
+    265.6
+   ],
+   [
+    6.4,
+    257.0
+   ],
+   [
+    -5.9,
+    248.5
+   ],
+   [
+    -18.2,
+    239.9
+   ],
+   [
+    -30.5,
+    231.4
+   ],
+   [
+    -42.9,
+    222.8
+   ],
+   [
+    -55.2,
+    214.3
+   ],
+   [
+    -67.5,
+    205.7
+   ],
+   [
+    -79.9,
+    197.2
+   ],
+   [
+    -92.2,
+    188.6
+   ],
+   [
+    -104.5,
+    180.1
+   ],
+   [
+    -116.8,
+    171.5
+   ],
+   [
+    -129.2,
+    162.9
+   ],
+   [
+    -141.5,
+    154.4
+   ],
+   [
+    -153.8,
+    145.8
+   ],
+   [
+    -166.1,
+    137.3
+   ],
+   [
+    -178.4,
+    128.6
+   ],
+   [
+    -189.2,
+    118.3
+   ],
+   [
+    -197.4,
+    105.8
+   ],
+   [
+    -204.9,
+    92.8
+   ],
+   [
+    -212.4,
+    79.8
+   ],
+   [
+    -219.9,
+    66.8
+   ],
+   [
+    -227.4,
+    53.8
+   ],
+   [
+    -234.9,
+    40.8
+   ],
+   [
+    -242.4,
+    27.8
+   ],
+   [
+    -249.9,
+    14.8
+   ],
+   [
+    -257.4,
+    1.8
+   ],
+   [
+    -264.9,
+    -11.2
+   ],
+   [
+    -269.8,
+    -24.9
+   ],
+   [
+    -269.8,
+    -39.9
+   ],
+   [
+    -266.9,
+    -54.4
+   ],
+   [
+    -259.2,
+    -67.2
+   ],
+   [
+    -248.3,
+    -77.3
+   ],
+   [
+    -234.8,
+    -83.8
+   ],
+   [
+    -220.2,
+    -85.8
+   ],
+   [
+    -205.5,
+    -83.6
+   ],
+   [
+    -192.5,
+    -76.0
+   ],
+   [
+    -180.1,
+    -67.6
+   ],
+   [
+    -167.7,
+    -59.1
+   ],
+   [
+    -155.5,
+    -50.5
+   ],
+   [
+    -143.2,
+    -41.9
+   ],
+   [
+    -130.7,
+    -33.5
+   ],
+   [
+    -118.3,
+    -25.0
+   ],
+   [
+    -106.1,
+    -16.4
+   ],
+   [
+    -96.6,
+    -4.8
+   ],
+   [
+    -90.2,
+    8.7
+   ],
+   [
+    -87.1,
+    23.4
+   ],
+   [
+    -84.2,
+    38.1
+   ],
+   [
+    -81.4,
+    52.8
+   ],
+   [
+    -78.5,
+    67.6
+   ],
+   [
+    -75.6,
+    82.3
+   ],
+   [
+    -72.3,
+    96.9
+   ],
+   [
+    -65.1,
+    110.0
+   ],
+   [
+    -55.1,
+    121.1
+   ],
+   [
+    -43.3,
+    130.3
+   ],
+   [
+    -31.3,
+    139.3
+   ],
+   [
+    -19.2,
+    148.3
+   ],
+   [
+    -7.2,
+    157.2
+   ],
+   [
+    6.1,
+    163.6
+   ],
+   [
+    20.9,
+    165.4
+   ],
+   [
+    35.2,
+    161.8
+   ],
+   [
+    45.7,
+    151.3
+   ],
+   [
+    52.0,
+    137.8
+   ],
+   [
+    51.7,
+    123.0
+   ],
+   [
+    46.0,
+    109.2
+   ],
+   [
+    38.2,
+    96.3
+   ],
+   [
+    30.5,
+    83.5
+   ],
+   [
+    22.7,
+    70.6
+   ],
+   [
+    14.9,
+    57.8
+   ],
+   [
+    7.2,
+    45.0
+   ],
+   [
+    -0.6,
+    32.1
+   ],
+   [
+    -8.3,
+    19.3
+   ],
+   [
+    -16.1,
+    6.4
+   ],
+   [
+    -23.9,
+    -6.4
+   ],
+   [
+    -31.6,
+    -19.2
+   ],
+   [
+    -39.4,
+    -32.1
+   ],
+   [
+    -47.1,
+    -44.9
+   ],
+   [
+    -54.9,
+    -57.8
+   ],
+   [
+    -62.6,
+    -70.6
+   ],
+   [
+    -70.4,
+    -83.4
+   ],
+   [
+    -78.2,
+    -96.3
+   ],
+   [
+    -85.9,
+    -109.1
+   ],
+   [
+    -93.7,
+    -122.0
+   ],
+   [
+    -101.9,
+    -134.5
+   ],
+   [
+    -114.3,
+    -141.9
+   ],
+   [
+    -129.2,
+    -140.7
+   ],
+   [
+    -144.2,
+    -139.5
+   ],
+   [
+    -159.1,
+    -138.3
+   ],
+   [
+    -174.1,
+    -137.0
+   ],
+   [
+    -189.0,
+    -137.5
+   ],
+   [
+    -204.0,
+    -138.9
+   ],
+   [
+    -218.9,
+    -140.5
+   ],
+   [
+    -233.4,
+    -144.1
+   ],
+   [
+    -247.9,
+    -147.9
+   ],
+   [
+    -262.1,
+    -153.0
+   ],
+   [
+    -275.6,
+    -159.4
+   ],
+   [
+    -289.0,
+    -166.1
+   ],
+   [
+    -301.0,
+    -175.1
+   ],
+   [
+    -313.0,
+    -184.1
+   ],
+   [
+    -324.1,
+    -194.2
+   ],
+   [
+    -334.9,
+    -204.6
+   ],
+   [
+    -344.7,
+    -216.0
+   ],
+   [
+    -353.4,
+    -228.1
+   ],
+   [
+    -361.6,
+    -240.7
+   ],
+   [
+    -370.0,
+    -253.2
+   ],
+   [
+    -377.0,
+    -266.4
+   ],
+   [
+    -383.4,
+    -280.0
+   ],
+   [
+    -388.1,
+    -294.1
+   ],
+   [
+    -391.8,
+    -308.7
+   ],
+   [
+    -394.7,
+    -323.4
+   ],
+   [
+    -397.4,
+    -338.1
+   ],
+   [
+    -399.0,
+    -353.0
+   ],
+   [
+    -399.9,
+    -368.0
+   ],
+   [
+    -400.0,
+    -383.0
+   ],
+   [
+    -398.4,
+    -397.9
+   ],
+   [
+    -396.8,
+    -412.8
+   ],
+   [
+    -395.0,
+    -427.7
+   ],
+   [
+    -392.7,
+    -442.5
+   ],
+   [
+    -385.7,
+    -455.5
+   ],
+   [
+    -373.6,
+    -464.2
+   ],
+   [
+    -359.1,
+    -465.1
+   ],
+   [
+    -346.5,
+    -457.0
+   ],
+   [
+    -334.2,
+    -448.4
+   ],
+   [
+    -321.8,
+    -439.9
+   ],
+   [
+    -309.5,
+    -431.3
+   ],
+   [
+    -297.1,
+    -422.8
+   ],
+   [
+    -284.8,
+    -414.3
+   ],
+   [
+    -272.5,
+    -405.7
+   ],
+   [
+    -260.1,
+    -397.2
+   ],
+   [
+    -247.8,
+    -388.7
+   ],
+   [
+    -234.9,
+    -381.4
+   ],
+   [
+    -220.3,
+    -377.8
+   ],
+   [
+    -209.8,
+    -370.4
+   ],
+   [
+    -204.1,
+    -357.7
+   ],
+   [
+    -191.7,
+    -349.2
+   ],
+   [
+    -179.3,
+    -340.7
+   ],
+   [
+    -167.0,
+    -332.2
+   ],
+   [
+    -154.6,
+    -323.7
+   ],
+   [
+    -142.2,
+    -315.2
+   ],
+   [
+    -129.9,
+    -306.7
+   ],
+   [
+    -117.5,
+    -298.2
+   ],
+   [
+    -105.1,
+    -289.7
+   ],
+   [
+    -92.8,
+    -281.3
+   ],
+   [
+    -80.4,
+    -272.8
+   ],
+   [
+    -68.0,
+    -264.3
+   ],
+   [
+    -55.7,
+    -255.8
+   ]
+  ],
+  "start_finish": 0
+ },
+ "corner_numbers": "not added yet",
+ "estimate_warning": "Corner speeds and braking/overtaking zones are estimates from a simple GT3-like model on the layout, not recorded GT3 data.",
+ "attribution": "Layout: OpenStreetMap contributors (ODbL). Start line/direction aided by Lovely Sim Racing track data (CC BY-NC-SA 4.0).",
+ "numbered_corners": [
+  {
+   "number": 1,
+   "letter": "",
+   "fraction": 0.1352,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 62,
+   "est_min_speed_kmh": 112
+  },
+  {
+   "number": 2,
+   "letter": "",
+   "fraction": 0.229,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 25,
+   "est_min_speed_kmh": 70
+  },
+  {
+   "number": 3,
+   "letter": "",
+   "fraction": 0.2741,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 34,
+   "est_min_speed_kmh": 83
+  },
+  {
+   "number": 4,
+   "letter": "",
+   "fraction": 0.3166,
+   "source": "51GT3 map",
+   "direction": "right",
+   "radius_m": 25,
+   "est_min_speed_kmh": 68
+  },
+  {
+   "number": 5,
+   "letter": "",
+   "fraction": 0.3492,
+   "source": "51GT3 map",
+   "direction": "right",
+   "radius_m": 61,
+   "est_min_speed_kmh": 87
+  },
+  {
+   "number": 6,
+   "letter": "",
+   "fraction": 0.4355,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 29,
+   "est_min_speed_kmh": 76
+  },
+  {
+   "number": 7,
+   "letter": "",
+   "fraction": 0.5169,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 69,
+   "est_min_speed_kmh": 117
+  },
+  {
+   "number": 8,
+   "letter": "",
+   "fraction": 0.582,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 44,
+   "est_min_speed_kmh": 91
+  },
+  {
+   "number": 9,
+   "letter": "",
+   "fraction": 0.6195,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 85,
+   "est_min_speed_kmh": 96
+  },
+  {
+   "number": 10,
+   "letter": "",
+   "fraction": 0.6195,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 85,
+   "est_min_speed_kmh": 96
+  },
+  {
+   "number": 11,
+   "letter": "",
+   "fraction": 0.6483,
+   "source": "51GT3 map",
+   "direction": "right",
+   "radius_m": 50,
+   "est_min_speed_kmh": 101
+  },
+  {
+   "number": 12,
+   "letter": "",
+   "fraction": 0.7685,
+   "source": "51GT3 map",
+   "direction": "right",
+   "radius_m": 23,
+   "est_min_speed_kmh": 65
+  },
+  {
+   "number": 13,
+   "letter": "",
+   "fraction": 0.8536,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 129,
+   "est_min_speed_kmh": 170
+  },
+  {
+   "number": 14,
+   "letter": "",
+   "fraction": 0.9036,
+   "source": "51GT3 map",
+   "direction": "left",
+   "radius_m": 21,
+   "est_min_speed_kmh": 61
+  }
+ ],
+ "numbering_status": "from the 51GT3 map: 14 corners, cross-checked against the map outline (fit 0.6% of track size, 14/14 numbers within 2% of the lap, worst 0.015)",
+ "map_corners_raw": [
+  {
+   "number": 1,
+   "letter": "",
+   "fraction": 0.1365
+  },
+  {
+   "number": 2,
+   "letter": "",
+   "fraction": 0.2295
+  },
+  {
+   "number": 3,
+   "letter": "",
+   "fraction": 0.2744
+  },
+  {
+   "number": 4,
+   "letter": "",
+   "fraction": 0.3187
+  },
+  {
+   "number": 5,
+   "letter": "",
+   "fraction": 0.3359
+  },
+  {
+   "number": 6,
+   "letter": "",
+   "fraction": 0.4321
+  },
+  {
+   "number": 7,
+   "letter": "",
+   "fraction": 0.5192
+  },
+  {
+   "number": 8,
+   "letter": "",
+   "fraction": 0.5712
+  },
+  {
+   "number": 9,
+   "letter": "",
+   "fraction": 0.618
+  },
+  {
+   "number": 10,
+   "letter": "",
+   "fraction": 0.625
+  },
+  {
+   "number": 11,
+   "letter": "",
+   "fraction": 0.6446
+  },
+  {
+   "number": 12,
+   "letter": "",
+   "fraction": 0.7729
+  },
+  {
+   "number": 13,
+   "letter": "",
+   "fraction": 0.8487
+  },
+  {
+   "number": 14,
+   "letter": "",
+   "fraction": 0.8999
+  }
+ ],
+ "map_corners_snapped": [
+  {
+   "number": 1,
+   "letter": "",
+   "fraction": 0.1352
+  },
+  {
+   "number": 2,
+   "letter": "",
+   "fraction": 0.229
+  },
+  {
+   "number": 3,
+   "letter": "",
+   "fraction": 0.2741
+  },
+  {
+   "number": 4,
+   "letter": "",
+   "fraction": 0.3166
+  },
+  {
+   "number": 5,
+   "letter": "",
+   "fraction": 0.3492
+  },
+  {
+   "number": 6,
+   "letter": "",
+   "fraction": 0.4355
+  },
+  {
+   "number": 7,
+   "letter": "",
+   "fraction": 0.5169
+  },
+  {
+   "number": 8,
+   "letter": "",
+   "fraction": 0.582
+  },
+  {
+   "number": 9,
+   "letter": "",
+   "fraction": 0.6195
+  },
+  {
+   "number": 10,
+   "letter": "",
+   "fraction": 0.6195
+  },
+  {
+   "number": 11,
+   "letter": "",
+   "fraction": 0.6483
+  },
+  {
+   "number": 12,
+   "letter": "",
+   "fraction": 0.7685
+  },
+  {
+   "number": 13,
+   "letter": "",
+   "fraction": 0.8536
+  },
+  {
+   "number": 14,
+   "letter": "",
+   "fraction": 0.9036
+  }
+ ],
+ "numbering_check": {
+  "outline_fit_pct": 0.6,
+  "agree": 14,
+  "total": 14,
+  "worst": 0.015
+ }
+}

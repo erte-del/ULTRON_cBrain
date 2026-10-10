@@ -7,6 +7,7 @@ import type { CanvasCard, ImageCardData, ImageSelection, Model3DData, VideoCardD
 import ImageViewer from './ImageViewer'
 import Markdown from './Markdown'
 import VideoCard from './VideoCard'
+import TrackCard, { type TrackData } from './TrackCard'
 
 // three.js is big: only load the 3D viewer when a 3D model first appears.
 const Model3DViewer = lazy(() => import('./Model3DViewer'))
@@ -189,6 +190,8 @@ function CardBody({
       return <MapCard data={card.data} />
     case 'youtube':
       return <YoutubeCard items={(card.data.items as Item[]) ?? []} />
+    case 'track':
+      return <TrackCard data={card.data as unknown as TrackData} />
     default:
       return <pre className="card-raw">{JSON.stringify(card.data, null, 2)}</pre>
   }

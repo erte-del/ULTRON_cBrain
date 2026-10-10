@@ -1986,3 +1986,40 @@
   opacity: 0.6;
   margin-left: 4px;
 }
+
+/* Capture library (?captures=1) */
+.captures { min-height: 100vh; padding: 16px 24px; background: var(--bg); color: var(--text); }
+.cap-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.cap-bar h1 { font-size: 16px; margin: 0 8px 0 0; letter-spacing: 0.1em; text-transform: uppercase; }
+.cap-bar .spacer { flex: 1; }
+.captures button, .captures a, .captures input:not([type='range']) {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 12px; font: inherit; text-decoration: none; cursor: pointer;
+}
+.captures button:hover, .captures a:hover { border-color: var(--accent); }
+.captures button.on, .captures button.primary { background: var(--accent-2); border-color: var(--accent); }
+.captures button.danger { color: var(--danger); }
+.captures button:disabled { opacity: 0.5; cursor: default; }
+.cap-bar input { cursor: text; min-width: 0; }
+.captures h2 { font-size: 12px; color: var(--text-dim); margin: 20px 0 8px; font-weight: 600; }
+.cap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.cap-tile { position: relative; padding: 0 !important; overflow: hidden; text-align: left; display: block; }
+.cap-tile img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: #000; }
+.cap-title { display: block; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cap-len { position: absolute; right: 8px; bottom: 40px; background: rgba(0, 0, 0, 0.7); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+.cap-empty, .cap-error { color: var(--text-dim); } .cap-error { color: var(--danger); }
+.cap-player video { width: 100%; max-height: 70vh; background: #000; border-radius: 8px; }
+.cap-player .cap-bar input { flex: 1; }
+.cap-trim { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.cap-trim input[type='range'] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+
+/* ACC track card (TrackCard.tsx) */
+.track-card { display: flex; flex-direction: column; gap: 10px; }
+.track-svg { width: 100%; max-width: 600px; height: auto; align-self: center; background: transparent; }
+.track-corner { cursor: pointer; }
+.track-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; opacity: 0.85; }
+.track-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+.track-detail { font-size: 14px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; background: rgba(127, 127, 127, 0.12); }
+.track-hint { font-size: 13px; opacity: 0.7; }
+.track-foot { font-size: 12px; opacity: 0.75; line-height: 1.5; }
+.track-attr { opacity: 0.6; margin-top: 4px; }
