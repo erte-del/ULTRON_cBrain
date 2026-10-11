@@ -70,6 +70,18 @@ class NotesTest(unittest.TestCase):
         self.assertEqual(registry.classify(registry.PREFIX + "read_note"), "read")
         self.assertEqual(registry.classify(registry.PREFIX + "write_note"), "act")
 
+    def test_delete_asks_and_moves_to_trash(self):
+        self.assertTrue(registry.needs_ok(registry.PREFIX + "delete_note", {"path": "school/Chemistry.md"}))
+        self.assertFalse(call(notes.delete_note, {"path": "school/Chemistry"})[1])
+        self.assertFalse((self.vault / "school" / "Chemistry.md").exists())
+        self.assertTrue((self.vault / ".trash" / "Chemistry.md").exists())
+        (self.vault / "school" / "A.md").write_text("a")
+        self.assertFalse(call(notes.delete_note, {"path": "school"})[1])  # a folder
+        self.assertFalse((self.vault / "school").exists())
+        for path in ("Keys.md", "../x", ".obsidian", "", "missing"):  # private, outside, hidden, root, absent
+            self.assertTrue(call(notes.delete_note, {"path": path})[1], path)
+        self.assertTrue((self.vault / "Keys.md").exists())
+
     def test_no_vault_set(self):
         with mock.patch.object(config, "VAULT_DIR", None):
             text, err = call(notes.search_notes, {"query": "x"})

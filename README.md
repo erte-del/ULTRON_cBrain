@@ -319,7 +319,7 @@ only look things up.
 - **Memory**: preferences, people, projects, decisions. See, edit or delete them all in the
   memory panel. Passwords, card numbers and keys are always refused.
 - **Saved chats**: up to 5, with their canvas cards.
-- **Obsidian notes**: searches and reads your vault, writes new notes. `#private` notes are never read.
+- **Obsidian notes**: searches and reads your vault, writes new notes, and deletes a note or folder on request (always asks first; it goes to the vault's `.trash`, so Obsidian can restore it). `#private` notes are never read or deleted.
 - **Important things**: mark a file, folder or note important and Ultron asks before touching it.
 
 ### Your accounts (claude.ai connectors)

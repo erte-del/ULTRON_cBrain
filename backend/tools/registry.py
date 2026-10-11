@@ -40,7 +40,7 @@ from .jobs import change_job, list_jobs, schedule_job
 from .mac import mac_change, mac_read, run_python
 from .maps import maps
 from .memory import forget, recall, remember
-from .notes import read_note, search_notes, write_note
+from .notes import delete_note, read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
 from .pc import leaves_folder as leaves_pc_folder, only_launches, opens_link, pc_change, pc_read, pc_run
@@ -160,6 +160,7 @@ TOOLS: list[UltronTool] = [
     UltronTool(search_notes, "read"),
     UltronTool(read_note, "read"),
     UltronTool(write_note, "act"),
+    UltronTool(delete_note, "act"),  # always asks (ASK_TOOLS)
     # A standing job keeps running (and using your Pro limit) until you stop it.
     UltronTool(schedule_job, "act"),
     UltronTool(change_job, "act"),
@@ -196,7 +197,8 @@ TOOLS: list[UltronTool] = [
 
 # In chat, an 'act' tool asks you first only when it reaches other people or touches
 # something you marked important. These are the ones of Ultron's own that always ask.
-ASK_TOOLS = {"whatsapp_send", "instagram_post", "instagram_reply", "instagram_schedule", "unmark_important", "pc_run"}
+ASK_TOOLS = {"whatsapp_send", "instagram_post", "instagram_reply", "instagram_schedule", "unmark_important", "pc_run",
+             "delete_note"}
 # Connector actions whose name has one of these words reach other people (send_message,
 # reply, share, respond_to_event, publish_app, ...). Drafts don't: they wait for you.
 PEOPLE_WORDS = {"send", "reply", "forward", "share", "invite", "respond", "broadcast",
@@ -225,6 +227,7 @@ TITLES = {
     "remember": "Remember this",
     "forget": "Forget this",
     "write_note": "Save to your notes",
+    "delete_note": "Delete this note or folder",
     "schedule_job": "Schedule a job",
     "change_job": "Change a scheduled job",
     "unmark_important": "Stop protecting this",

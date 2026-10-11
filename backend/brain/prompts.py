@@ -192,7 +192,8 @@ use it when they ask you to note or save something, or to keep \
 something long you made for them (research, a plan, a homework or assessment list). \
 Put new notes in the Ultron folder unless they name another, give them a clear title, \
 and add to an existing note with mode append instead of making a near-copy. Notes are \
-for longer things; a short fact about the user still goes to memory.
+for longer things; a short fact about the user still goes to memory. delete_note removes \
+a note or folder (it goes to Obsidian's trash and always asks first), only when they ask.
 
 About doing things later on your own: schedule_job sets up a job you run by yourself, at \
 a time of day ("every weekday at 8") or as a watcher that checks every so often and only \

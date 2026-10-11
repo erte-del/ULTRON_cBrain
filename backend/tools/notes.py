@@ -3,10 +3,12 @@
 A vault is a folder of Markdown files, so these are plain file tools. Ultron only sees
 .md files inside the vault, skips hidden folders (.obsidian, .trash) and never reads a
 note tagged #private. Writing is an 'act' tool: it asks you first only for notes you marked important.
+delete_note always asks, and moves to the vault's .trash (Obsidian's own trash), never erases.
 """
 
 import asyncio
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -161,3 +163,44 @@ async def write_note(args: dict[str, Any]) -> dict[str, Any]:
     except (ValueError, OSError) as e:
         return _text(f"Not saved: {e}", True)
     return _text(f"Saved to {rel}.")
+
+
+def delete(path: str) -> str:
+    """Move a note, or a folder with its notes, to the vault's .trash; returns what moved."""
+    vault = _vault().resolve()
+    rel = path.strip().lstrip("/")
+    full = (vault / rel).resolve()
+    if full.is_dir():
+        notes = list(full.rglob("*.md"))
+    else:
+        full, notes = _resolve(path), [_resolve(path)]
+    if full == vault or not full.is_relative_to(vault) or any(p.startswith(".") for p in full.relative_to(vault).parts):
+        raise ValueError(f"{path!r} isn't a note or folder in your vault.")
+    if not full.exists():
+        raise ValueError(f"{path!r} doesn't exist.")
+    if any(is_private(n.read_text(encoding="utf-8", errors="replace")) for n in notes):
+        raise ValueError(f"{path!r} has a #private note, so Ultron doesn't delete it.")
+    shown = full.relative_to(vault).as_posix()
+    dest = vault / ".trash" / full.name
+    for i in range(2, 1000):  # never overwrite something already in the trash
+        if not dest.exists():
+            break
+        dest = vault / ".trash" / f"{full.stem} {i}{full.suffix}"
+    dest.parent.mkdir(exist_ok=True)
+    shutil.move(str(full), str(dest))
+    return shown
+
+
+@tool(
+    "delete_note",
+    "Delete one of the user's Obsidian notes, or a whole folder of notes, by its path in the "
+    "vault. It goes to Obsidian's trash (.trash) so it can be put back. Always asks the user first.",
+    {"type": "object", "properties": {"path": {"type": "string", "description": "Note or folder, e.g. 'Ultron/Old plan.md'"}},
+     "required": ["path"]},
+)
+async def delete_note(args: dict[str, Any]) -> dict[str, Any]:
+    try:
+        shown = await asyncio.to_thread(delete, str(args.get("path") or ""))
+    except (ValueError, OSError) as e:
+        return _text(f"Not deleted: {e}", True)
+    return _text(f"Moved {shown} to the vault's .trash (Obsidian can restore it).")
