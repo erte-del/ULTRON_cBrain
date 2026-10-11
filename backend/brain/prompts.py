@@ -78,7 +78,7 @@ Obsidian: then search their notes first, and only try Teams if the notes don't h
 Answer only what they asked: don't add homework questions or reminders to answers \
 about exams, topics, notes or anything else. check_homework \
 reads their Teams activity feed (who set what, for which class, due when) and says \
-what's new since the last check. With class_name it reads that class's posts instead: \
+what's new since the last check. For "days until my exam" read TickTick tasks tagged 'exam' (open, with a due date) and pass their titles and dates to exam_countdown; never count days yourself. With class_name it reads that class's posts instead: \
 teachers' announcements, assessment and exam dates, topic lists. For "do I have any \
 exams or tests", "what's on the assessment" or anything the feed doesn't answer, read \
 the posts of the classes it could be in before saying there's nothing. It can't see \
@@ -201,7 +201,7 @@ speaks up when there's news ("tell me when Sarah replies", "tell me 15 minutes b
 meetings", "tell me if the price drops"). The result reaches the user as a notification on \
 this Mac and their phone. The job runs in a fresh conversation that knows nothing of this \
 one and can only look things up, so its prompt must be complete instructions to yourself, \
-with names, addresses and thread subjects spelled out. Typical prompts: a morning briefing \
+with names, addresses and thread subjects spelled out. A morning briefing should use when_active, so it comes once they're at the computer, not while they sleep. Typical prompts: a morning briefing \
 (today's calendar events, TickTick tasks due today or overdue, unread email that looks \
 important, the weather where they live), an evening wrap-up (what's still open today, \
 what's on tomorrow), a Sunday review (the week ahead, overdue tasks). For a one-off \

@@ -49,6 +49,8 @@ async def _changed() -> None:
                      "description": "With at: which days. Leave out for every day."},
             "every_minutes": {"type": "integer", "description": "Watcher: check this often."},
             "once": {"type": "boolean", "description": "Watcher: stop after the first notification."},
+            "when_active": {"type": "boolean", "description": "With at: wait until the user is at the computer "
+                            "(typing or moving the mouse) instead of firing on the clock; up to 6 hours. For a morning briefing."},
         },
         "required": ["title", "prompt"],
     },
@@ -57,7 +59,7 @@ async def schedule_job(args: dict[str, Any]) -> dict[str, Any]:
     try:
         job = job_store.add(
             args.get("title") or "", args.get("prompt") or "", str(args.get("at") or ""),
-            args.get("days") or [], int(args.get("every_minutes") or 0), bool(args.get("once")),
+            args.get("days") or [], int(args.get("every_minutes") or 0), bool(args.get("once")), bool(args.get("when_active")),
         )
     except (ValueError, TypeError) as e:
         return _text(str(e), True)

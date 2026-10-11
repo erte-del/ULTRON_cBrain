@@ -13,6 +13,7 @@ Safe defaults:
     a job's "allow" list of tool names in jobs.json, written by hand: Ultron can't set it
   - one job at a time, and none once JARVIS_JOBS_MAX_USAGE of the Pro 5-hour limit is used
   - watchers don't run during JARVIS_QUIET_HOURS
+  - a "when_active" job (a briefing) waits for key presses or mouse moves (presence.py), up to 6 h
   - a job that was due while the Mac slept still runs if it's under CATCH_UP late, once
 """
 
@@ -29,6 +30,7 @@ import config
 import events
 import hub
 import notify
+import presence
 import usage
 from brain.base import Error, TextDelta, ToolStart
 from brain.brain_claudecode import ClaudeCodeBrain
@@ -39,6 +41,7 @@ log = logging.getLogger("ultron.scheduler")
 
 CHECK_EVERY_S = 30
 CATCH_UP = timedelta(hours=3)
+WAKE_WINDOW = timedelta(hours=6)  # a "when I'm up" job waits this long for you to show up
 JOB_TIMEOUT_S = 300
 NOTHING = "NOTHING"  # a job's reply when there's nothing to tell you
 
@@ -71,7 +74,9 @@ def due(job: dict, now: datetime) -> bool:
         moment -= timedelta(days=1)  # today's time hasn't come: was yesterday's missed?
     if job["days"] and job_store.DAYS[moment.weekday()] not in job["days"]:
         return False
-    return last < moment.timestamp() and now - moment <= CATCH_UP
+    wait = job.get("when_active")
+    return (last < moment.timestamp() and now - moment <= (WAKE_WINDOW if wait else CATCH_UP)
+            and (not wait or presence.active()))
 
 
 def _gate(job: dict):

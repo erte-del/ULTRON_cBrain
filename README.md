@@ -348,6 +348,7 @@ only look things up.
 ### School
 
 - **Homework**: reads your Teams activity feed and class posts; can watch for new work.
+- **Exam countdown**: the 17:00 Homework job adds IMPORTANT assessment posts from Teams to TickTick (tag `exam`); the 20:00 reminder and "how long until my exam?" show a "days until" card (`exam_countdown`, days counted in code).
 - **Syllabus**: the exam boards' official spec PDFs, explained in their terms.
 - **Textbooks**: finds the right page in your scanned books and reads it as printed.
 - **Slides**: lesson decks in your teacher's template.
@@ -408,7 +409,8 @@ only look things up.
 - **Scheduled jobs**: "a briefing every weekday at 7", or watchers ("tell me when Sarah replies")
   that check every 15+ minutes and only speak up when there's news. Results reach the chat, a
   Mac notification and Telegram. Watchers pause in quiet hours; jobs stop above 80% of the
-  5-hour limit.
+  5-hour limit. A briefing can wait until you're at the computer ("when I'm up": key presses or
+  mouse moves, up to 6 hours after its time) instead of firing on the clock.
 - **Usage panel**: your Pro 5-hour and weekly limits, reset times, and Ultron's own token use.
 
 ---

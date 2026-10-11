@@ -71,11 +71,11 @@ def when(job: dict) -> str:
     """'every 30 min' or '08:00 mon, tue' or '08:00 every day'."""
     if job["every_min"]:
         return f"every {job['every_min']} min" + (", until it finds something" if job["once"] else "")
-    return f"{job['at']} {', '.join(job['days']) or 'every day'}"
+    return f"{job['at']} {', '.join(job['days']) or 'every day'}" + (", once I'm at the computer" if job.get("when_active") else "")
 
 
 def add(title: str, prompt: str, at: str = "", days: list[str] | None = None,
-        every_min: int = 0, once: bool = False) -> dict:
+        every_min: int = 0, once: bool = False, when_active: bool = False) -> dict:
     """ValueError with the reason if the job can't be scheduled like that."""
     title, prompt = " ".join(str(title).split())[:80], str(prompt).strip()
     days = [str(d).lower()[:3] for d in days or []]
@@ -100,6 +100,7 @@ def add(title: str, prompt: str, at: str = "", days: list[str] | None = None,
         number = max((int(i.removeprefix("job_")) for i in used), default=0) + 1
         job = {"id": f"job_{number}", "title": title, "prompt": prompt, "at": at, "days": days,
                "every_min": int(every_min), "once": bool(once and every_min), "enabled": True,
+               "when_active": bool(when_active and at),
                "created": time.time(), "last_run": 0.0, "last_text": ""}
         data["jobs"].append(job)
         _write(data)

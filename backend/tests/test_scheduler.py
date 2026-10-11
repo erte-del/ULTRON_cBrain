@@ -40,6 +40,17 @@ class DueTest(unittest.TestCase):
         # made at 08:01 for 08:00: waits for tomorrow
         self.assertFalse(scheduler.due({**briefing, "created": MON_8.timestamp() + 60}, MON_8.replace(minute=2)))
 
+    def test_when_active_waits_for_you_up_to_six_hours(self):
+        briefing = job(at="07:00", when_active=True)
+        now = MON_8.replace(hour=9)
+        with mock.patch.object(scheduler.presence, "idle_seconds", return_value=3600):
+            self.assertFalse(scheduler.due(briefing, now))  # nobody there yet
+        with mock.patch.object(scheduler.presence, "idle_seconds", return_value=5):
+            self.assertTrue(scheduler.due(briefing, now))  # 2 h late, but you're up
+            self.assertTrue(scheduler.due(briefing, MON_8.replace(hour=12)))
+            self.assertFalse(scheduler.due(briefing, MON_8.replace(hour=14)))  # 7 h: too late
+            self.assertFalse(scheduler.due({**briefing, "when_active": False}, MON_8.replace(hour=12)))
+
     def test_late_evening_job_is_caught_up_after_midnight(self):
         wrap_up = job(at="23:30", days=["sun"])
         self.assertTrue(scheduler.due(wrap_up, MON_8.replace(hour=0, minute=30)))
