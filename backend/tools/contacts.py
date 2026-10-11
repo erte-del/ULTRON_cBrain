@@ -20,7 +20,7 @@ from claude_agent_sdk import tool
 # The query reaches the script as an argument, never pasted into its source.
 SCRIPT = r"""
 function run(argv) {
-  const C = Application('Contacts');
+  const C = Application('com.apple.AddressBook');  // by id: the name 'Contacts' can resolve to a widget extension
   const [mode, q] = argv;
   const clean = s => (s || '').replace(/^_\$!<|>!\$_$/g, '');
   if (mode === 'related') {
@@ -36,8 +36,10 @@ function run(argv) {
   const list = (items, value) => items.map(i => ({label: clean(i.label()), value: value(i)}));
   const excluded = p => exclude.some(x => `${p.name()} ${p.nickname() || ''}`.toLowerCase().includes(x));
   for (const t of terms) {
-    const people = C.people.whose({_or: [{name: {_contains: t}}, {nickname: {_contains: t}}]})()
-      .filter(p => !excluded(p));
+    // Contacts has no usable `whose`; read all names in one call and filter here.
+    const all = C.people, names = all.name(), nicks = all.nickname();
+    const people = names.map((n, i) => i).filter(i => `${names[i]} ${nicks[i] || ''}`.toLowerCase().includes(t))
+      .map(i => all[i]).filter(p => !excluded(p));
     if (people.length) return JSON.stringify({term: t, people: people.slice(0, 10).map(p => ({
       name: p.name(),
       nickname: p.nickname() || '',
