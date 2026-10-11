@@ -3,7 +3,7 @@
 FFmpeg records the screen into a ring of 5-second segments (the last few minutes, nothing older).
 Ultron bookmarks moments ("that was sick") and cuts clips from the buffer: the last N seconds,
 or a window around a bookmark. Clips become normal videos on the canvas and can be trimmed and
-merged. With JARVIS_CAPTURE_ALWAYS_ON (default) the buffer starts with Ultron; `stop` turns it off and deletes it.
+merged. With JARVIS_CAPTURE_ALWAYS_ON=1 the buffer starts with Ultron (default: off, it costs battery); `stop` turns it off and deletes it.
 
 Mac: avfoundation (needs Screen Recording permission; JARVIS_CAPTURE_SCREEN picks the display).
 Windows: gdigrab. Game sound needs a loopback device: set JARVIS_CAPTURE_AUDIO (see .env.example); without it, video only.
@@ -89,6 +89,13 @@ def _ffmpeg_log() -> str:
     return (BUF / "ffmpeg.log").read_text(encoding="utf-8", errors="replace")[-500:].strip() or "nothing"
 
 
+def _kill_strays() -> None:
+    """A recorder left over from an earlier run (crash, kill -9) keeps writing into the buffer
+    and eats CPU forever; stop any before starting a new one."""
+    if sys.platform != "win32":  # ponytail: Windows leftovers aren't cleaned up, add taskkill if they show up
+        subprocess.run(["pkill", "-9", "-f", str(BUF / "s%05d.ts")], check=False)
+
+
 def start(minutes: int) -> str:
     """minutes > 0: rolling buffer. minutes == 0: record everything until stopped."""
     global _proc, _log, _recording, _started
@@ -96,6 +103,7 @@ def start(minutes: int) -> str:
         if _recording == (minutes == 0):
             return "Already recording."
     stop_process()  # also closes a dead ffmpeg's log: Windows can't delete an open file
+    _kill_strays()
     shutil.rmtree(BUF, ignore_errors=True)
     BUF.mkdir(parents=True)
     _marks.clear()

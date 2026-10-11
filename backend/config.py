@@ -66,7 +66,7 @@ CAPTURE_SCREEN = os.getenv("JARVIS_CAPTURE_SCREEN", "Capture screen 0")
 # Game sound for `capture`: a loopback audio device (Mac: its avfoundation index, e.g. BlackHole; Windows: its dshow
 # name, e.g. "Stereo Mix (Realtek Audio)"). Empty = video only.
 # Always-on replay buffer: starts with Ultron so "clip the last 30 seconds" works without starting anything.
-CAPTURE_ALWAYS_ON = os.getenv("JARVIS_CAPTURE_ALWAYS_ON", "1") != "0"
+CAPTURE_ALWAYS_ON = os.getenv("JARVIS_CAPTURE_ALWAYS_ON", "0") == "1"
 CAPTURE_MINUTES = min(max(int(os.getenv("JARVIS_CAPTURE_MINUTES", "5")), 1), 10)
 CAPTURE_AUDIO = os.getenv("JARVIS_CAPTURE_AUDIO", "").strip()
 # Local image generation (FLUX.2 Klein through mflux): scripts/setup_images.sh.
@@ -83,6 +83,12 @@ BACKGROUND_WAKE = sys.platform == "win32" and os.getenv("JARVIS_BACKGROUND_WAKE"
 # Ultron's voice when it answers you in voice mode (voice/tts.py): a Kokoro voice, the same
 # ones as Reels. b = British, a = American; m = man, f = woman. bm_lewis: low and steady.
 VOICE = os.getenv("JARVIS_VOICE", "").strip() or "bm_lewis"
+# "kokoro" (free, on this computer) or "elevenlabs" (ElevenLabs' API, uses your plan's characters).
+# With elevenlabs, Kokoro still answers whenever ElevenLabs can't (out of characters, no network).
+TTS = os.getenv("JARVIS_TTS", "").strip().lower() or "kokoro"
+ELEVEN_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
+ELEVEN_VOICE = os.getenv("JARVIS_ELEVENLABS_VOICE", "").strip()  # a voice id from ElevenLabs' voice library
+ELEVEN_MODEL = os.getenv("JARVIS_ELEVENLABS_MODEL", "").strip() or "eleven_flash_v2_5"  # Flash: half the characters
 
 # How hard Claude thinks before answering: low | medium | high | xhigh | max.
 # Thinking was the biggest single use of the Pro limit, so the default is medium.

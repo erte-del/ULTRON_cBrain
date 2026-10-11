@@ -93,6 +93,7 @@ export default function VoiceOrb({ state, level, onClick, label }: VoiceOrbProps
     let raf = 0
 
     const frame = (now: number) => {
+      if (document.hidden) { raf = 0; return } // hidden window (Ultron.app panel, other tab): draw nothing
       const dt = Math.min((now - last) / 1000, 0.1)
       last = now
       const st = live.current.state
@@ -165,7 +166,9 @@ export default function VoiceOrb({ state, level, onClick, label }: VoiceOrbProps
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(raf)
+    const wake = () => { if (!document.hidden && !raf) { last = performance.now(); raf = requestAnimationFrame(frame) } }
+    document.addEventListener('visibilitychange', wake)
+    return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', wake) }
   }, [])
 
   return (

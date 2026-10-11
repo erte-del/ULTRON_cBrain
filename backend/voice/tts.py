@@ -10,22 +10,30 @@ writing the rest.
 """
 
 import io
+import json
+import logging
 import re
 import shutil
 import threading
 import time
 import urllib.request
 import wave
+from pathlib import Path
 
 import numpy as np
 
 import config
+
+log = logging.getLogger("ultron.tts")
 
 FOLDER = config.STORAGE_DIR / "voice" / "kokoro"
 FILES = ["kokoro-v1.0.onnx", "voices-v1.0.bin"]
 DOWNLOAD = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
 
 ECHO_S = 30  # how long what Ultron said counts as a possible echo
+ELEVEN_URL = "https://api.elevenlabs.io/v1/"
+USAGE_FILE = config.STORAGE_DIR / "voice" / "voice_usage.jsonl"  # one line per sentence and per reply
+_reply_chars = 0  # ElevenLabs characters in the reply being spoken
 _engine = None
 _lock = threading.Lock()
 _said: list[tuple[float, str]] = []  # (when, sentence): what Ultron said out loud lately
@@ -55,8 +63,50 @@ def load():
     return _engine
 
 
+def eleven_ready() -> bool:
+    return config.TTS == "elevenlabs" and bool(config.ELEVEN_KEY and config.ELEVEN_VOICE)
+
+
+def _eleven(text: str) -> bytes:
+    """One sentence from ElevenLabs as WAV (24 kHz, the same format Kokoro gives). Raises OSError."""
+    body = json.dumps({"text": text, "model_id": config.ELEVEN_MODEL}).encode()
+    req = urllib.request.Request(
+        f"{ELEVEN_URL}text-to-speech/{config.ELEVEN_VOICE}?output_format=wav_24000", data=body, method="POST",
+        headers={"xi-api-key": config.ELEVEN_KEY, "Content-Type": "application/json", "Accept": "audio/wav"})
+    with urllib.request.urlopen(req, timeout=30, context=config.ssl_context()) as r:
+        return r.read()
+
+
+def _record(kind: str, engine: str, chars: int) -> None:
+    """Append to USAGE_FILE: what the voice spoke, and with which engine."""
+    USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with USAGE_FILE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"t": time.time(), "kind": kind, "engine": engine, "chars": chars}) + "\n")
+
+
+def reply_done() -> None:
+    """A whole reply has been spoken: note its ElevenLabs characters, then start the count again."""
+    global _reply_chars
+    _record("reply", "elevenlabs" if _reply_chars else "kokoro", _reply_chars)
+    _reply_chars = 0
+
+
 def speak(text: str) -> bytes:
-    """One sentence as a WAV file (24 kHz, 16-bit mono)."""
+    """One sentence as a WAV file (24 kHz, 16-bit mono). ElevenLabs if it's set up and works."""
+    global _reply_chars
+    if eleven_ready():
+        try:
+            wav = _eleven(text)
+            _record("sentence", "elevenlabs", len(text))
+            _reply_chars += len(text)
+            return wav
+        except OSError as e:  # HTTP errors too: out of characters, bad key, no network
+            log.warning("ElevenLabs failed (%s); Kokoro says this sentence", e)
+            _record("sentence", "kokoro-fallback", 0)
+    return _kokoro(text)
+
+
+def _kokoro(text: str) -> bytes:
     voice = config.VOICE
     # The first letter is the accent: bm_lewis is a British man, am_onyx an American one.
     audio, rate = load().create(text, voice=voice, lang="en-gb" if voice[:1] == "b" else "en-us")

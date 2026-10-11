@@ -413,6 +413,7 @@ async def speak(send: hub.Sender, sentences: asyncio.Queue) -> None:
             wav = None
         tts.said(text)
         await send(events.voice_audio(text, wav))
+    tts.reply_done()
 
 
 GREETING = "Awake and ready, sir."

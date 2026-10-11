@@ -33,6 +33,7 @@ from .expert import ask_expert
 from .flights import flights
 from .github import github
 from .exams import exam_countdown
+from .voice_usage import voice_usage
 from .homework import check_homework
 from .imagegen import generate_image, image_ai_edit
 from .instagram import (instagram_cancel, instagram_comments, instagram_post, instagram_preview, instagram_queue,
@@ -116,6 +117,8 @@ TOOLS: list[UltronTool] = [
     UltronTool(check_homework, "read"),
     # Only counts days and shows a card; the dates come from TickTick.
     UltronTool(exam_countdown, "read"),
+    # Reads the ElevenLabs plan and the voice's own log; changes nothing.
+    UltronTool(voice_usage, "read"),
     # Reads the exam boards' public spec PDFs (downloaded once).
     UltronTool(syllabus, "read"),
     # Reads the user's own textbook scans on this Mac.

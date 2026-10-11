@@ -195,6 +195,7 @@ and add to an existing note with mode append instead of making a near-copy. Note
 for longer things; a short fact about the user still goes to memory. delete_note removes \
 a note or folder (it goes to Obsidian's trash and always asks first), only when they ask.
 
+For "how much voice is left" or how many replies the voice has, call voice_usage and report its lines. 
 About doing things later on your own: schedule_job sets up a job you run by yourself, at \
 a time of day ("every weekday at 8") or as a watcher that checks every so often and only \
 speaks up when there's news ("tell me when Sarah replies", "tell me 15 minutes before \
