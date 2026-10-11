@@ -16,6 +16,7 @@ import re
 import shutil
 import threading
 import time
+import urllib.error
 import urllib.request
 import wave
 from pathlib import Path
@@ -34,6 +35,8 @@ ECHO_S = 30  # how long what Ultron said counts as a possible echo
 ELEVEN_URL = "https://api.elevenlabs.io/v1/"
 USAGE_FILE = config.STORAGE_DIR / "voice" / "voice_usage.jsonl"  # one line per sentence and per reply
 _reply_chars = 0  # ElevenLabs characters in the reply being spoken
+last_error = ""  # why ElevenLabs last failed, for voice_usage
+_prev = ""  # the sentence before, in this reply: tells ElevenLabs how to carry the tone on
 _engine = None
 _lock = threading.Lock()
 _said: list[tuple[float, str]] = []  # (when, sentence): what Ultron said out loud lately
@@ -69,12 +72,23 @@ def eleven_ready() -> bool:
 
 def _eleven(text: str) -> bytes:
     """One sentence from ElevenLabs as WAV (24 kHz, the same format Kokoro gives). Raises OSError."""
-    body = json.dumps({"text": text, "model_id": config.ELEVEN_MODEL}).encode()
+    body = json.dumps({"text": text, "model_id": config.ELEVEN_MODEL, **({"previous_text": _prev} if _prev else {})}).encode()
     req = urllib.request.Request(
         f"{ELEVEN_URL}text-to-speech/{config.ELEVEN_VOICE}?output_format=wav_24000", data=body, method="POST",
         headers={"xi-api-key": config.ELEVEN_KEY, "Content-Type": "application/json", "Accept": "audio/wav"})
     with urllib.request.urlopen(req, timeout=30, context=config.ssl_context()) as r:
         return r.read()
+
+
+def _why(e: OSError) -> str:
+    """'HTTP 402: Free users cannot use library voices...' - ElevenLabs says why in the body."""
+    if not isinstance(e, urllib.error.HTTPError):
+        return str(e)
+    try:
+        detail = json.loads(e.read())["detail"]
+        return f"HTTP {e.code}: {detail['message'] if isinstance(detail, dict) else detail}"
+    except (OSError, ValueError, KeyError, TypeError):
+        return f"HTTP {e.code}"
 
 
 def _record(kind: str, engine: str, chars: int) -> None:
@@ -86,22 +100,25 @@ def _record(kind: str, engine: str, chars: int) -> None:
 
 def reply_done() -> None:
     """A whole reply has been spoken: note its ElevenLabs characters, then start the count again."""
-    global _reply_chars
+    global _reply_chars, _prev
+    _prev = ""
     _record("reply", "elevenlabs" if _reply_chars else "kokoro", _reply_chars)
     _reply_chars = 0
 
 
 def speak(text: str) -> bytes:
     """One sentence as a WAV file (24 kHz, 16-bit mono). ElevenLabs if it's set up and works."""
-    global _reply_chars
+    global _reply_chars, _prev, last_error
     if eleven_ready():
         try:
             wav = _eleven(text)
             _record("sentence", "elevenlabs", len(text))
             _reply_chars += len(text)
+            _prev = text
             return wav
         except OSError as e:  # HTTP errors too: out of characters, bad key, no network
-            log.warning("ElevenLabs failed (%s); Kokoro says this sentence", e)
+            last_error = _why(e)
+            log.warning("ElevenLabs failed (%s); Kokoro says this sentence", last_error)
             _record("sentence", "kokoro-fallback", 0)
     return _kokoro(text)
 
@@ -183,7 +200,7 @@ class Sentences:
         if not self._code and not self._line.lstrip().startswith(("|", "`")):
             *done, self._line = split(self._line)
             out += [c for s in done if (c := clean(s))]
-            if not self._started and not out:
+            if not self._started and not out and not eleven_ready():  # ElevenLabs answers fast: whole sentences sound better
                 ends = [m.end() for m in (_PAUSE.search(self._line), _FIRST.match(self._line)) if m]
                 if ends and (c := clean(self._line[:min(ends)])):
                     out.append(c)

@@ -173,6 +173,11 @@ class GroqTest(unittest.TestCase):
 
 
 class SpeakingTest(unittest.TestCase):
+    def setUp(self):
+        patcher = patch.object(config, "TTS", "kokoro")  # not whatever .env says
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     """What Ultron says out loud (voice/tts.py)."""
 
     def stream(self, reply: str, step: int = 3) -> list[str]:
@@ -185,6 +190,12 @@ class SpeakingTest(unittest.TestCase):
         self.assertEqual(parts.feed("You have three things. The fir"), ["You have three things."])
         self.assertEqual(parts.feed("st is at 9.30 with Dr. Smith, e.g. a check-up."), [])
         self.assertEqual(parts.flush(), ["The first is at 9.30 with Dr. Smith, e.g. a check-up."])
+
+    def test_elevenlabs_gets_whole_sentences(self):
+        with patch.object(config, "TTS", "elevenlabs"), patch.object(config, "ELEVEN_KEY", "k"), \
+                patch.object(config, "ELEVEN_VOICE", "v"):
+            self.assertEqual(self.stream("Quietly dignified, mildly electric. Ask me again."),
+                             ["Quietly dignified, mildly electric.", "Ask me again."])
 
     def test_first_words_are_said_at_once(self):
         # The first few words (or up to a pause, if sooner) go out right away; later sentences stay whole.
@@ -212,6 +223,11 @@ class SpeakingTest(unittest.TestCase):
 
 
 class SpokenReplyTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        patcher = patch.object(config, "TTS", "kokoro")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     """A spoken reply (main.run_turn with voice): said sentence by sentence, and a
     confirmation card on the way is asked out loud."""
 

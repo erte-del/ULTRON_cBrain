@@ -42,6 +42,7 @@ class ElevenTest(unittest.TestCase):
         with mock.patch.object(tts, "_eleven", side_effect=err), mock.patch.object(tts, "_kokoro", return_value=b"KOKORO") as kokoro:
             self.assertEqual(tts.speak("Hi."), b"KOKORO")
         kokoro.assert_called_once()
+        self.assertIn("401", tts.last_error)
         tts.reply_done()
         self.assertEqual(voice_usage.logged()["fallbacks"], 1)
 

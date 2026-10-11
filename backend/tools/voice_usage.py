@@ -47,7 +47,8 @@ def _text() -> str:
     if stats["eleven_replies"]:
         lines.append(f"Average ElevenLabs reply: {stats['avg_chars']} characters.")
     if stats["fallbacks"]:
-        lines.append(f"Sentences Kokoro said because ElevenLabs failed: {stats['fallbacks']}.")
+        lines.append(f"Sentences Kokoro said because ElevenLabs failed: {stats['fallbacks']}."
+                     + (f" Last reason: {tts.last_error}" if tts.last_error else ""))
     if tts.eleven_ready():
         try:
             acc = account()
