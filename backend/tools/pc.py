@@ -39,6 +39,9 @@ def _post(path: str, args: dict[str, Any]) -> dict[str, Any]:
         with urlopen(req, timeout=TIMEOUT_S, context=config.ssl_context()) as r:
             return json.load(r)
     except HTTPError as e:
+        if e.code == 404:  # an older ultron_pc.py: it only git-pulls new calls when it restarts
+            return {"text": f"The PC's ultron_pc.py is older than this Mac's Ultron and has no {path} call: restart it "
+                            "on the PC (Stop-ScheduledTask Ultron; Start-ScheduledTask Ultron) so it updates.", "is_error": True}
         try:
             return json.load(e)
         except ValueError:

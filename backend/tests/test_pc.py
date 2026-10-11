@@ -195,3 +195,16 @@ class PcCaptureTest(unittest.TestCase):
                 out = agent.capture({"action": "clip", "seconds": 10})
             self.assertGreater(len(out["data"]), 1000)
             self.assertIn("recording", agent.capture({"action": "status"}).lower() + "recording")
+
+
+class PcOldAgentTest(unittest.TestCase):
+    def test_missing_route_says_restart(self):
+        server = HTTPServer(("127.0.0.1", 0), agent.Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        with mock.patch.object(agent, "TOKEN", "t" * 32), mock.patch.object(config, "PC_TOKEN", "t" * 32), \
+                mock.patch.object(config, "PC_URL", f"http://127.0.0.1:{server.server_port}"):
+            found = asyncio.run(pc._ask("/nope", {}))
+        self.assertTrue(found["is_error"])
+        self.assertIn("restart", found["text"])
