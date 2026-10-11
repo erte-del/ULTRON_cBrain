@@ -122,6 +122,9 @@ if HOST not in ("127.0.0.1", "localhost", "::1"):
 REMOTE_ORIGIN = os.getenv("JARVIS_REMOTE_ORIGIN", "").strip().rstrip("/")
 if REMOTE_ORIGIN and not re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net", REMOTE_ORIGIN):
     raise SystemExit(f"JARVIS_REMOTE_ORIGIN={REMOTE_ORIGIN!r}: use your Tailscale address, e.g. https://mac.tail1234.ts.net")
+# Your Tailscale login (e.g. you@gmail.com): the only account that may open a terminal from another
+# device. Empty = terminals stay on this Mac.
+TERMINAL_USER = os.getenv("JARVIS_TERMINAL_USER", "").strip().lower()
 
 # The user's Windows PC (optional): the address "tailscale serve" gives it, and the token
 # windows/ultron_pc.py checks. Only a tailnet address, so it's never the public internet.

@@ -109,6 +109,7 @@ Every key is optional: without one, only the feature that needs it is off. They 
 | `INSTAGRAM_ACCESS_TOKEN` | posting Reels to Ultron's Instagram | a Creator account + a Meta app with "API setup with Instagram Login": [developers.facebook.com/apps](https://developers.facebook.com/apps) |
 | `JARVIS_VAULT` | your Obsidian notes | the path to your vault folder |
 | `JARVIS_REMOTE_ORIGIN` | Ultron on your phone | the `https://….ts.net` address `tailscale serve` prints |
+| `JARVIS_TERMINAL_USER` | terminal tabs from another device | your Tailscale login, e.g. `you@gmail.com`; only this account may open a terminal remotely |
 | `JARVIS_PC_URL`, `JARVIS_PC_TOKEN` | controlling your Windows PC | printed by `windows/install.ps1` (see [2.7](#27-your-windows-pc-optional)) |
 
 The **claude.ai connectors** (Gmail, Google Calendar, Google Drive, TickTick, Canva, Spotify, …)
@@ -230,6 +231,19 @@ tailscale serve --bg 8000
 Put the `https://….ts.net` address it prints in `.env` as `JARVIS_REMOTE_ORIGIN`, restart Ultron,
 and open that address on your phone. **Never use `tailscale funnel`**: that would put Ultron on
 the public internet.
+
+**Terminal from another device (e.g. your MacBook at school).** Set `JARVIS_TERMINAL_USER` in `.env`
+to your Tailscale login (the email you sign in to Tailscale with), restart Ultron, and open the
+`tailscale serve` address on that device. Ask Ultron "open a terminal" and it appears on that
+device's canvas, running on the Mac. Optionally `brew install tmux` on the Mac: then a closed tab
+or dropped Wi-Fi only detaches, and reopening the tab reattaches to the same session (type `exit`
+to end it). Check that `tailscale serve` passes the login through: the terminal test in
+`backend/tests/test_terminal.py` covers the rule, but a real remote connection is the only proof
+of the header.
+
+```bash
+brew install tmux
+```
 
 **Windows PC (controlled from the Mac).** Paste `windows/SETUP_PROMPT.md` into Claude Code on the
 PC (or run `windows/install.ps1`). It installs Python, Git and Tailscale with `winget`, starts the
@@ -401,7 +415,9 @@ only look things up.
   size ("what's in ACC TRACKS?", "how big is it?").
 - **Sandboxed Python** for data work: no internet, reads only that folder, writes only to `Output/`.
 - **Terminal tabs**: a real shell (optionally with Claude Code) for *you* on the canvas. Ultron
-  opens it but never types in it. Mac only, never from the phone.
+  opens it but never types in it. Mac only. From your other devices only with your own Tailscale
+  login (`JARVIS_TERMINAL_USER`); with tmux installed, a closed tab or dropped Wi-Fi keeps the
+  session running on the Mac.
 - **Windows PC**: the same reads and changes on your PC over Tailscale, plus media keys; running
   code there always asks first.
 

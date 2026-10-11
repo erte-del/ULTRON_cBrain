@@ -22,7 +22,7 @@ I am learning, so explain what you're doing in simple terms. Make each step work
 ### Rules for every change
 
 1. **Windows too.** Check each piece of code for Mac-only assumptions: hardcoded `/System/...`, `/usr/local/...`, `/opt/...` paths, `osascript`, `.sh` scripts, Apple-only packages (e.g. `mlx`), POSIX-only calls, file reads/writes without `encoding="utf-8"`. File paths that go into FFmpeg filters go through `reel.filter_path`. If a feature truly can't run on Windows, say so plainly. **End every feature with a short "Windows setup" list** (what to install with `winget`, any `.env` lines), or say "nothing to set up".
-2. **Backend stays on `127.0.0.1`**, never `0.0.0.0`. It has no password; the phone and PC reach it only through Tailscale.
+2. **Backend stays on `127.0.0.1`**, never `0.0.0.0`. It has no password; the phone and PC reach it only through Tailscale. The one exception is the terminal, which also checks the Tailscale login (section 8 / terminal).
 3. **Label every new tool** read or act (section 5), and add **one small test** in `backend/tests/`.
 4. **Update `README.md`** when behavior changes.
 5. **Run the tests:** `cd backend && .venv/bin/python -m unittest discover tests` (Windows: `.venv\Scripts\python.exe`).
@@ -189,7 +189,7 @@ Ultron asks only when it matters:
 
 Tools push **cards** (`canvas.card {id, kind, title, data}`) through `hub.py` to every open tab. The middle "Stage" shows them as tabs: images (version strip, select, download), 3D viewer, videos with progress, Reel previews, maps (Google Maps embed, map/satellite), YouTube player with results, email/event/task lists, tables, markdown text, slides, and terminals. Clicking an image selects it, so "this one" works. Saved chats reload their cards; `clear_canvas` hides them.
 
-**Terminal tab** (`terminal.py`, `/ws/terminal`): a real shell for **me** to type in, optionally with Claude Code started. Ultron can open it and read its screen text but never types in it. Only pages on the Mac may connect, never the phone.
+**Terminal tab** (`terminal.py`, `/ws/terminal`): a real shell for **me** to type in, optionally with Claude Code started. Ultron can open it and read its screen text but never types in it. Pages on the Mac may connect, plus my own Tailscale login (`JARVIS_TERMINAL_USER`, checked against the `Tailscale-User-Login` header) from other devices. Other logins and funnel requests are refused; my phone and PC pass too (same login) unless a Tailscale ACL keeps them out. Ultron never types in a terminal.
 
 ---
 

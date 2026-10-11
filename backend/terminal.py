@@ -2,11 +2,15 @@
 
 Ultron can open the tab (open_terminal) and read what it shows (read_terminal: the page
 sends a plain-text snapshot of the screen after output settles), but never types in it:
-the shell only gets what you type in that tab. Only pages on this Mac may connect, not your phone through
-Tailscale: a shell is more than the rest of Ultron can do.
+the shell only gets what you type in that tab. Pages on this Mac may connect, and so may
+your own Tailscale login (JARVIS_TERMINAL_USER) from your other devices, e.g. your MacBook
+at school. Other tailnet logins are refused. Your phone and PC pass too, since they're signed in
+as you; a Tailscale ACL is the way to keep them out.
 
-The shell lives as long as the tab's connection: closing the tab or reloading the
-page ends it. Mac (and Linux) only: on Windows the tab says so and closes.
+If tmux is installed, the shell runs inside a tmux session named after the tab. Closing the tab
+or losing the network only detaches it: reopen the tab and you're back where you were, with
+Claude still running. Type `exit` to end the session. Without tmux, closing the tab ends the shell.
+Mac (and Linux) only: on Windows the tab says so and closes.
 """
 
 import asyncio
@@ -15,6 +19,7 @@ import logging
 import os
 import signal
 import struct
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -30,6 +35,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 import config
 
 log = logging.getLogger("ultron.terminal")
+if not WINDOWS and not shutil.which("tmux"):
+    log.info("tmux not installed: terminals end when their tab closes (brew install tmux)")
 
 # Ultron's pages on this Mac: the dev server (npm run dev) and the built page (Ultron.app).
 LOCAL_ORIGINS = {
@@ -62,9 +69,34 @@ def _resize(fd: int, cols: int, rows: int) -> None:
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
 
 
+def may_connect(origin: str | None, login: str | None, funnel: bool = False) -> bool:
+    """This Mac's own pages, or your Tailscale login from another device. `tailscale serve`
+    sets the login header itself, so a tailnet request can't fake it. Funnel (the public
+    internet) carries no real login, so it's refused outright."""
+    if origin in LOCAL_ORIGINS:
+        return True
+    if funnel:
+        return False
+    return bool(
+        config.REMOTE_ORIGIN and config.TERMINAL_USER
+        and origin == config.REMOTE_ORIGIN
+        and login and login.strip().lower() == config.TERMINAL_USER
+    )
+
+
+def shell_command(shell: str, number: int) -> list[str]:
+    """A login shell, or the same shell inside a tmux session that survives the tab closing.
+    Ultron's own tmux server (-L ultron): it starts with the tab's filtered environment and
+    never mixes with your own tmux sessions."""
+    tmux = shutil.which("tmux")
+    if not tmux:
+        return [shell, "-l"]
+    return [tmux, "-L", "ultron", "new-session", "-A", "-s", f"term-{number}", shell, "-l"]  # -A: attach if it exists
+
+
 async def serve(ws: WebSocket) -> None:
     origin = ws.headers.get("origin")
-    if origin not in LOCAL_ORIGINS:
+    if not may_connect(origin, ws.headers.get("tailscale-user-login"), "tailscale-funnel-request" in ws.headers):
         log.warning("Rejected terminal from origin %r", origin)
         await ws.close(code=1008)
         return
@@ -74,7 +106,7 @@ async def serve(ws: WebSocket) -> None:
         await ws.close()
         return
     try:
-        number = int(ws.query_params.get("n", "0"))
+        number = min(max(int(ws.query_params.get("n", "0")), 0), 99)
     except ValueError:
         number = 0
 
@@ -85,7 +117,7 @@ async def serve(ws: WebSocket) -> None:
     # session and the pty are set up, so taking the terminal fails.
     try:
         proc = subprocess.Popen(
-            [shell, "-l"],
+            shell_command(shell, number),
             stdin=slave, stdout=slave, stderr=slave,
             cwd=Path.home(), env=_shell_env(),
             start_new_session=True, preexec_fn=_take_terminal,
