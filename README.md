@@ -300,6 +300,9 @@ On the new Mac: do 2.1–2.3 (skip copying `.env.example`), then
 sign-ins from 2.5. Run `scripts/autostart.sh off` on the old Mac first, or two Ultrons will both
 run your scheduled jobs. For a new Tailscale address, update `JARVIS_REMOTE_ORIGIN`.
 
+Setting up a dedicated Mac mini? The full checklist (apps, accounts, permissions and every feature
+to test) is in [mac mini setup.md](mac%20mini%20setup.md).
+
 ---
 
 ## 3. What it can do
