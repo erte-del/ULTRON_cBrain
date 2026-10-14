@@ -186,6 +186,13 @@ _API_AUTH_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_U
 # gateway only: on the Pro login they would ask Claude for a model it doesn't have.
 _MODEL_VARS = ("ANTHROPIC_DEFAULT_HAIKU_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL")
 _GATEWAY_MODELS = {var: os.environ.pop(var) for var in _MODEL_VARS if os.environ.get(var)}
+# What haiku / sonnet / opus mean on the Pro login. Claude Code's own aliases can lag
+# behind the newest models, so Ultron and ask_expert pin them (see brain_claudecode.py).
+CLAUDE_MODEL_IDS = {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
+}
 # All of the above: the terminal tab leaves them out, so `claude` there uses your own login.
 CLAUDE_ENV_VARS = (*_API_AUTH_VARS, *_MODEL_VARS)
 
