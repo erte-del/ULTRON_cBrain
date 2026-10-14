@@ -125,6 +125,9 @@ if REMOTE_ORIGIN and not re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.n
 # Your Tailscale login (e.g. you@gmail.com): the only account that may open a terminal from another
 # device. Empty = terminals stay on this Mac.
 TERMINAL_USER = os.getenv("JARVIS_TERMINAL_USER", "").strip().lower()
+# Opening a terminal on another device (devices.json) asks first, unless you opened that device
+# in the last this-many minutes.
+REMOTE_TRUST_MIN = int(os.getenv("JARVIS_REMOTE_TRUST_MIN", "240"))
 
 # The user's Windows PC (optional): the address "tailscale serve" gives it, and the token
 # windows/ultron_pc.py checks. Only a tailnet address, so it's never the public internet.

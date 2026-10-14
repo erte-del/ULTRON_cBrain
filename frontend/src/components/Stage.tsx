@@ -165,6 +165,7 @@ export default function Stage(props: StageProps) {
             <span key={t.id} className={`stage-tab-3d${tab === t.id ? ' active' : ''}`}>
               <button role="tab" aria-selected={tab === t.id} onClick={() => onTab(t.id)}>
                 TERMINAL {t.number}
+                {t.device && ` · ${t.device.toUpperCase()}`}
               </button>
               <button className="tab-close" onClick={() => onCloseTerminal(t.id)} aria-label={`Close terminal ${t.number}`}>
                 ×
@@ -184,7 +185,7 @@ export default function Stage(props: StageProps) {
         {terminals.length > 0 && (
           <Suspense fallback={null}>
             {terminals.map((t) => (
-              <Terminal key={t.id} visible={tab === t.id} claude={t.claude} number={t.number} />
+              <Terminal key={t.id} visible={tab === t.id} claude={t.claude} number={t.number} device={t.device} />
             ))}
           </Suspense>
         )}

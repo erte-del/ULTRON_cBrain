@@ -23,6 +23,8 @@ from claude_agent_sdk import HookMatcher, SdkMcpTool, create_sdk_mcp_server
 
 from storage import job_store, memory_store
 
+import devices
+
 from . import connectors, important, mac, web
 from .amazon import amazon_change, amazon_read
 from .chat import new_chat
@@ -48,6 +50,7 @@ from .images import image_edit, image_search, image_undo, image_versions
 from .pc import leaves_folder as leaves_pc_folder, only_launches, opens_link, pc_change, pc_read, pc_run
 from .phone import phone_food, phone_taxi, phone_volume
 from .reels import reel_edit
+from .remote_terminal import remote_terminal_open, remote_terminal_read, remote_terminal_type
 from .library3d import search_3d_library, show_3d_asset, show_from_3d_library
 from .models3d import export_3d, get_3d_spec, preview_3d, revert_3d
 from .stock import stock_download, stock_search
@@ -86,6 +89,11 @@ TOOLS: list[UltronTool] = [
     UltronTool(open_terminal, "read"),
     # Only reads the screen text the page sent; never types in the shell.
     UltronTool(read_terminal, "read"),
+    # Terminals on your other devices over SSH + Tailscale. Opening asks unless you opened that device
+    # lately (needs_ok), typing always asks (ASK_TOOLS), reading only reads the screen text.
+    UltronTool(remote_terminal_open, "act"),
+    UltronTool(remote_terminal_type, "act"),
+    UltronTool(remote_terminal_read, "read"),
     # Image edits only change Ultron's own copies and can always be undone.
     UltronTool(image_search, "read"),
     UltronTool(image_edit, "read"),
@@ -204,7 +212,7 @@ TOOLS: list[UltronTool] = [
 # In chat, an 'act' tool asks you first only when it reaches other people or touches
 # something you marked important. These are the ones of Ultron's own that always ask.
 ASK_TOOLS = {"whatsapp_send", "instagram_post", "instagram_reply", "instagram_schedule", "unmark_important", "pc_run",
-             "delete_note"}
+             "delete_note", "remote_terminal_type"}
 # Connector actions whose name has one of these words reach other people (send_message,
 # reply, share, respond_to_event, publish_app, ...). Drafts don't: they wait for you.
 PEOPLE_WORDS = {"send", "reply", "forward", "share", "invite", "respond", "broadcast",
@@ -240,6 +248,8 @@ TITLES = {
     "mac_change": "Change something on this Mac",
     "pc_change": "Change something on the PC",
     "pc_run": "Run code on the PC",
+    "remote_terminal_open": "Open a terminal on another device",
+    "remote_terminal_type": "Type into a remote terminal",
 }
 
 # Claude Code's own built-in tools that Ultron may use (all 'read').
@@ -277,6 +287,8 @@ def needs_ok(name: str, tool_input: dict[str, Any]) -> bool:
         return True
     if own == "pc_change" and (leaves_pc_folder(tool_input) or opens_link(tool_input)):
         return True
+    if own == "remote_terminal_open":
+        return devices.needs_confirmation(str(tool_input.get("device", "")))
     if own == "pc_run" and only_launches(tool_input):
         return False
     if name.startswith(PREFIX) and any(t.tool.name == own for t in TOOLS):

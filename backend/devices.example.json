@@ -1,0 +1,7 @@
+{
+  "devices": [
+    {"name": "mac-mini", "aliases": ["mini", "mac"], "os": "mac", "local": true},
+    {"name": "macbook", "aliases": ["laptop"], "os": "mac", "host": "macbook", "user": "yourname", "key": "~/.ssh/ultron_remote"},
+    {"name": "windows-pc", "aliases": ["pc", "windows"], "os": "windows", "host": "windows-pc", "user": "yourname", "key": "~/.ssh/ultron_remote"}
+  ]
+}

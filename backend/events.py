@@ -54,8 +54,8 @@ Server -> client:
                          kind "model3d": data = {model_id, current, versions[], exports[]}
                          kind "video": data = {video_id, status, progress, url, ...} (video_store)
     canvas.clear         {}  remove every card from the canvas
-    terminal.open        {claude}  open a new terminal tab (a fresh shell at /ws/terminal);
-                         claude = start Claude Code in it
+    terminal.open        {claude, device}  open a new terminal tab (a fresh shell at /ws/terminal);
+                         claude = start Claude Code in it; device = a devices.json name ("" = this Mac)
     voice.speech         {active}         voice mode: you started (true) or stopped (false) talking
     voice.transcript     {text}           what you said ("" = nothing understood); the page
                                           sends it back as user.text {voice: true}
@@ -165,8 +165,8 @@ def notification(title: str, text: str, when: float) -> Event:
     return {"type": "notification", "title": title, "text": text, "time": when}
 
 
-def terminal_open(claude: bool) -> Event:
-    return {"type": "terminal.open", "claude": claude}
+def terminal_open(claude: bool, device: str = "") -> Event:
+    return {"type": "terminal.open", "claude": claude, "device": device}
 
 
 def voice_speech(active: bool) -> Event:

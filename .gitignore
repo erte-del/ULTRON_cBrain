@@ -57,3 +57,6 @@ windows/edge-profile/
 
 # 51GT3 info text (copyright 51GT3; kept on this Mac only)
 backend/library_tracks/info/
+
+# Your tailnet devices (devices.example.json is the template)
+backend/devices.json

@@ -110,6 +110,7 @@ Every key is optional: without one, only the feature that needs it is off. They 
 | `JARVIS_VAULT` | your Obsidian notes | the path to your vault folder |
 | `JARVIS_REMOTE_ORIGIN` | Ultron on your phone | the `https://….ts.net` address `tailscale serve` prints |
 | `JARVIS_TERMINAL_USER` | terminal tabs from another device | your Tailscale login, e.g. `you@gmail.com`; only this account may open a terminal remotely |
+| `JARVIS_REMOTE_TRUST_MIN` | terminals on other devices | minutes after opening one that it doesn't ask again (default 240); devices are listed in `backend/devices.json` |
 | `JARVIS_PC_URL`, `JARVIS_PC_TOKEN` | controlling your Windows PC | printed by `windows/install.ps1` (see [2.7](#27-your-windows-pc-optional)) |
 
 The **claude.ai connectors** (Gmail, Google Calendar, Google Drive, TickTick, Canva, Spotify, …)
@@ -418,9 +419,17 @@ only look things up.
   size ("what's in ACC TRACKS?", "how big is it?").
 - **Sandboxed Python** for data work: no internet, reads only that folder, writes only to `Output/`.
 - **Terminal tabs**: a real shell (optionally with Claude Code) for *you* on the canvas. Ultron
-  opens it but never types in it. Mac only. From your other devices only with your own Tailscale
+  opens it but never types in it (except through `remote_terminal_type`, below). Mac only. From your other devices only with your own Tailscale
   login (`JARVIS_TERMINAL_USER`); with tmux installed, a closed tab or dropped Wi-Fi keeps the
   session running on the Mac.
+- **Terminals on your other devices** ("open a terminal on the PC, with Claude"): the same tab, but
+  an SSH session over Tailscale to a machine in `backend/devices.json` (Mac mini, MacBook, Windows PC),
+  labelled with its name. Key login only, Tailscale addresses only. `remote_terminal_open` asks
+  unless you opened that device in the last 4 hours, `remote_terminal_type` (Ultron typing for
+  you, e.g. into Claude Code there) always asks, `remote_terminal_read` reads its screen. You can
+  always type in the tab yourself, from any device that shows Ultron's page. Setup for each target:
+  [REMOTE_TERMINAL_SETUP.md](REMOTE_TERMINAL_SETUP.md).
+  **Windows setup:** Ultron must run on the Mac; Windows is a target only (OpenSSH Server + `claude`, in that guide).
 - **Windows PC**: the same reads and changes on your PC over Tailscale, plus media keys; running
   code there always asks first.
 

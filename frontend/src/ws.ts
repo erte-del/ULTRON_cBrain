@@ -101,7 +101,7 @@ export type ServerEvent =
   | { type: 'confirm.resolved'; id: string; status: ConfirmStatus }
   | { type: 'canvas.clear' }
   | { type: 'canvas.card'; id: string; kind: string; title: string; data: Record<string, unknown> }
-  | { type: 'terminal.open'; claude: boolean }
+  | { type: 'terminal.open'; claude: boolean; device?: string }
   | { type: 'conversation.new'; reason: 'button' | 'idle' | 'provider' | 'ultron' }
   | { type: 'conversation.loaded'; messages: Pick<ChatMessage, 'role' | 'text' | 'files' | 'model'>[]; cards: CanvasCard[] }
   | { type: 'chats.list'; chats: SavedChat[]; max: number }
@@ -331,6 +331,7 @@ export interface TerminalTab {
   id: string // 'terminal-1', ...: also its stage tab
   number: number // shown on the tab
   claude: boolean // start Claude Code in it
+  device: string // a devices.json name for a terminal on another device, '' for this Mac
 }
 
 interface ChatState {
@@ -643,7 +644,7 @@ function baseReducer(state: ChatState, action: Action): ChatState {
         case 'terminal.open':
         {
           // Always a fresh shell in a new tab.
-          const terminal = { id: `terminal-${++terminalCount}`, number: terminalCount, claude: ev.claude }
+          const terminal = { id: `terminal-${++terminalCount}`, number: terminalCount, claude: ev.claude, device: ev.device ?? '' }
           return { ...state, terminals: [...state.terminals, terminal], stageTab: terminal.id }
         }
         case 'settings.state': {
