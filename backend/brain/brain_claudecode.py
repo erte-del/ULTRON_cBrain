@@ -27,7 +27,7 @@ from claude_agent_sdk import (
 )
 
 import usage
-from config import CONNECTORS, EFFORT, GATEWAY_MODEL, OLLAMA_CONNECTORS, OLLAMA_URL, PROVIDER, STORAGE_DIR, set_login
+from config import CLAUDE_MODEL_IDS, CONNECTORS, EFFORT, GATEWAY_MODEL, OLLAMA_CONNECTORS, OLLAMA_URL, PROVIDER, STORAGE_DIR, set_login
 from storage import memory_store
 from tools import registry
 
@@ -145,7 +145,7 @@ class ClaudeCodeBrain:
                 # this, ~300 tool descriptions went into every message (~220K tokens).
                 "ENABLE_TOOL_SEARCH": "true" if on_claude else "false",
                 # A gateway that's down or broken: give up after a few seconds, not minutes.
-                **({} if on_claude else {"CLAUDE_CODE_MAX_RETRIES": "2"}),
+                **(CLAUDE_MODEL_IDS if on_claude else {"CLAUDE_CODE_MAX_RETRIES": "2"}),
                 # Ollama speaks Claude's API itself. Set here, not in os.environ, so your own
                 # chat isn't touched. No token of its own: the Pro login is what loads the
                 # connectors (empty clears a gateway's, if your chat is on OmniRoute).

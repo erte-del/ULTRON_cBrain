@@ -12,7 +12,7 @@ from claude_agent_sdk import ClaudeAgentOptions, RateLimitEvent, ResultMessage, 
 
 import hub
 import usage
-from config import EFFORT, STORAGE_DIR
+from config import CLAUDE_MODEL_IDS, EFFORT, STORAGE_DIR
 
 from .canvas import show_text
 
@@ -60,6 +60,7 @@ async def consult_expert(task: str, context: str = "") -> str:
         system_prompt=EXPERT_SYSTEM_PROMPT,
         model=EXPERT_MODEL,
         effort=EFFORT,  # same thinking level as Ultron (see .env)
+        env=CLAUDE_MODEL_IDS,  # "opus" = the newest Opus, not Claude Code's older alias
         tools=[],  # thinking only, no tools
         setting_sources=[],
         strict_mcp_config=True,
