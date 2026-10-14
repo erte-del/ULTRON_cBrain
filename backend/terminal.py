@@ -87,11 +87,13 @@ def may_connect(origin: str | None, login: str | None, funnel: bool = False) -> 
 def shell_command(shell: str, number: int) -> list[str]:
     """A login shell, or the same shell inside a tmux session that survives the tab closing.
     Ultron's own tmux server (-L ultron): it starts with the tab's filtered environment and
-    never mixes with your own tmux sessions."""
+    never mixes with your own tmux sessions. Its green status bar is hidden: it would take a row
+    from the tab."""
     tmux = shutil.which("tmux")
     if not tmux:
         return [shell, "-l"]
-    return [tmux, "-L", "ultron", "new-session", "-A", "-s", f"term-{number}", shell, "-l"]  # -A: attach if it exists
+    return [tmux, "-L", "ultron", "new-session", "-A", "-s", f"term-{number}", shell, "-l",
+            ";", "set-option", "status", "off"]  # -A: attach if it exists
 
 
 async def serve(ws: WebSocket) -> None:

@@ -108,7 +108,8 @@ class TerminalTest(unittest.TestCase):
             self.assertEqual(terminal.shell_command("/bin/zsh", 3), ["/bin/zsh", "-l"])
         with mock.patch.object(terminal.shutil, "which", return_value="/opt/homebrew/bin/tmux"):
             self.assertEqual(terminal.shell_command("/bin/zsh", 3),
-                             ["/opt/homebrew/bin/tmux", "-L", "ultron", "new-session", "-A", "-s", "term-3", "/bin/zsh", "-l"])
+                             ["/opt/homebrew/bin/tmux", "-L", "ultron", "new-session", "-A", "-s", "term-3", "/bin/zsh", "-l",
+                              ";", "set-option", "status", "off"])
 
     def test_loads_without_unix_modules(self):
         # Windows has no fcntl, pty or termios: importing terminal.py there must still work.
