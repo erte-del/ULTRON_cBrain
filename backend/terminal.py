@@ -11,11 +11,6 @@ If tmux is installed, the shell runs inside a tmux session named after the tab. 
 or losing the network only detaches it: reopen the tab and you're back where you were, with
 Claude still running. Type `exit` to end the session. Without tmux, closing the tab ends the shell.
 Mac (and Linux) only: on Windows the tab says so and closes.
-
-Remote terminals: /ws/terminal?device=<name> runs `ssh` to a device from devices.json instead of
-a local shell (devices.py builds the command). It is the same tab, with the device's name on it.
-The remote_terminal_* tools find these sessions by device name: `remote_terminal_type` is the one
-way Ultron ever puts keystrokes into a terminal (it always asks you first).
 """
 
 import asyncio
@@ -27,9 +22,7 @@ import struct
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 WINDOWS = sys.platform == "win32"
 if not WINDOWS:  # Unix-only modules: importing them on Windows would stop Ultron starting
@@ -40,7 +33,6 @@ if not WINDOWS:  # Unix-only modules: importing them on Windows would stop Ultro
 from fastapi import WebSocket, WebSocketDisconnect
 
 import config
-import devices
 
 log = logging.getLogger("ultron.terminal")
 if not WINDOWS and not shutil.which("tmux"):
@@ -56,22 +48,6 @@ LOCAL_ORIGINS = {
 # Terminal tab number -> its latest screen text, while its shell is open.
 SCREENS: dict[int, str] = {}
 MAX_SCREEN = 100_000  # characters kept per terminal
-
-
-@dataclass(eq=False)
-class Session:
-    """An open terminal's shell, for the tools that type into it (identity, not value, compares)."""
-    number: int
-    device: str  # the devices.json name, or "" for the plain local terminal
-    write: Callable[[bytes], None]
-
-
-SESSIONS: list[Session] = []  # open shells, oldest first
-
-
-def session_for(device: str) -> Session | None:
-    """The newest open terminal on `device` (its devices.json name)."""
-    return next((s for s in reversed(SESSIONS) if s.device == device), None)
 
 
 def _shell_env() -> dict[str, str]:
@@ -127,14 +103,6 @@ async def serve(ws: WebSocket) -> None:
         await ws.close(code=1008)
         return
     await ws.accept()
-    device: devices.Device | None = None
-    if wanted := ws.query_params.get("device"):
-        try:  # only devices.json entries: the page can't name any other address
-            device = devices.find(wanted)
-        except ValueError as e:
-            await ws.send_bytes(f"{e}\r\n".encode())
-            await ws.close()
-            return
     if WINDOWS:
         await ws.send_bytes("The terminal tab isn't available on Windows yet.\r\n".encode())
         await ws.close()
@@ -144,16 +112,6 @@ async def serve(ws: WebSocket) -> None:
     except ValueError:
         number = 0
 
-    claude = ws.query_params.get("claude") == "1"  # start Claude Code (device tabs only)
-    if device and not device.local:
-        try:
-            argv = await asyncio.to_thread(devices.ssh_command, device, number, claude)  # may look up the name
-        except ValueError as e:
-            await ws.send_bytes(f"{e}\r\n".encode())
-            await ws.close()
-            return
-    else:
-        argv = None
     master, slave = pty.openpty()
     shell = os.environ.get("SHELL") or "/bin/zsh"
     # A login shell, so PATH etc. come from your profile (Ultron.app starts without them).
@@ -161,7 +119,7 @@ async def serve(ws: WebSocket) -> None:
     # session and the pty are set up, so taking the terminal fails.
     try:
         proc = subprocess.Popen(
-            argv or shell_command(shell, number),
+            shell_command(shell, number),
             stdin=slave, stdout=slave, stderr=slave,
             cwd=Path.home(), env=_shell_env(),
             start_new_session=True, preexec_fn=_take_terminal,
@@ -171,11 +129,7 @@ async def serve(ws: WebSocket) -> None:
         raise
     finally:
         os.close(slave)
-    log.info("Terminal opened (pid %d%s)", proc.pid, f", on {device.name}" if device else "")
-    session = Session(number, device.name if device else "", lambda data: os.write(master, data))
-    SESSIONS.append(session)
-    if claude and device and device.local:  # remote devices start it in their ssh command
-        os.write(master, b"claude\r")
+    log.info("Terminal opened (pid %d)", proc.pid)
 
     loop = asyncio.get_running_loop()
     output: asyncio.Queue[bytes | None] = asyncio.Queue()
@@ -214,7 +168,6 @@ async def serve(ws: WebSocket) -> None:
         pass
     finally:
         SCREENS.pop(number, None)
-        SESSIONS.remove(session)
         pumping.cancel()
         loop.remove_reader(master)
         try:

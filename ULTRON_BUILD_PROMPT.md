@@ -142,7 +142,6 @@ Every tool is labelled **read** (runs freely, also in scheduled jobs) or **act**
 |---|---|---|
 | Thinking | `ask_expert` (→ Opus) | read |
 | Canvas & chat | `show_on_canvas` (text, table, email_list, events, tasks, youtube, map), `clear_canvas`, `open_terminal`, `read_terminal`, `new_chat` | read / act (`new_chat`) |
-| Remote terminals | `remote_terminal_open` (asks unless that device was opened lately), `remote_terminal_type` (always asks), `remote_terminal_read` — SSH over Tailscale to the devices in `backend/devices.json` | act / act / read |
 | Images | `image_search` (Pexels), `image_edit` (Pillow), `image_undo`, `image_versions` | read |
 | AI images | `generate_image`, `image_ai_edit` (FLUX.2 Klein on this Mac, `scripts/setup_images.sh`) | read |
 | Video | `generate_video` (Wan on this Mac, background, ~minutes) | act |
@@ -190,7 +189,7 @@ Ultron asks only when it matters:
 
 Tools push **cards** (`canvas.card {id, kind, title, data}`) through `hub.py` to every open tab. The middle "Stage" shows them as tabs: images (version strip, select, download), 3D viewer, videos with progress, Reel previews, maps (Google Maps embed, map/satellite), YouTube player with results, email/event/task lists, tables, markdown text, slides, and terminals. Clicking an image selects it, so "this one" works. Saved chats reload their cards; `clear_canvas` hides them.
 
-**Terminal tab** (`terminal.py`, `/ws/terminal`): a real shell for **me** to type in, optionally with Claude Code started. Ultron can open it and read its screen text. The only way it types is `remote_terminal_type`, which always asks (a device tab runs `ssh` from `devices.py`: key login only, `-F /dev/null`, no forwarding, Tailscale addresses only). Pages on the Mac may connect, plus my own Tailscale login (`JARVIS_TERMINAL_USER`, checked against the `Tailscale-User-Login` header) from other devices. Other logins and funnel requests are refused; my phone and PC pass too (same login) unless a Tailscale ACL keeps them out. Never add another way for Ultron to type into a terminal.
+**Terminal tab** (`terminal.py`, `/ws/terminal`): a real shell for **me** to type in, optionally with Claude Code started. Ultron can open it and read its screen text but never types in it. Pages on the Mac may connect, plus my own Tailscale login (`JARVIS_TERMINAL_USER`, checked against the `Tailscale-User-Login` header) from other devices. Other logins and funnel requests are refused; my phone and PC pass too (same login) unless a Tailscale ACL keeps them out. Ultron never types in a terminal.
 
 ---
 
