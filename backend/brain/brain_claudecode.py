@@ -114,6 +114,7 @@ class ClaudeCodeBrain:
         self.groups: set[str] = set()
         self.background = False
         self.allow: tuple[str, ...] = ()
+        self.only: set[str] | None = None  # Ollama only: exactly these of Ultron's tools (initiative.py)
         self.said = ""
         self.on_groups = None  # called when the groups change (main.py tells the pages)
         # A Claude alias (haiku / sonnet / opus), or the gateway / local model.
@@ -192,7 +193,8 @@ class ClaudeCodeBrain:
             hooks=registry.hooks(),  # e.g. WebFetch may not reach local addresses
             # Ultron's own tools (ask_expert, ...); the local model only gets what it needs now
             mcp_servers=registry.mcp_servers(
-                capabilities.visible_tools(self.groups, self.looks_only, self.allow) if local else None
+                (self.only if self.only is not None else capabilities.visible_tools(self.groups, self.looks_only, self.allow))
+                if local else None
             ),
             allowed_tools=registry.auto_allowed(),  # 'read' tools run without asking
             can_use_tool=self._can_use_tool,  # every other tool goes through the gate

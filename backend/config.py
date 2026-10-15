@@ -31,6 +31,12 @@ SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "").strip()
 # Ultron's own Telegram bot, for texting you (tools/telegram.py).
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+
+# Your calendar as text for Ultron's own check-ins (calendar_text.py): Google Calendar's private
+# "Secret address in iCal format". Whoever has it can read the calendar: keep it secret.
+GOOGLE_CALENDAR_ICAL_URL = os.getenv("GOOGLE_CALENDAR_ICAL_URL", "").strip()
+if GOOGLE_CALENDAR_ICAL_URL and not GOOGLE_CALENDAR_ICAL_URL.startswith("https://"):
+    raise SystemExit("GOOGLE_CALENDAR_ICAL_URL must be the https:// address from Google Calendar's settings")
 # Ultron's own Instagram (tools/instagram.py). Ultron renews it into storage/instagram_token.json.
 INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN", "").strip()
 # The MacroDroid webhook on your phone, for its volume (tools/phone.py).
@@ -113,6 +119,16 @@ if QUIET_HOURS and not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0
 # Jobs are skipped once this much of the Pro plan's 5-hour window is used (0-1), so
 # background work never locks you out of Ultron yourself.
 JOBS_MAX_USAGE = float(os.getenv("JARVIS_JOBS_MAX_USAGE", "0.8"))
+
+# Ultron texting you on its own (initiative.py), on the local model only. Every
+# INITIATIVE_EVERY_MIN minutes it is shown the time, your memory and calendar as text (and looks at
+# your email), and may text you. 0 = off. Hard limits: at most MAX_PER_DAY texts a day, MIN_GAP_MIN
+# minutes apart, none in quiet hours.
+INITIATIVE_EVERY_MIN = int(os.getenv("JARVIS_INITIATIVE_EVERY_MIN", "0"))
+INITIATIVE_MAX_PER_DAY = int(os.getenv("JARVIS_INITIATIVE_MAX_PER_DAY", "3"))
+INITIATIVE_MIN_GAP_MIN = int(os.getenv("JARVIS_INITIATIVE_MIN_GAP_MIN", "90"))
+if INITIATIVE_EVERY_MIN and INITIATIVE_EVERY_MIN < 5:
+    raise SystemExit("JARVIS_INITIATIVE_EVERY_MIN must be 0 (off) or at least 5")
 
 if HOST not in ("127.0.0.1", "localhost", "::1"):
     raise SystemExit(f"JARVIS_HOST={HOST!r} refused: Ultron only listens on this machine.")

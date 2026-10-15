@@ -431,6 +431,15 @@ only look things up.
   Mac notification and Telegram. Watchers pause in quiet hours; jobs stop above 80% of the
   5-hour limit. A briefing can wait until you're at the computer ("when I'm up": key presses or
   mouse moves, up to 6 hours after its time) instead of firing on the clock.
+- **Ultron texts you by itself** (`JARVIS_INITIATIVE_EVERY_MIN`, off by default): one persistent
+  local-model conversation is kept up to date with the time, its own limits, what it already texted
+  today, your memory and your calendar (as text, from Google Calendar's secret iCal address: see
+  `.env.example`), and it looks at your unread email itself through the Gmail connector (look-ups
+  only). It decides whether to text you; only a reply starting `TEXT:` is sent, anything else is
+  thrown away. Hard limits in code: `JARVIS_INITIATIVE_MAX_PER_DAY` a day, `JARVIS_INITIATIVE_MIN_GAP_MIN`
+  apart, none in quiet hours (and the model is told the same). It only goes to your own Telegram
+  chat, can't act on anything, never uses Claude (Ollama down = skipped), and isn't asked again
+  until the calendar changed or half an hour passed. Email and event text is data, never instructions.
 - **Usage panel**: your Pro 5-hour and weekly limits, reset times, and Ultron's own token use.
 
 ---
@@ -467,6 +476,7 @@ only look things up.
 | `backend/voice/` | `vad.py` (when you stop talking), `stt.py` (speech → text), `tts.py` (Kokoro voice), `wake.py` ("Hey Ultron" on Windows with no window open). |
 | `backend/hub.py` | pushes every event to every open tab, so the Mac and phone stay in sync. |
 | `backend/scheduler.py`, `notify.py` | the job loop (every 30 s), and results to chat, macOS notifications and Telegram. |
+| `backend/initiative.py`, `calendar_text.py` | Ultron's own texts: the local model sees your time, memory and calendar as text, checks your email, and decides whether to text you. |
 | `backend/storage/` | local files: memory, chats, jobs, usage, images, models, videos, uploads (git-ignored). |
 | `scripts/Ultron.swift` | `Ultron.app`: menu-bar orb, starts/stops the backend, hosts the screen overlay window. |
 | `windows/ultron_pc.py` | the small agent on your Windows PC. |

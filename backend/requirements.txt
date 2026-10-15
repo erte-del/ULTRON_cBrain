@@ -17,3 +17,5 @@ truststore==0.10.4
 faster-whisper==1.2.1
 kokoro-onnx==0.6.1
 sounddevice==0.5.2; sys_platform == "win32"
+icalendar==7.3.0
+recurring-ical-events==3.8.2

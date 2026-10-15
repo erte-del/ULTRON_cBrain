@@ -53,6 +53,17 @@ async def push(title: str, text: str) -> None:
             log.warning("Telegram notification failed: %s", e)
 
 
+async def text_only(title: str, text: str) -> None:
+    """Text the user's phone and nothing else (no banner, no chat card), for Ultron's own
+    check-ins (initiative.py). Ultron still hears about it with the next message.
+    RuntimeError (with the reason) if it didn't go."""
+    if not telegram.configured():
+        raise RuntimeError("Telegram isn't set up")
+    await asyncio.to_thread(telegram.send_text, f"{title}\n\n{text}" if title else text)
+    _unseen.append(f"{title}: {text}" if title else text)
+    del _unseen[:-MAX_UNSEEN]
+
+
 def take_unseen() -> list[str]:
     """Notifications since the user's last message, for Ultron's conversation to know about."""
     seen = _unseen[:]

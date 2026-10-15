@@ -258,6 +258,7 @@ Still open: words said in the same breath as "Hey Ultron" on the PC aren't passe
 - Guards: skipped above `JARVIS_JOBS_MAX_USAGE` (0.8) of the 5-hour limit, at most 10 jobs, one at a time, watchers on Haiku and paused in `JARVIS_QUIET_HOURS` (23:00–07:00).
 - Results go to the open chat, a macOS notification and my phone (Telegram). Ultron sees unseen results with my next message, so "reply to that" works. The clock button lists jobs (run now, pause, delete) and the last 100 runs.
 - Chat tools: `schedule_job`, `change_job`, `list_jobs`.
+- **Own texts** (`initiative.py`, `calendar_text.py`, `JARVIS_INITIATIVE_EVERY_MIN`, off by default): a persistent local-model conversation shown the time, its limits, today's texts, memory and the calendar as plain text (Google's secret iCal address, `GOOGLE_CALENDAR_ICAL_URL`); it checks mail itself through the Gmail connector (read tools only). Only a reply starting `TEXT:` goes out (Telegram only, `notify.text_only`). Max per day, min gap and quiet hours are enforced in code and told to the model; its own tools are `recall` only, never `text_me`. Never Claude; state in `storage/initiative.json`.
 
 ---
 
