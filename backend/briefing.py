@@ -158,15 +158,17 @@ def _calendar(now: datetime) -> tuple[str, str]:
     return "\n".join(lines) if evs else lines[0] + "\n(nothing in the next 36 hours)", ""
 
 
-def mail_for_briefing() -> str:
-    """The unread email as text, read over IMAP. "" when that isn't set up (the model then uses the connector)."""
+def mail_for_briefing() -> tuple[str, bool]:
+    """(unread email as text, whether IMAP worked). ("", True) when IMAP isn't set up: the model
+    then uses the connector. ("(couldn't read ...)", False) when it is set up but failed: the
+    caller falls back to the connector too."""
     if not mail_text.configured():
-        return ""
+        return "", True
     try:
-        return mail_text.mail_text(mail_text.unread())
+        return mail_text.mail_text(mail_text.unread()), True
     except RuntimeError as e:
         log.warning("Couldn't read Gmail: %s", e)
-        return f"(couldn't read email this time: {e})"
+        return f"(couldn't read email over IMAP this time: {e})", False
 
 
 def write(text: str) -> None:

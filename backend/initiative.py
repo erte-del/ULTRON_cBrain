@@ -128,10 +128,13 @@ def clean(text: str) -> str:
     return text[5:].strip(" \"'")[:MAX_CHARS]
 
 
+_mail_ok = True  # did the last read of Gmail over IMAP work? (if not, the model gets the connector)
+
+
 def connector_groups() -> set[str]:
     """Connector groups the model needs because the code can't read the thing itself."""
     groups = set()
-    if not mail_text.configured() and "gmail" in config.OLLAMA_CONNECTORS:
+    if (not mail_text.configured() or not _mail_ok) and "gmail" in config.OLLAMA_CONNECTORS:
         groups.add("gmail")
     if "ticktick" in config.OLLAMA_CONNECTORS:
         groups.add("tasks")
@@ -151,8 +154,9 @@ def snapshot(state: dict, now: datetime) -> tuple[str, str]:
     """The briefing (also written to storage/initiative_context.txt) and a key for what in it
     changes by itself: the same key as last time (same calendar and email, same half hour)
     means there's nothing to look at, and a 14B model asked anyway tends to repeat itself."""
+    global _mail_ok
+    mail, _mail_ok = briefing.mail_for_briefing()
     groups = connector_groups()
-    mail = briefing.mail_for_briefing()
     if not mail:
         mail = "(not loaded: look it up with your Gmail tool, below)" if "gmail" in groups else "(email isn't connected)"
     text, changing = briefing.build(state, now, limits_note(state, now), mail)

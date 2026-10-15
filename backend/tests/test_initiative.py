@@ -141,6 +141,27 @@ class InitiativeTest(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("\n", mails[0]["snippet"])
             self.assertIn("Lunch?", mail_text.mail_text(mails))
 
+    def test_a_message_with_a_broken_date_or_odd_headers_doesnt_lose_the_others(self):
+        raw = (b"From: =?utf-8?b?w4dhxJ/EsXI=?= <c@x.com>\r\nSubject: Hi\r\nDate: not a date\r\n\r\nbody")
+        box = mock.MagicMock()
+        box.__enter__.return_value = box
+        box.search.return_value = ("OK", [b"1 2"])
+        box.fetch.return_value = ("OK", [(b"1 (BODY[]<0>", raw), b")"])
+        with mock.patch.object(config, "GMAIL_ADDRESS", "me@gmail.com"), mock.patch.object(config, "GMAIL_APP_PASSWORD", "pw"), \
+                mock.patch.object(mail_text.imaplib, "IMAP4_SSL", return_value=box):
+            mails = mail_text.unread(NOON)
+        self.assertEqual(len(mails), 2)
+        self.assertEqual((mails[0]["when"], mails[0]["from"]), ("", "Çağır <c@x.com>"))
+
+    def test_if_imap_fails_the_gmail_connector_takes_over(self):
+        with mock.patch.object(config, "GMAIL_ADDRESS", "me@gmail.com"), mock.patch.object(config, "GMAIL_APP_PASSWORD", "pw"), \
+                mock.patch.object(mail_text, "unread", side_effect=RuntimeError("Gmail refused the login")):
+            text, _ = initiative.snapshot({"last_check": 0, "view": "", "sent": []}, NOON)
+            self.assertIn("couldn't read email over IMAP", text)
+            self.assertIn("gmail", initiative.connector_groups())
+            self.assertIn("Look in their Gmail", initiative.connector_note(initiative.connector_groups()))
+        initiative._mail_ok = True
+
     def test_a_refused_mail_login_never_shows_the_password(self):
         with mock.patch.object(config, "GMAIL_ADDRESS", "me@gmail.com"), mock.patch.object(config, "GMAIL_APP_PASSWORD", "SECRETPW"), \
                 mock.patch.object(mail_text.imaplib, "IMAP4_SSL", side_effect=mail_text.imaplib.IMAP4.error("LOGIN failed SECRETPW")):

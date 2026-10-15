@@ -33,9 +33,10 @@ def _clean(text: str, limit: int) -> str:
 
 def _decode(value: str) -> str:
     try:
-        return str(email.header.make_header(email.header.decode_header(value or "")))
+        value = str(value or "")
+        return str(email.header.make_header(email.header.decode_header(value)))
     except (ValueError, LookupError):
-        return value or ""
+        return value
 
 
 def _body(raw: bytes) -> str:
@@ -66,7 +67,10 @@ def unread(now: datetime | None = None) -> list[dict]:
                 _, data = box.fetch(num, f"(BODY.PEEK[]<0.{BODY_BYTES}>)")
                 raw = next((part[1] for part in data if isinstance(part, tuple)), b"")
                 msg = email.message_from_bytes(raw)
-                sent = email.utils.parsedate_to_datetime(msg["Date"]).astimezone() if msg["Date"] else None
+                try:  # one oddly dated message mustn't lose the rest
+                    sent = email.utils.parsedate_to_datetime(str(msg["Date"])).astimezone() if msg["Date"] else None
+                except (TypeError, ValueError, IndexError):
+                    sent = None
                 out.append({"from": _clean(_decode(msg["From"]), 60), "subject": _clean(_decode(msg["Subject"]), 100),
                             "when": f"{sent:%a %H:%M}" if sent else "", "snippet": _clean(_body(raw), 200)})
             return out
