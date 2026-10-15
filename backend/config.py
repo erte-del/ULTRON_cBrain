@@ -31,6 +31,18 @@ SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "").strip()
 # Ultron's own Telegram bot, for texting you (tools/telegram.py).
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+
+# Your calendar as text for Ultron's own check-ins (calendar_text.py): Google Calendar's private
+# "Secret address in iCal format". Whoever has it can read the calendar: keep it secret.
+GOOGLE_CALENDAR_ICAL_URL = os.getenv("GOOGLE_CALENDAR_ICAL_URL", "").strip()
+# Your unread Gmail as text over IMAP (mail_text.py), read-only: an app password, not your real one.
+# Without it, Ultron's check-ins use the Gmail connector instead (slower).
+GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "").strip()
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
+# The note in your vault with your school timetable (path in the vault); empty = look for one.
+SCHOOL_SCHEDULE_NOTE = os.getenv("JARVIS_SCHOOL_SCHEDULE_NOTE", "").strip()
+if GOOGLE_CALENDAR_ICAL_URL and not GOOGLE_CALENDAR_ICAL_URL.startswith("https://"):
+    raise SystemExit("GOOGLE_CALENDAR_ICAL_URL must be the https:// address from Google Calendar's settings")
 # Ultron's own Instagram (tools/instagram.py). Ultron renews it into storage/instagram_token.json.
 INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN", "").strip()
 # The MacroDroid webhook on your phone, for its volume (tools/phone.py).
@@ -114,6 +126,16 @@ if QUIET_HOURS and not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0
 # background work never locks you out of Ultron yourself.
 JOBS_MAX_USAGE = float(os.getenv("JARVIS_JOBS_MAX_USAGE", "0.8"))
 
+# Ultron texting you on its own (initiative.py), on the local model only. Every
+# INITIATIVE_EVERY_MIN minutes it is shown the time, your memory and calendar as text (and looks at
+# your email), and may text you. 0 = off. Hard limits: at most MAX_PER_DAY texts a day, MIN_GAP_MIN
+# minutes apart, none in quiet hours.
+INITIATIVE_EVERY_MIN = int(os.getenv("JARVIS_INITIATIVE_EVERY_MIN", "0"))
+INITIATIVE_MAX_PER_DAY = int(os.getenv("JARVIS_INITIATIVE_MAX_PER_DAY", "3"))
+INITIATIVE_MIN_GAP_MIN = int(os.getenv("JARVIS_INITIATIVE_MIN_GAP_MIN", "90"))
+if INITIATIVE_EVERY_MIN and INITIATIVE_EVERY_MIN < 5:
+    raise SystemExit("JARVIS_INITIATIVE_EVERY_MIN must be 0 (off) or at least 5")
+
 if HOST not in ("127.0.0.1", "localhost", "::1"):
     raise SystemExit(f"JARVIS_HOST={HOST!r} refused: Ultron only listens on this machine.")
 
@@ -139,7 +161,9 @@ if PC_URL and not re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net", PC
 #   omniroute - OmniRoute (npm i -g omniroute), a gateway to other providers' models.
 #               Doesn't use your Pro limit. The claude.ai connectors (Gmail, ...) stay
 #               off, so your emails never go to those providers.
-PROVIDERS = ("claude", "omniroute")
+#   ollama    - a model on this computer (JARVIS_OLLAMA_MODEL), free and offline. Only the
+#               connectors in JARVIS_OLLAMA_CONNECTORS are on; nothing leaves this machine.
+PROVIDERS = ("claude", "omniroute", "ollama")
 PROVIDER = os.getenv("JARVIS_PROVIDER", "claude").strip().lower()
 if PROVIDER not in PROVIDERS:
     raise SystemExit(f"JARVIS_PROVIDER={PROVIDER!r}: use {' or '.join(PROVIDERS)}")
@@ -161,8 +185,9 @@ if not GATEWAY_MODELS:
 # Claude Code's own sonnet / opus / haiku names (e.g. for WebFetch) go to this one.
 GATEWAY_MODEL = GATEWAY_MODELS[0]
 
-# A local model (Ollama) for scheduled jobs, so background work doesn't use the Pro limit.
-# Your own chats always stay on the brain you picked. "" = jobs run on that brain too.
+# A local model (Ollama): runs scheduled jobs so background work doesn't use the Pro limit,
+# and is the default for chats when you pick Ollama in the app (gear icon).
+# "" = jobs run on the brain you picked.
 # Jobs with an "allow" list (they change things) or "brain": "claude" in jobs.json stay on Claude.
 OLLAMA_URL = (os.getenv("JARVIS_OLLAMA_URL") or "http://localhost:11434").strip().rstrip("/")
 OLLAMA_MODEL = os.getenv("JARVIS_OLLAMA_MODEL", "").strip()
@@ -170,12 +195,21 @@ OLLAMA_MODEL = os.getenv("JARVIS_OLLAMA_MODEL", "").strip()
 # login along to Ollama (which ignores it). It must never leave this machine.
 if re.match(r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$", OLLAMA_URL) is None:
     raise SystemExit(f"JARVIS_OLLAMA_URL={OLLAMA_URL!r}: must be on this machine, e.g. http://localhost:11434")
-# The claude.ai connectors local jobs may use. Fewer = less for a small model to read.
+# The claude.ai connectors the local model may use at all. None are on at the start: one
+# switches on when the request (or job) mentions it. See brain/capabilities.py.
 OLLAMA_CONNECTORS = [
     c.strip().lower()
-    for c in os.getenv("JARVIS_OLLAMA_CONNECTORS", "Gmail, TickTick, Google Drive, Google Calendar, Shopify").split(",")
+    for c in os.getenv("JARVIS_OLLAMA_CONNECTORS", "Gmail, TickTick, Google Drive, Google Calendar, Shopify, Vercel, Spotify").split(",")
     if c.strip()
 ]
+
+# What the local model may change (the confirmation gate still asks about anything that reaches
+# other people). "none": it only looks things up. "chat" (default): it can also add a reminder, a
+# note, a memory... in your chats, but a scheduled job that is allowed to change things stays on
+# Claude. "all": those jobs run on the local model too.
+OLLAMA_CHANGES = os.getenv("JARVIS_OLLAMA_CHANGES", "chat").strip().lower()
+if OLLAMA_CHANGES not in ("none", "chat", "all"):
+    raise SystemExit(f"JARVIS_OLLAMA_CHANGES={OLLAMA_CHANGES!r}: use none, chat or all")
 
 # If any of these are set, Claude Code uses them instead of the Pro login.
 _API_AUTH_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")

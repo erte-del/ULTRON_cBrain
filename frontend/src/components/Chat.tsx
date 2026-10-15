@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { modelFamily, toolLabel } from '../labels'
 import { useNow } from '../useNow'
-import { uploadFile, type ActiveTool, type Attachment, type ChatMessage, type ConnectionState, type Source } from '../ws'
+import { uploadFile, type ActiveTool, type Attachment, type ChatMessage, type ConnectionState, type Source, type ToolGroup } from '../ws'
 import ConfirmCard from './ConfirmCard'
 import Markdown from './Markdown'
 
@@ -16,6 +16,9 @@ interface ChatProps {
   onSend: (text: string, files: Attachment[]) => boolean
   onStop: () => void
   onConfirm: (id: string, approved: boolean) => void
+  onFallback: (id: string, action: 'retry' | 'claude') => void
+  groups: { on: string[]; all: ToolGroup[] } | null // only with the Ollama brain
+  onGroups: (on: string[]) => void
   voiceOn: boolean
   onVoice: (on: boolean) => void
 }
@@ -84,7 +87,12 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-function Message({ message, onConfirm }: { message: ChatMessage; onConfirm: ChatProps['onConfirm'] }) {
+function Message({ message, onConfirm, onFallback, busy }: {
+  message: ChatMessage
+  onConfirm: ChatProps['onConfirm']
+  onFallback: ChatProps['onFallback']
+  busy: boolean
+}) {
   const hasSources = !!message.sources?.length
   const text = hasSources ? stripSourcesBlock(message.text) : message.text
 
@@ -111,6 +119,22 @@ function Message({ message, onConfirm }: { message: ChatMessage; onConfirm: Chat
         {text && <Markdown text={text} />}
         {!message.done && !message.error && <span className="cursor" />}
         {message.error && <div className="msg-error">{message.error}</div>}
+        {message.error && message.fallback && !busy && (
+          <div className="fallback-actions">
+            <button type="button" className="btn-approve" onClick={() => onFallback(message.id, 'retry')}>
+              Try again on Ollama
+            </button>
+            <button
+              type="button"
+              className="btn-deny"
+              title="Starts a new chat on Claude and sends it your last few messages"
+              onClick={() => onFallback(message.id, 'claude')}
+            >
+              Continue with Claude
+            </button>
+            <span className="fallback-note">Claude gets this message and the last few before it.</span>
+          </div>
+        )}
         {hasSources && <SourceChips sources={message.sources!} />}
       </div>
       {message.model && (
@@ -163,7 +187,53 @@ function LongWait({ children, retry }: { children: ReactNode; retry?: string | n
   )
 }
 
-export default function Chat({ messages, connection, busy, activeTool, retry, onSend, onStop, onConfirm, voiceOn, onVoice }: ChatProps) {
+// Ollama only: which tool groups the local model has right now. They switch on by themselves
+// when you mention what they're for; here you can switch them on or off by hand.
+function ToolsBar({ groups, busy, onGroups }: { groups: { on: string[]; all: ToolGroup[] }; busy: boolean; onGroups: (on: string[]) => void }) {
+  const [open, setOpen] = useState(false)
+  // What you tapped, until the server's own list arrives (a new array): taps made before that
+  // build on each other instead of on the old list, so quick taps don't undo one another.
+  const [tapped, setTapped] = useState<{ from: string[]; on: string[] } | null>(null)
+  const on = tapped && tapped.from === groups.on ? tapped.on : groups.on
+  const titles = groups.all.filter((g) => on.includes(g.name)).map((g) => g.title)
+  const toggle = (name: string) => {
+    const next = on.includes(name) ? on.filter((n) => n !== name) : [...on, name]
+    setTapped({ from: groups.on, on: next })
+    onGroups(next)
+  }
+  return (
+    <div className="tools-bar">
+      <button type="button" className="tools-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="tools-label">TOOLS</span>
+        <span className="tools-on">{titles.length ? titles.join(' · ') : 'basics only'}</span>
+        <span aria-hidden>{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="tools-panel">
+          <div className="tools-note">
+            Ultron switches these on when you mention them. Tap to turn one on or off yourself
+            {busy ? ' (it applies after the current reply)' : ''}.
+          </div>
+          <div className="tools-chips">
+            {groups.all.map((g) => (
+              <button
+                key={g.name}
+                type="button"
+                className={`tools-chip${on.includes(g.name) ? ' on' : ''}`}
+                aria-pressed={on.includes(g.name)}
+                onClick={() => toggle(g.name)}
+              >
+                {g.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function Chat({ messages, connection, busy, activeTool, retry, onSend, onStop, onConfirm, onFallback, groups, onGroups, voiceOn, onVoice }: ChatProps) {
   const [draft, setDraft] = useState('')
   const [files, setFiles] = useState<Attachment[]>([])
   const [uploading, setUploading] = useState(0)
@@ -250,7 +320,7 @@ export default function Chat({ messages, connection, busy, activeTool, retry, on
           </div>
         )}
         {messages.map((m) => (
-          <Message key={m.id} message={m} onConfirm={onConfirm} />
+          <Message key={m.id} message={m} onConfirm={onConfirm} onFallback={onFallback} busy={busy} />
         ))}
         {toolMidReply && (
           <LongWait>
@@ -267,6 +337,8 @@ export default function Chat({ messages, connection, busy, activeTool, retry, on
           </div>
         )}
       </div>
+
+      {groups && <ToolsBar groups={groups} busy={busy} onGroups={onGroups} />}
 
       {(files.length > 0 || uploading > 0 || uploadError) && (
         <div className="attachments">

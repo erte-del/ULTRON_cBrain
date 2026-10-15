@@ -63,7 +63,8 @@ async def remember(args: dict[str, Any]) -> dict[str, Any]:
     "recall",
     "Search what you remember about the user (read-only). Finds memories containing every "
     "word of the query; use one or two key words, or leave the query empty to list "
-    "everything (or everything in one category).",
+    "everything (or everything in one category). Call it whenever the user asks what you know or remember "
+    "about a person or topic, or before you say you don't know something about them; never answer that from the chat alone.",
     {
         "type": "object",
         "properties": {

@@ -23,7 +23,8 @@ def take() -> bool:
     "Start a fresh conversation (the same as the new chat button): the current chat is saved to memory "
     "and the screen is cleared. Call it when the user asks to start, open or begin a new chat, "
     "conversation or thread, or to start over. Not for a new topic inside the same chat. "
-    "Say one very short line first (e.g. 'Starting a new chat.'); it starts as soon as you finish.",
+    "You must call this tool: saying you are starting one does nothing by itself. Write one very short line "
+    "(e.g. 'Starting a new chat.') and call it in the same turn; it starts as soon as you finish.",
     {"type": "object", "properties": {}},
 )
 async def new_chat(args: dict[str, Any]) -> dict[str, Any]:

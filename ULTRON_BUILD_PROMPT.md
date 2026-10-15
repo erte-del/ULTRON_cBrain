@@ -45,7 +45,7 @@ The backend drives **Claude Code in the background** through `claude-agent-sdk`,
 ### Other brains (optional, never touch the Pro token)
 
 - **OmniRoute** (`gateway.py`, `omniroute serve --daemon` on `127.0.0.1:20128`): other providers' models (Gemini, Groq, …). The gear icon switches brains; switching starts a new chat. In this mode connectors, web search and `ask_expert` are **off**, so my emails never reach other providers. It gets a placeholder key.
-- **Ollama** (`JARVIS_OLLAMA_URL`, must be localhost): a local model for **scheduled jobs**, so background work doesn't use the Pro limit. Only the connectors listed in `JARVIS_OLLAMA_CONNECTORS` are offered to it.
+- **Ollama** (`JARVIS_OLLAMA_URL`, must be localhost; `ollama.py` lists the installed models): a local model for **scheduled jobs**, so background work doesn't use the Pro limit, and a third brain in the gear menu for **chat** (`provider == "ollama"`, model picked among the installed `ultron-*` ones). **Scheduled jobs that only look things up run on it** (a job that says `"brain": "claude"`, or has an `allow` list so it may change things, stays on Claude unless `JARVIS_OLLAMA_CHANGES=all`; Ollama down or failing twice: Claude). `JARVIS_OLLAMA_CHANGES` (`none` / `chat` default / `all`) says what the local model may change. It starts with a small core and **no connectors**; `brain/capabilities.py` groups tools, a connector and prompt sections, and a group switches on when the message or job text mentions its words (Claude Code can't add Ultron's own tools to a running session, so a new group restarts it with `resume`; `disallowed_tools` doesn't hide Ultron's in-process tools, so the server is built with only the needed ones). Only connectors in `JARVIS_OLLAMA_CONNECTORS` can switch on; Vercel and Shopify are look-up only; a job only looks unless its `allow` list says otherwise. No web search, no `ask_expert`; nothing leaves this computer. Build the model with `scripts/make_ollama_model.py` (patches Qwen3's template: no thinking, 32k window).
 
 ### Not used: the Claude API with a key
 
@@ -258,6 +258,7 @@ Still open: words said in the same breath as "Hey Ultron" on the PC aren't passe
 - Guards: skipped above `JARVIS_JOBS_MAX_USAGE` (0.8) of the 5-hour limit, at most 10 jobs, one at a time, watchers on Haiku and paused in `JARVIS_QUIET_HOURS` (23:00–07:00).
 - Results go to the open chat, a macOS notification and my phone (Telegram). Ultron sees unseen results with my next message, so "reply to that" works. The clock button lists jobs (run now, pause, delete) and the last 100 runs.
 - Chat tools: `schedule_job`, `change_job`, `list_jobs`.
+- **Own texts** (`initiative.py`, `briefing.py`, `calendar_text.py`, `mail_text.py`, `JARVIS_INITIATIVE_EVERY_MIN`, off by default): when a text would be allowed now (max per day, min gap, quiet hours, Ollama up), a briefing file `storage/initiative_context.txt` is built (calendar via the secret iCal address, unread mail via read-only IMAP or the Gmail connector, school timetable from the vault, school notes, last homework message, memory, conversation notes, recent notes, earlier texts, ...) and handed to a fresh local-model conversation, which replies `NOTHING` or `TEXT: ...` (Telegram only, `notify.text_only`). Limits are enforced in code and told to the model; its own tools are `recall` only, never `text_me`; connectors only for what code can't read (read tools only). Never Claude; state in `storage/initiative.json`.
 
 ---
 
@@ -302,8 +303,8 @@ ULTRON_cBrain/
 ```
 
 **WebSocket protocol (`events.py` ↔ `ws.ts`):**
-- Client → server: `user.text`, `user.stop`, `user.confirm {id, approved}`, `user.select_image {id}`, `user.new_chat`, `user.save_chat`, `user.load_chat`, `user.delete_chat`, `user.memory_*`, `user.job_update`, `user.voice {mode}`, `user.greet`, `settings.update`, plus binary mic audio.
-- Server → client: `assistant.text_delta`, `assistant.done {model}`, `status`, `tool.started`, `tool.finished`, `canvas.card`, `confirm.request`, `confirm.resolved`, `conversation.new`, `conversation.loaded`, `chats.list`, `memory.list`, `jobs.list`, `notification`, `usage.update`, `settings.state`, `terminal.open`, `voice.speech`, `voice.transcript`, `voice.wake`, `voice.audio`, `notice`, `error`.
+- Client → server: `user.text`, `user.stop`, `user.confirm {id, approved}`, `user.select_image {id}`, `user.new_chat`, `user.save_chat`, `user.load_chat`, `user.delete_chat`, `user.memory_*`, `user.job_update`, `user.voice {mode}`, `user.greet`, `user.groups {on}` (Ollama tool groups), `user.fallback {action, text, files, history}` (after an Ollama error: try again, or continue on Claude), `settings.update`, plus binary mic audio.
+- Server → client: `assistant.text_delta`, `assistant.done {model}`, `status`, `tool.started`, `tool.finished`, `canvas.card`, `confirm.request`, `confirm.resolved`, `conversation.new`, `conversation.loaded`, `chats.list`, `memory.list`, `jobs.list`, `notification`, `usage.update`, `settings.state`, `ollama.groups`, `terminal.open`, `voice.speech`, `voice.transcript`, `voice.wake`, `voice.audio`, `notice`, `error`.
 
 ---
 

@@ -235,6 +235,9 @@ export default function App() {
             onSend={send}
             onStop={ultron.stop}
             onConfirm={ultron.answerConfirm}
+            onFallback={ultron.fallback}
+            groups={ultron.settings?.provider === 'ollama' ? ultron.groups : null}
+            onGroups={ultron.setGroups}
             voiceOn={voiceOn}
             onVoice={setVoice}
           />
@@ -264,6 +267,7 @@ export default function App() {
             modelOverride={ultron.modelOverride}
             onModel={ultron.setModelOverride}
             onGatewayModel={ultron.setGatewayModel}
+            onOllamaModel={ultron.setOllamaModel}
           />
           <LogPanel log={ultron.log} />
           <TerminalPanel busy={ultron.busy} activeTool={ultron.activeTool} connection={ultron.connection} />

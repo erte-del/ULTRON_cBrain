@@ -241,7 +241,7 @@ Re-define it in each Bash call that uses it.
 | `JARVIS_TERMINAL_USER` | their Tailscale login | Only if they gave one (Question 6). |
 | `JARVIS_CAPTURE_SCREEN` | the display's name | After the display is connected: `ffmpeg -f avfoundation -list_devices true -i "" 2>&1 \| grep -i -A8 'video devices'`. Default `Capture screen 0`. Use the name, not a number. |
 | `JARVIS_CAPTURE_AUDIO` | BlackHole's index | Only if Question 5 was yes and the user made the Multi-Output Device in Audio MIDI Setup. |
-| `JARVIS_OLLAMA_MODEL` | `ultron-qwen3-8b` | Only if Question 4 was yes, after Phase 6's Ollama step. |
+| `JARVIS_OLLAMA_MODEL` | `ultron-qwen3-14b` | Only if Question 4 was yes, after Phase 6's Ollama step. |
 | `INSTAGRAM_ACCESS_TOKEN` | leave | The renewed token lives in `storage/instagram_token.json` (copied in E1). |
 
 Other files tied to the MacBook (tell the user, don't fix unless asked): `.claude/launch.json`
@@ -274,10 +274,9 @@ Each script is safe to re-run.
 
 If Ollama (Question 4):
 ```bash
-ollama pull qwen3:8b && ollama create ultron-qwen3-8b -f scripts/Modelfile.ultron
+ollama pull qwen3:14b && python3 scripts/make_ollama_model.py
 ```
-then `setenv JARVIS_OLLAMA_MODEL ultron-qwen3-8b`. (`.env.example` mentions a 14b name, but
-`scripts/Modelfile.ultron` is based on `qwen3:8b`.)
+then `setenv JARVIS_OLLAMA_MODEL ultron-qwen3-14b` (the script patches qwen3:14b: 32k window, no thinking; fits 24 GB RAM).
 
 **Check:** `ls -d Ultron.app backend/storage/UltronLocation.app`;
 `codesign --verify Ultron.app` (no output = good); `ls backend/storage/flux backend/storage/wan backend/storage/voice`

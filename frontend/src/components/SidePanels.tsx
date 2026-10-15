@@ -71,25 +71,32 @@ interface UsagePanelProps {
   modelOverride: ModelAlias | null
   onModel: (model: ModelAlias | null) => void
   onGatewayModel: (model: string) => void
+  onOllamaModel: (model: string) => void
 }
 
-function GatewayModels({ settings, onGatewayModel }: { settings: BrainSettings; onGatewayModel: (model: string) => void }) {
+/** Buttons for the models of OmniRoute or Ollama (the brain picks the model, there's no routing). */
+function ModelList({ ids, current, onPick, name }: {
+  ids: string[]
+  current: string
+  onPick: (id: string) => void
+  name: (id: string) => { title: string; sub: string }
+}) {
   return (
     <div className="model-buttons">
-      {settings.gateway_models.map((id) => {
-        const { provider, model } = gatewayModelName(id)
+      {ids.map((id) => {
+        const { title, sub } = name(id)
         return (
           <button
             key={id}
             type="button"
-            className={`model-btn model-gateway${settings.gateway_model === id ? ' active' : ''}`}
-            onClick={() => onGatewayModel(id)}
-            aria-pressed={settings.gateway_model === id}
+            className={`model-btn model-gateway${current === id ? ' active' : ''}`}
+            onClick={() => onPick(id)}
+            aria-pressed={current === id}
             title={id}
           >
             <span className="model-dot" />
-            {provider.toUpperCase()}
-            <span className="model-sub">{model}</span>
+            {title.toUpperCase()}
+            {sub && <span className="model-sub">{sub}</span>}
           </button>
         )
       })}
@@ -97,21 +104,30 @@ function GatewayModels({ settings, onGatewayModel }: { settings: BrainSettings; 
   )
 }
 
-export function UsagePanel({ usage, settings, modelOverride, onModel, onGatewayModel }: UsagePanelProps) {
+const gatewayName = (id: string) => {
+  const { provider, model } = gatewayModelName(id)
+  return { title: provider, sub: model }
+}
+const ollamaName = (id: string) => ({ title: id.replace(/:latest$/, ''), sub: '' })
+
+export function UsagePanel({ usage, settings, modelOverride, onModel, onGatewayModel, onOllamaModel }: UsagePanelProps) {
   const now = useNow(30_000)
-  const onClaude = settings?.provider !== 'omniroute'
+  const provider = settings?.provider ?? 'claude'
+  const onClaude = provider === 'claude'
   const t = usage?.tokens
   const total = t ? t.input + t.cache_write + t.cache_read + t.output : 0
 
   return (
-    <Panel title="USAGE" tag={onClaude ? 'PRO PLAN' : 'OMNIROUTE'} className="usage-panel">
+    <Panel title="USAGE" tag={{ claude: 'PRO PLAN', omniroute: 'OMNIROUTE', ollama: 'LOCAL' }[provider]} className="usage-panel">
       {onClaude ? (
         <div className="meters">
           <Meter label="5-HOUR LIMIT" window={usage?.windows.five_hour} now={now} />
           <Meter label="WEEKLY · ALL MODELS" window={usage?.windows.seven_day} now={now} />
         </div>
       ) : (
-        <div className="usage-note">OmniRoute doesn't use your Pro limit.</div>
+        <div className="usage-note">
+          {provider === 'ollama' ? 'Ollama runs on this computer: free, and nothing leaves it.' : "OmniRoute doesn't use your Pro limit."}
+        </div>
       )}
 
       <div className="usage-section">
@@ -128,7 +144,7 @@ export function UsagePanel({ usage, settings, modelOverride, onModel, onGatewayM
         </dl>
       </div>
 
-      <div className="usage-label">{onClaude ? 'MODEL' : 'MODEL · OMNIROUTE'}</div>
+      <div className="usage-label">{{ claude: 'MODEL', omniroute: 'MODEL · OMNIROUTE', ollama: 'MODEL · OLLAMA' }[provider]}</div>
       {onClaude || !settings ? (
         <div className="model-buttons">
           {MODELS.map((m) => (
@@ -146,7 +162,11 @@ export function UsagePanel({ usage, settings, modelOverride, onModel, onGatewayM
           ))}
         </div>
       ) : (
-        <GatewayModels settings={settings} onGatewayModel={onGatewayModel} />
+        provider === 'ollama' ? (
+          <ModelList ids={settings.ollama_models} current={settings.ollama_model} onPick={onOllamaModel} name={ollamaName} />
+        ) : (
+          <ModelList ids={settings.gateway_models} current={settings.gateway_model} onPick={onGatewayModel} name={gatewayName} />
+        )
       )}
     </Panel>
   )

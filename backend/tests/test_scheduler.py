@@ -197,8 +197,16 @@ class LocalModelTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((self.calls, self.pushed), ([True], [("Briefing", "Two meetings.\n\n(qwen3:8b)")]))
         self.assertEqual(job_store.get(made["id"])["last_text"], "Two meetings.")  # no footer
 
-    async def test_jobs_that_change_things_or_ask_for_claude_stay_on_claude(self):
-        self.assertFalse(scheduler.runs_local({"allow": ["mcp__claude_ai_TickTick__create_task"]}))
+    async def test_jobs_that_change_things_stay_on_claude_unless_you_said_all(self):
+        changing = {"allow": ["mcp__claude_ai_TickTick__create_task"]}
+        self.assertFalse(scheduler.runs_local(changing))  # the default is "chat"
+        with mock.patch.object(config, "OLLAMA_CHANGES", "all"):
+            self.assertTrue(scheduler.runs_local(changing))
+            self.assertFalse(scheduler.runs_local({**changing, "brain": "claude"}))
+        with mock.patch.object(config, "OLLAMA_CHANGES", "none"):
+            self.assertFalse(scheduler.runs_local(changing))
+
+    async def test_jobs_that_only_look_run_locally_and_brain_claude_opts_out(self):
         self.assertFalse(scheduler.runs_local({"brain": "claude"}))
         self.assertTrue(scheduler.runs_local({}))
         with mock.patch.object(config, "OLLAMA_MODEL", ""):

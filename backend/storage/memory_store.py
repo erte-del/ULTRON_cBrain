@@ -118,7 +118,7 @@ def save_conversation(title: str, body: str, when: float | None = None) -> str |
     return path.relative_to(config.VAULT_DIR).as_posix()
 
 
-def conversations_block() -> str:
+def conversations_block(chars: int = CONVERSATIONS_CHARS) -> str:
     """The newest conversation notes (read from the vault, so your edits there count)."""
     if not config.VAULT_DIR or not _conversations_dir().is_dir():
         return ""
@@ -131,7 +131,7 @@ def conversations_block() -> str:
         if "#private" in text:
             continue
         entry = f"[{path.stem[:15]}] {' '.join(text.split())}"
-        if used + len(entry) > CONVERSATIONS_CHARS:
+        if used + len(entry) > chars:
             break
         parts.append(entry)
         used += len(entry)
@@ -240,13 +240,13 @@ def search(query: str = "", category: str | None = None) -> list[dict]:
     ]
 
 
-def prompt_block() -> str:
+def prompt_block(chars: int = PROMPT_CHARS) -> str:
     """The newest memories as a paragraph for the system prompt ("" when there are none)."""
     memories = entries()
     lines, used = [], 0
     for m in memories:
         line = f"- {m['id']} [{m['category']}] {m['text']}"
-        if used + len(line) > PROMPT_CHARS:
+        if used + len(line) > chars:
             break
         lines.append(line)
         used += len(line)

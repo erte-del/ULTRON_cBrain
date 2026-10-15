@@ -5,6 +5,7 @@ One Claude Code process stays running for the whole conversation
 """
 
 import asyncio
+import json
 import logging
 import re
 import time
@@ -26,11 +27,13 @@ from claude_agent_sdk import (
     UserMessage,
 )
 
+import config
 import usage
-from config import CLAUDE_MODEL_IDS, CONNECTORS, EFFORT, GATEWAY_MODEL, OLLAMA_CONNECTORS, OLLAMA_URL, PROVIDER, STORAGE_DIR, set_login
+from config import CLAUDE_MODEL_IDS, CONNECTORS, EFFORT, GATEWAY_MODEL, OLLAMA_MODEL, OLLAMA_URL, PROVIDER, STORAGE_DIR, set_login
 from storage import memory_store
 from tools import registry
 
+from . import capabilities
 from .base import BrainEvent, Done, Error, ModelAlias, TextDelta, ToolResult, ToolStart, UIEvent
 from .prompts import JARVIS_SYSTEM_PROMPT, PERSONA_REMINDER, school_block
 
@@ -63,37 +66,59 @@ BLOCKED_TOOLS = [
     "Glob", "Grep", "Agent", "Task", "Skill",
 ]
 
-# Ultron's own tools a local model may see in a scheduled job. The rest (canvas, images,
-# 3D, ...) and every tool that changes something are hidden: a small model's context is
-# 32k tokens, and all tools together overflow it.
-LOCAL_TOOLS = {
-    "check_homework", "syllabus", "textbook", "lectures", "find_contact", "recall",
-    "search_notes", "read_note", "list_jobs", "mac_read", "maps", "flights", "youtube", "amazon_read",
-}
-_local_hidden: list[str] = []  # worked out by the first local session, then reused
+# Tools of the claude.ai connectors, found the first time each one is switched on (the
+# local model's tool list is trimmed with them: see capabilities.tool_visible).
+# Kept on disk so a restart of Ultron doesn't need the extra session restart per connector.
+DISCOVERED_FILE = STORAGE_DIR / "ollama_connector_tools.json"
 
 
-def hidden_for_local(servers: list[dict]) -> list[str]:
-    """Tool names a local job's model shouldn't see, from get_mcp_status()."""
-    hidden = []
+def _load_discovered() -> dict[str, list[str]]:
+    try:
+        data = json.loads(DISCOVERED_FILE.read_text(encoding="utf-8"))
+        return {k: list(v) for k, v in data.items()} if isinstance(data, dict) else {}
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _save_discovered() -> None:
+    try:
+        DISCOVERED_FILE.parent.mkdir(parents=True, exist_ok=True)
+        DISCOVERED_FILE.write_text(json.dumps(_discovered, indent=1), encoding="utf-8")
+    except OSError:
+        log.warning("Could not save the connector tool lists", exc_info=True)
+
+
+_discovered: dict[str, list[str]] = _load_discovered()  # "claude.ai Gmail" -> ["mcp__claude_ai_Gmail__search_threads", ...]
+
+
+def connector_tools(servers: list[dict]) -> dict[str, list[str]]:
+    """Full tool names per connected claude.ai server, from get_mcp_status()."""
+    found = {}
     for server in servers:
+        if not server["name"].startswith("claude.ai ") or server.get("status") != "connected":
+            continue
         prefix = "mcp__" + re.sub(r"[^A-Za-z0-9_-]", "_", server["name"]) + "__"
-        for tool in server.get("tools") or []:
-            name = tool["name"] if isinstance(tool, dict) else tool
-            full = prefix + name
-            if registry.classify(full) != "read" or (full.startswith(registry.PREFIX) and name not in LOCAL_TOOLS) \
-                    or full.startswith(registry.ASSETS_PREFIX):
-                hidden.append(full)
-    return hidden
+        found[server["name"]] = [prefix + (t["name"] if isinstance(t, dict) else t) for t in server.get("tools") or []]
+    return found
 
 
 class ClaudeCodeBrain:
     def __init__(self, model: ModelAlias = "sonnet", can_use_tool: CanUseTool | None = None) -> None:
-        # "claude" (Pro login), "omniroute" (gateway), or "ollama" (local model, scheduled jobs only)
+        # "claude" (Pro login), "omniroute" (gateway), or "ollama" (local model: chat and jobs)
         self.provider = PROVIDER
         self.gateway_model = GATEWAY_MODEL  # picked in the app (OmniRoute only)
-        # A Claude alias (haiku / sonnet / opus), or a gateway model on OmniRoute.
-        self._model: str = model if self.provider == "claude" else self.gateway_model
+        self.local_model = OLLAMA_MODEL  # picked in the app (Ollama only)
+        # Ollama only: what's switched on (see capabilities.py), whether this is a scheduled job
+        # (which may only look things up, plus its own "allow" list), and what the user actually
+        # said, without the notes Ultron puts in front of it.
+        self.groups: set[str] = set()
+        self.background = False
+        self.allow: tuple[str, ...] = ()
+        self.only: set[str] | None = None  # Ollama only: exactly these of Ultron's tools (initiative.py)
+        self.said = ""
+        self.on_groups = None  # called when the groups change (main.py tells the pages)
+        # A Claude alias (haiku / sonnet / opus), or the gateway / local model.
+        self._model: str = model if self.provider == "claude" else self._fixed_model()
         self._can_use_tool = can_use_tool  # the confirmation gate for 'act' tools
         self._client: ClaudeSDKClient | None = None
         self._lock = asyncio.Lock()  # one turn at a time
@@ -107,6 +132,30 @@ class ClaudeCodeBrain:
         # False when Claude Code started without the claude.ai connectors (Gmail, ...).
         self._has_connectors = True
         self._connector_retry_at = 0.0
+
+    @property
+    def looks_only(self) -> bool:
+        """The local model gets no tool that changes something: a scheduled job, or JARVIS_OLLAMA_CHANGES=none."""
+        return self.background or (self.provider == "ollama" and config.OLLAMA_CHANGES == "none")
+
+    def _groups_changed(self) -> None:
+        if self.on_groups:
+            self.on_groups()
+
+    async def set_groups(self, names: set[str]) -> None:
+        """Switch the local model's tool groups on or off by hand (the tools panel). Ultron's own
+        tools can't be added to a running session, so the next message starts it again."""
+        names = {n for n in names if n in capabilities.BY_NAME}
+        async with self._lock:  # after the reply in progress
+            if names == self.groups:
+                return
+            self.groups = names
+            await self.close()
+        self._groups_changed()
+
+    def _fixed_model(self) -> str:
+        """The model of a provider that doesn't route between aliases."""
+        return self.local_model if self.provider == "ollama" else self.gateway_model
 
     @property
     def session_id(self) -> str | None:
@@ -124,7 +173,10 @@ class ClaudeCodeBrain:
         return ClaudeAgentOptions(
             # Replaces Claude Code's coding prompt. Your school notes and what Ultron remembers
             # about you are added each time a conversation starts.
-            system_prompt=JARVIS_SYSTEM_PROMPT + school_block() + memory_store.prompt_block() + memory_store.conversations_block() + PERSONA_REMINDER,
+            system_prompt=(
+                JARVIS_SYSTEM_PROMPT + school_block() if not local
+                else capabilities.system_prompt(self.groups) + (school_block() if "school" in self.groups else "")
+            ) + memory_store.prompt_block() + memory_store.conversations_block() + PERSONA_REMINDER,
             model=self._model,
             # Thinking was the biggest use of the Pro limit (see .env). Gateway models
             # may not understand the setting, so it's only sent to Claude.
@@ -133,10 +185,17 @@ class ClaudeCodeBrain:
             # WebSearch runs on Anthropic's servers, and there are no connectors to search.
             tools=registry.builtin_tools() if on_claude else ["WebFetch"],
             # belt and braces; ask_expert calls Claude Opus, which a gateway doesn't have
-            disallowed_tools=BLOCKED_TOOLS if on_claude else [*BLOCKED_TOOLS, registry.PREFIX + "ask_expert",
-                                                              *(_local_hidden if local else ())],
+            disallowed_tools=BLOCKED_TOOLS if on_claude else [
+                *BLOCKED_TOOLS,
+                registry.PREFIX + "ask_expert",
+                *(self._hidden_connector_tools() if local else ()),
+            ],
             hooks=registry.hooks(),  # e.g. WebFetch may not reach local addresses
-            mcp_servers=registry.mcp_servers(),  # Ultron's own tools (ask_expert, ...)
+            # Ultron's own tools (ask_expert, ...); the local model only gets what it needs now
+            mcp_servers=registry.mcp_servers(
+                (self.only if self.only is not None else capabilities.visible_tools(self.groups, self.looks_only, self.allow))
+                if local else None
+            ),
             allowed_tools=registry.auto_allowed(),  # 'read' tools run without asking
             can_use_tool=self._can_use_tool,  # every other tool goes through the gate
             env={
@@ -172,6 +231,10 @@ class ClaudeCodeBrain:
             resume=self._session_id,
         )
 
+    def _hidden_connector_tools(self) -> list[str]:
+        return [t for tools in _discovered.values() for t in tools
+                if not capabilities.tool_visible(t, self.looks_only, self.allow)]
+
     async def _connect(self) -> ClaudeSDKClient:
         if self._client is None:
             if self.provider != "ollama":
@@ -181,12 +244,19 @@ class ClaudeCodeBrain:
             self._client = client
             log.info("Claude Code session started (provider=%s, model=%s)", self.provider, self._model)
             await self._wait_for_connectors(client)
-            if self.provider == "ollama" and not _local_hidden:
+            if self.provider == "ollama":
                 servers = (await client.get_mcp_status()).get("mcpServers", [])
-                _local_hidden.extend(hidden_for_local(s for s in servers if s.get("status") == "connected"))
-                log.info("Local jobs: hiding %d tools; starting again without them", len(_local_hidden))
-                await self.close()
-                return await self._connect()
+                # Tools we hadn't seen (a connector's first time on, or it gained some) were visible in
+                # this session, so start again without the ones the model doesn't need. The list only
+                # grows: a status that leaves out the tools we hid must not make us forget them.
+                grew = {k: sorted(set(v) | set(_discovered.get(k, ())))
+                        for k, v in connector_tools(servers).items() if set(v) - set(_discovered.get(k, ()))}
+                if grew:
+                    _discovered.update(grew)
+                    _save_discovered()
+                    log.info("Local model: new tools in %s; starting again without the ones it doesn't need", ", ".join(grew))
+                    await self.close()
+                    return await self._connect()
         return self._client
 
     async def _wait_for_connectors(self, client: ClaudeSDKClient) -> None:
@@ -238,7 +308,7 @@ class ClaudeCodeBrain:
     async def _apply_connector_choice(self, client: ClaudeSDKClient, servers: list) -> None:
         """Switch claude.ai connectors on or off to match JARVIS_CONNECTORS (.env).
         Claude Code remembers the switch, so both directions are needed."""
-        chosen = OLLAMA_CONNECTORS if self.provider == "ollama" else CONNECTORS
+        chosen = capabilities.connectors_for(self.groups) if self.provider == "ollama" else CONNECTORS
         for server in servers:
             name = server.get("name", "")
             if not name.startswith("claude.ai "):
@@ -273,6 +343,14 @@ class ClaudeCodeBrain:
         async with self._lock:
             finished = stopped = False
             try:
+                if self.provider == "ollama" and not self.background:
+                    new = capabilities.match(self.said or text) - self.groups
+                    if new:  # Ultron's own tools can't be added to a running session: start it again
+                        log.info("Local model: switching on %s", ", ".join(sorted(new)))
+                        self.groups |= new
+                        self._groups_changed()
+                        await self.close()
+                self.said = ""
                 if model != self._model and self.provider != "claude":
                     # Switching model in a running Claude Code asks the gateway to confirm
                     # the name, and OmniRoute keeps its model list behind its own key. So
@@ -405,7 +483,10 @@ class ClaudeCodeBrain:
             if provider:
                 self.provider = provider
             self._session_id = resume
-            self._model = "sonnet" if self.provider == "claude" else self.gateway_model
+            if not self.background:
+                self.groups = set()
+                self._groups_changed()
+            self._model = "sonnet" if self.provider == "claude" else self._fixed_model()
             self.context_tokens = 0
             self.last_active = 0.0
         log.info("Started a %s conversation (provider=%s)", "saved" if resume else "new", self.provider)
