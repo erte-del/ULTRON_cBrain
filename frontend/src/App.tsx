@@ -264,6 +264,7 @@ export default function App() {
             modelOverride={ultron.modelOverride}
             onModel={ultron.setModelOverride}
             onGatewayModel={ultron.setGatewayModel}
+            onOllamaModel={ultron.setOllamaModel}
           />
           <LogPanel log={ultron.log} />
           <TerminalPanel busy={ultron.busy} activeTool={ultron.activeTool} connection={ultron.connection} />

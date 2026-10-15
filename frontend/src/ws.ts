@@ -12,13 +12,15 @@ const WS_URL = API_BASE.replace(/^http/, 'ws') + '/ws'
 const onPhone = !['127.0.0.1', 'localhost'].includes(location.hostname)
 
 export type ModelAlias = 'haiku' | 'sonnet' | 'opus'
-export type Provider = 'claude' | 'omniroute'
+export type Provider = 'claude' | 'omniroute' | 'ollama'
 
 export interface BrainSettings {
   provider: Provider
   gateway_url: string
   gateway_model: string // the OmniRoute model in use, e.g. "groq/openai/gpt-oss-120b"
   gateway_models: string[] // the ones you can switch between (JARVIS_GATEWAY_MODELS)
+  ollama_model: string // the local model in use, e.g. "ultron-qwen3-14b"
+  ollama_models: string[] // the ones installed in Ollama that Ultron can chat with
 }
 
 export interface UsageWindow {
@@ -121,7 +123,7 @@ export type ClientEvent =
   | { type: 'user.voice'; mode: ListenMode } // what the mic is for (the mic itself goes as binary frames)
   | { type: 'user.confirm'; id: string; approved: boolean }
   | { type: 'user.select_image'; id: string | null; version?: number }
-  | { type: 'settings.update'; model_override?: ModelAlias | null; provider?: Provider; gateway_model?: string }
+  | { type: 'settings.update'; model_override?: ModelAlias | null; provider?: Provider; gateway_model?: string; ollama_model?: string }
   | { type: 'user.new_chat' }
   | { type: 'user.greet' } // "Awake and ready, sir." in Ultron's voice
   | { type: 'user.stop' }
@@ -422,10 +424,14 @@ function logLine(state: ChatState, action: Action): Omit<LogLine, 'id' | 'time'>
           return { text: 'SAVED CHAT LOADED', tone: 'ok' }
         case 'settings.state':
           if (state.settings?.provider !== ev.provider) {
-            return { text: `BRAIN · ${ev.provider === 'claude' ? 'CLAUDE (PRO LOGIN)' : `OMNIROUTE (${ev.gateway_model})`}` }
+            const brain = { claude: 'CLAUDE (PRO LOGIN)', omniroute: `OMNIROUTE (${ev.gateway_model})`, ollama: `OLLAMA (${ev.ollama_model})` }
+            return { text: `BRAIN · ${brain[ev.provider]}` }
           }
           if (ev.provider === 'omniroute' && state.settings?.gateway_model !== ev.gateway_model) {
             return { text: `MODEL · ${ev.gateway_model.toUpperCase()}` }
+          }
+          if (ev.provider === 'ollama' && state.settings?.ollama_model !== ev.ollama_model) {
+            return { text: `MODEL · ${ev.ollama_model.toUpperCase()}` }
           }
           return null
         case 'error':
@@ -799,6 +805,10 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
     socketRef.current?.send({ type: 'settings.update', gateway_model })
   }, [])
 
+  const setOllamaModel = useCallback((ollama_model: string) => {
+    socketRef.current?.send({ type: 'settings.update', ollama_model })
+  }, [])
+
   const newChat = useCallback(() => {
     socketRef.current?.send({ type: 'user.new_chat' })
   }, [])
@@ -852,5 +862,5 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
   const setStageTab = useCallback((tab: string) => dispatch({ kind: 'tab', tab }), [])
   const closeTerminal = useCallback((id: string) => dispatch({ kind: 'closeTerminal', id }), [])
 
-  return { ...state, sendText, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
+  return { ...state, sendText, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setOllamaModel, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
 }

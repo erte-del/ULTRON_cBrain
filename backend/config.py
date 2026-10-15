@@ -139,7 +139,9 @@ if PC_URL and not re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net", PC
 #   omniroute - OmniRoute (npm i -g omniroute), a gateway to other providers' models.
 #               Doesn't use your Pro limit. The claude.ai connectors (Gmail, ...) stay
 #               off, so your emails never go to those providers.
-PROVIDERS = ("claude", "omniroute")
+#   ollama    - a model on this computer (JARVIS_OLLAMA_MODEL), free and offline. Only the
+#               connectors in JARVIS_OLLAMA_CONNECTORS are on; nothing leaves this machine.
+PROVIDERS = ("claude", "omniroute", "ollama")
 PROVIDER = os.getenv("JARVIS_PROVIDER", "claude").strip().lower()
 if PROVIDER not in PROVIDERS:
     raise SystemExit(f"JARVIS_PROVIDER={PROVIDER!r}: use {' or '.join(PROVIDERS)}")
@@ -161,8 +163,9 @@ if not GATEWAY_MODELS:
 # Claude Code's own sonnet / opus / haiku names (e.g. for WebFetch) go to this one.
 GATEWAY_MODEL = GATEWAY_MODELS[0]
 
-# A local model (Ollama) for scheduled jobs, so background work doesn't use the Pro limit.
-# Your own chats always stay on the brain you picked. "" = jobs run on that brain too.
+# A local model (Ollama): runs scheduled jobs so background work doesn't use the Pro limit,
+# and is the default for chats when you pick Ollama in the app (gear icon).
+# "" = jobs run on the brain you picked.
 # Jobs with an "allow" list (they change things) or "brain": "claude" in jobs.json stay on Claude.
 OLLAMA_URL = (os.getenv("JARVIS_OLLAMA_URL") or "http://localhost:11434").strip().rstrip("/")
 OLLAMA_MODEL = os.getenv("JARVIS_OLLAMA_MODEL", "").strip()
@@ -170,10 +173,11 @@ OLLAMA_MODEL = os.getenv("JARVIS_OLLAMA_MODEL", "").strip()
 # login along to Ollama (which ignores it). It must never leave this machine.
 if re.match(r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$", OLLAMA_URL) is None:
     raise SystemExit(f"JARVIS_OLLAMA_URL={OLLAMA_URL!r}: must be on this machine, e.g. http://localhost:11434")
-# The claude.ai connectors local jobs may use. Fewer = less for a small model to read.
+# The claude.ai connectors the local model may use at all. None are on at the start: one
+# switches on when the request (or job) mentions it. See brain/capabilities.py.
 OLLAMA_CONNECTORS = [
     c.strip().lower()
-    for c in os.getenv("JARVIS_OLLAMA_CONNECTORS", "Gmail, TickTick, Google Drive, Google Calendar, Shopify").split(",")
+    for c in os.getenv("JARVIS_OLLAMA_CONNECTORS", "Gmail, TickTick, Google Drive, Google Calendar, Shopify, Vercel, Spotify").split(",")
     if c.strip()
 ]
 

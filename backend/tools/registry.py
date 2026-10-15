@@ -23,7 +23,7 @@ from claude_agent_sdk import HookMatcher, SdkMcpTool, create_sdk_mcp_server
 
 from storage import job_store, memory_store
 
-from . import connectors, important, mac, web
+from . import connectors, important, lenient, mac, web
 from .amazon import amazon_change, amazon_read
 from .chat import new_chat
 from .capture import capture
@@ -326,12 +326,14 @@ def _always_load():
         claude_agent_sdk._build_meta = original
 
 
-def mcp_servers() -> dict[str, Any]:
-    """The in-process MCP server that exposes Ultron's tools to Claude Code."""
+def mcp_servers(only: set[str] | None = None) -> dict[str, Any]:
+    """The in-process MCP server that exposes Ultron's tools to Claude Code. `only` (short
+    names) leaves the rest out: Claude Code's disallowed_tools doesn't hide these."""
     with _always_load():
-        server = create_sdk_mcp_server(SERVER_NAME, tools=[t.tool for t in TOOLS])
+        server = create_sdk_mcp_server(SERVER_NAME, tools=[t.tool if only is None else lenient.relax(t.tool)  # a local model slips on strict schemas
+                                                  for t in TOOLS if only is None or t.tool.name in only])
     servers: dict[str, Any] = {SERVER_NAME: server}
-    if config.ASSETS_3D_MCP_URL:
+    if config.ASSETS_3D_MCP_URL and only is None:  # a local model has no room for its ~25 tools
         servers[ASSETS_SERVER] = {"type": "http", "url": config.ASSETS_3D_MCP_URL}
     return servers
 

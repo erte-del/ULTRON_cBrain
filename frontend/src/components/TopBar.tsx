@@ -104,6 +104,7 @@ function SavedChats(props: Pick<TopBarProps, 'savedChats' | 'maxSavedChats' | 'c
                 <span className="provider-note">
                   {new Date(chat.saved_at * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                   {chat.provider === 'omniroute' && ' · OmniRoute'}
+                  {chat.provider === 'ollama' && ' · Ollama'}
                 </span>
               </button>
               <button
@@ -399,7 +400,7 @@ function Settings({ settings, onProvider }: Pick<TopBarProps, 'settings' | 'onPr
           <div className="settings-head">BRAIN</div>
           <button
             type="button"
-            className={`provider${settings?.provider !== 'omniroute' ? ' active' : ''}`}
+            className={`provider${(settings?.provider ?? 'claude') === 'claude' ? ' active' : ''}`}
             onClick={() => choose('claude')}
           >
             <span className="provider-name">Claude · Pro login</span>
@@ -417,6 +418,17 @@ function Settings({ settings, onProvider }: Pick<TopBarProps, 'settings' | 'onPr
               Your OmniRoute models ({settings?.gateway_models.map((m) => gatewayModelName(m).provider).join(', ')}) through{' '}
               {settings?.gateway_url ?? 'OmniRoute'}. Switch between them with the model buttons.
               Doesn't use your Pro limit. Connectors and web search are off, and tools may work less reliably.
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`provider${settings?.provider === 'ollama' ? ' active' : ''}`}
+            onClick={() => choose('ollama')}
+          >
+            <span className="provider-name">Ollama · this computer</span>
+            <span className="provider-note">
+              A local model ({settings?.ollama_model || 'ultron-qwen3-14b'}). Free, works offline, nothing leaves this computer.
+              Slower and less capable than Claude: no web search, only your everyday connectors, and fewer tools.
             </span>
           </button>
           <div className="settings-foot">Switching starts a new conversation.</div>
@@ -461,7 +473,9 @@ export default function TopBar({
           <div className="readout-val">
             {settings?.provider === 'omniroute'
               ? `OMNIROUTE · ${gatewayModelName(settings.gateway_model).provider.toUpperCase()}`
-              : 'CLAUDE · PRO'}
+              : settings?.provider === 'ollama'
+                ? `OLLAMA · ${settings.ollama_model.replace(/:latest$/, '').toUpperCase()}`
+                : 'CLAUDE · PRO'}
           </div>
         </div>
       </div>

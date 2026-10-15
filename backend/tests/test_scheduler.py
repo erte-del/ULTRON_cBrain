@@ -197,8 +197,8 @@ class LocalModelTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((self.calls, self.pushed), ([True], [("Briefing", "Two meetings.\n\n(qwen3:8b)")]))
         self.assertEqual(job_store.get(made["id"])["last_text"], "Two meetings.")  # no footer
 
-    async def test_jobs_that_change_things_or_ask_for_claude_stay_on_claude(self):
-        self.assertFalse(scheduler.runs_local({"allow": ["mcp__claude_ai_TickTick__create_task"]}))
+    async def test_only_jobs_that_ask_for_claude_stay_on_claude(self):
+        self.assertTrue(scheduler.runs_local({"allow": ["mcp__claude_ai_TickTick__create_task"]}))
         self.assertFalse(scheduler.runs_local({"brain": "claude"}))
         self.assertTrue(scheduler.runs_local({}))
         with mock.patch.object(config, "OLLAMA_MODEL", ""):

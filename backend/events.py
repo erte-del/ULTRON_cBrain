@@ -13,7 +13,7 @@ Client -> server:
     user.select_image {id, version} | {id: null}   you clicked an image on the canvas
     settings.update  {model_override: "haiku" | "sonnet" | "opus" | null}
     user.new_chat    {}                   start a fresh conversation
-    settings.update  {provider: "claude" | "omniroute"}   switch brain (starts a new chat)
+    settings.update  {provider: "claude" | "omniroute" | "ollama"}   switch brain (starts a new chat)
     settings.update  {gateway_model}      pick one of the OmniRoute models
     user.save_chat   {messages, cards}    save this chat (at most 5; see storage/chat_store.py)
     user.load_chat   {id}                 continue a saved chat
@@ -47,7 +47,7 @@ Server -> client:
                           runs: [{job_id, title, time, status, text}]}   scheduled jobs; runs newest first,
                          status = told | nothing | skipped | failed
     notification         {title, text, time}   a scheduled job is telling you something
-    settings.state       {provider, gateway_url, gateway_model, gateway_models}   the brain in use
+    settings.state       {provider, gateway_url, gateway_model, gateway_models, ollama_model, ollama_models}   the brain in use
     usage.update         {provider, windows, tokens, context_tokens}   see usage.py
     canvas.card          {id, kind, title, data}  show (or replace) a canvas card;
                          kind "image": data = {image_id, current, credit, versions[]}
@@ -127,13 +127,18 @@ def confirm_resolved(request_id: str, status: str) -> Event:
     return {"type": "confirm.resolved", "id": request_id, "status": status}
 
 
-def settings_state(provider: str, gateway_url: str, gateway_model: str, gateway_models: list[str]) -> Event:
+def settings_state(
+    provider: str, gateway_url: str, gateway_model: str, gateway_models: list[str],
+    ollama_model: str = "", ollama_models: list[str] | None = None,
+) -> Event:
     return {
         "type": "settings.state",
         "provider": provider,
         "gateway_url": gateway_url,
         "gateway_model": gateway_model,
         "gateway_models": gateway_models,
+        "ollama_model": ollama_model,
+        "ollama_models": ollama_models or [],
     }
 
 

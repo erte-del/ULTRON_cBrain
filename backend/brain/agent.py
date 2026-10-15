@@ -138,6 +138,8 @@ class Ultron:
         if self.brain.provider == "omniroute":
             # The gateway model you picked in the app (no automatic routing).
             r = Route(self.brain.gateway_model, "OmniRoute")
+        elif self.brain.provider == "ollama":
+            r = Route(self.brain.local_model, "Ollama, on this computer")
         else:
             r = route(text, model_override, voice, self.brain.model, self.brain.context_tokens)
         log.info("Route -> %s (%s)", r.model, r.reason)
@@ -172,6 +174,7 @@ class Ultron:
         tool_calls: dict[str, ToolStart] = {}  # tool id -> call
         looked_at: list[web.Source] = []  # pages the web tools saw
 
+        self.brain.said = text  # the local model switches tools on from what you said, not the notes
         async with aclosing(self.brain.send(prompt, model=r.model)) as stream:
             async for ev in stream:
                 match ev:
@@ -212,6 +215,13 @@ class Ultron:
 
                     case Error() if self.brain.provider == "omniroute":
                         yield events.error(gateway.explain_error(ev.message), reply_id)
+
+                    case Error() if self.brain.provider == "ollama":
+                        yield events.error(
+                            f"{ev.message}\n\nThe local model didn't answer. Check that Ollama is running and "
+                            f"{self.brain.local_model} is installed (ollama list), or switch back to Claude in settings.",
+                            reply_id,
+                        )
 
                     case _:
                         yield events.from_brain(ev, reply_id)

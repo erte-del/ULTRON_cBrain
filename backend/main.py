@@ -21,6 +21,7 @@ import config
 import events
 import gateway
 import hub
+import ollama
 import scheduler
 import terminal
 from brain.agent import Ultron
@@ -61,7 +62,11 @@ async def lifespan(app: FastAPI):
     config.set_login(brain.provider)
     await asyncio.to_thread(memory_store.mirror)  # the vault's memory notes match memory.json
     warm_up = asyncio.create_task(brain.start())  # ready before your first message
-    scheduler.current_brain = lambda: (brain.provider, brain.gateway_model)
+    scheduler.current_brain = lambda: (brain.provider, brain.local_model if brain.provider == "ollama" else brain.gateway_model)
+    if brain.provider == "ollama":  # JARVIS_PROVIDER=ollama
+        problem = await use_ollama()
+        if problem:
+            log.warning("%s", problem)
     jobs = asyncio.create_task(scheduler.loop())
     ig_token = asyncio.create_task(instagram.refresh_loop())
     ig_queue = asyncio.create_task(instagram.queue_loop())
@@ -486,8 +491,31 @@ async def load_voice(send: hub.Sender) -> None:
         await send(events.error(f"The speech model didn't load: {e}"))
 
 
+ollama_models: list[str] = []  # what you can chat with, refreshed whenever Ollama is picked
+
+
+async def use_ollama() -> str | None:
+    """Look at what Ollama has and settle on the chat model. Returns a problem to show, or None."""
+    installed = await asyncio.to_thread(ollama.installed)
+    if installed is None:
+        return "Ollama isn't running. Open the Ollama app (or run: ollama serve), then pick it again."
+    ollama_models[:] = ollama.chat_models(installed)
+    if not (brain.local_model and ollama.has(ollama_models, brain.local_model)):
+        chosen = ollama.default_model(installed)
+        if chosen is None:
+            return ("Ollama has no Ultron model yet. Make one with: ollama pull qwen3:14b && "
+                    "python scripts/make_ollama_model.py")
+        brain.local_model = chosen
+        if chosen not in ollama_models:
+            ollama_models.append(chosen)
+    return None
+
+
 def settings_event() -> events.Event:
-    return events.settings_state(brain.provider, config.GATEWAY_URL, brain.gateway_model, config.GATEWAY_MODELS)
+    return events.settings_state(
+        brain.provider, config.GATEWAY_URL, brain.gateway_model, config.GATEWAY_MODELS,
+        brain.local_model, ollama_models,
+    )
 
 
 async def start_new_chat(say_to: hub.Sender | None = None, by_ultron: bool = False) -> None:
@@ -601,6 +629,11 @@ async def switch_provider(provider: str) -> None:
     if provider == "omniroute" and not await asyncio.to_thread(gateway.running):
         await hub.emit(events.notice("Starting OmniRoute…"))
         problem = await asyncio.to_thread(gateway.start)
+        if problem:
+            await hub.emit(events.error(problem))
+            return
+    if provider == "ollama":
+        problem = await use_ollama()
         if problem:
             await hub.emit(events.error(problem))
             return
@@ -759,6 +792,13 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                         await hub.emit(settings_event())
                     else:
                         await send(events.error(f"Unknown OmniRoute model: {msg['gateway_model']}"))
+                if "ollama_model" in msg:
+                    if brain.provider == "ollama" and await use_ollama() is None \
+                            and msg["ollama_model"] in ollama_models:
+                        brain.local_model = msg["ollama_model"]
+                        await hub.emit(settings_event())
+                    else:
+                        await send(events.error(f"Can't use that Ollama model: {msg['ollama_model']}"))
                 if "model_override" in msg:
                     override = msg.get("model_override")
                     if override is None or override in MODELS:

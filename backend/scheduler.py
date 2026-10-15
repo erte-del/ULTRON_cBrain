@@ -4,8 +4,9 @@ A loop checks every half minute which jobs are due. Each run is its own short
 conversation, separate from yours, and tells you the result through notify.py.
 
 Jobs run on the local model (JARVIS_OLLAMA_MODEL) when one is set, except jobs that
-change things ("allow" list) or say "brain": "claude". If the local model is down or
-fails twice, the job runs on Claude instead, and the notification says so.
+say "brain": "claude". If the local model is down or fails twice, the job runs on Claude
+instead, and the notification says so. The local model starts each job with no connectors
+and switches on the ones the job's text mentions (brain/capabilities.py).
 
 Safe defaults:
   - a job can only use 'read' tools: anything that sends, creates, changes or deletes is
@@ -33,6 +34,7 @@ import notify
 import presence
 import usage
 from brain.base import Error, TextDelta, ToolStart
+from brain import capabilities
 from brain.brain_claudecode import ClaudeCodeBrain
 from storage import job_store
 from tools import registry
@@ -115,7 +117,7 @@ def job_prompt(job: dict) -> str:
 
 
 def runs_local(job: dict) -> bool:
-    return bool(config.OLLAMA_MODEL) and not job.get("allow") and job.get("brain") != "claude"
+    return bool(config.OLLAMA_MODEL) and job.get("brain") != "claude"
 
 
 def ollama_up() -> bool:
@@ -129,10 +131,15 @@ def ollama_up() -> bool:
 async def _ask(job: dict, local: bool = False) -> str:
     """Run the job's prompt in a fresh conversation; the reply text. RuntimeError if it failed."""
     provider, gateway_model = ("ollama", config.OLLAMA_MODEL) if local else current_brain()
+    if provider == "ollama" and not local:  # you're chatting on Ollama, but this job is meant for Claude
+        provider, gateway_model = "claude", ""
     # Watchers run often, so they get the cheapest model.
     model = ("haiku" if job["every_min"] else "sonnet") if provider == "claude" else gateway_model
     brain = ClaudeCodeBrain(can_use_tool=_gate(job))
     brain.provider = provider
+    if provider == "ollama":  # the local model starts with nothing: switch on what this job needs
+        brain.background, brain.allow = True, tuple(job.get("allow", ()))
+        brain.groups = capabilities.match(f"{job['title']} {job['prompt']}") | capabilities.groups_for_tools(brain.allow)
     text = ""
     try:
         async with asyncio.timeout(JOB_TIMEOUT_S):
