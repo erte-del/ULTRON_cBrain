@@ -219,8 +219,9 @@ class Ultron:
                     case Error() if self.brain.provider == "ollama":
                         yield events.error(
                             f"{ev.message}\n\nThe local model didn't answer. Check that Ollama is running and "
-                            f"{self.brain.local_model} is installed (ollama list), or switch back to Claude in settings.",
+                            f"{self.brain.local_model} is installed (ollama list). You can try again, or continue with Claude.",
                             reply_id,
+                            fallback=True,
                         )
 
                     case _:

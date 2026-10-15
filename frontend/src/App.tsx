@@ -235,6 +235,9 @@ export default function App() {
             onSend={send}
             onStop={ultron.stop}
             onConfirm={ultron.answerConfirm}
+            onFallback={ultron.fallback}
+            groups={ultron.settings?.provider === 'ollama' ? ultron.groups : null}
+            onGroups={ultron.setGroups}
             voiceOn={voiceOn}
             onVoice={setVoice}
           />

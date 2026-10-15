@@ -330,7 +330,7 @@ only look things up.
 - **Look at your screen**: share your screen and ask about what's on it, in a small floating
   window (⌃⌥U in `Ultron.app`).
 - **Read your files**: drop images, PDFs, text, code, CSV or JSON into the chat.
-- **Three brains**: Claude (Pro), OmniRoute (Gemini, Groq, …) or Ollama (a model on this computer, free and offline), switched with the gear icon. Ollama chat has no web search, only your everyday connectors (`JARVIS_OLLAMA_CONNECTORS`) and a short list of read tools; it can't change things.
+- **Three brains**: Claude (Pro), OmniRoute (Gemini, Groq, …) or Ollama (a model on this computer, free and offline), switched with the gear icon. Ollama chat has no web search and only your everyday connectors (`JARVIS_OLLAMA_CONNECTORS`). What it may change is `JARVIS_OLLAMA_CHANGES`: `chat` (default) lets it add reminders, notes and memories in your chats, `none` makes it look things up only.
 
 ### Knowing you
 
@@ -517,20 +517,37 @@ only look things up.
   connectors, web search and `ask_expert` are off, so your emails never reach other providers.
 - **Ollama (optional).** Install from ollama.com, then `ollama pull qwen3:14b && python
   scripts/make_ollama_model.py` (32k window, and no "thinking" before replies: that took ~20 s each).
-  Set `JARVIS_OLLAMA_MODEL=ultron-qwen3-14b` and **every scheduled job runs on it** (a job with
-  `"brain": "claude"` stays on Claude); pick **Ollama** under the gear icon to chat with it when you
+  Set `JARVIS_OLLAMA_MODEL=ultron-qwen3-14b` and **every scheduled job that only looks things up runs on it** (a job with
+  `"brain": "claude"`, or one allowed to change things, stays on Claude unless `JARVIS_OLLAMA_CHANGES=all`); pick **Ollama** under the gear icon to chat with it when you
   don't want to spend your Pro limit. It starts each chat or job with a few basic tools and **no
   connectors**: tools, connectors and prompt sections switch on when the message (or the job's text)
   mentions them, e.g. "email", "calendar", "tasks", "Vercel", "Shopify", "homework", "Mac"
-  (`backend/brain/capabilities.py` lists the groups). Only the connectors in `JARVIS_OLLAMA_CONNECTORS`
+  (`backend/brain/capabilities.py` lists the groups; the words are kept narrow so "drive to the airport",
+  "unit tests" or "play it safe" don't switch on Google Drive, homework or Spotify). Only the connectors in `JARVIS_OLLAMA_CONNECTORS`
   can switch on, Vercel and Shopify are look-up only, and jobs can't change anything unless their
   `allow` list says so. No web search or `ask_expert`. Windows: `winget install Ollama.Ollama`, then the
   same two commands.
+  Ultron remembers each connector's tool list in `backend/storage/ollama_connector_tools.json`, so only a
+  connector's very first use (or one that gained tools) restarts the session an extra time, and it loads the
+  chat model into memory as soon as you pick Ollama. Ollama unloads idle models after 5 minutes by itself;
+  to keep it loaded longer, set `OLLAMA_KEEP_ALIVE=30m` where Ollama runs.
+  With Ollama picked, a **TOOLS** bar above the message box shows which groups are on right now ("Email · Calendar",
+  or "basics only"); open it to switch groups on or off yourself. A new chat starts again with the basics.
+  To check the whole chain live (Claude Code, Ollama, the tool groups) run `python scripts/smoke_ollama_brain.py`:
+  it sends three read-only messages (small talk, battery, a memory look-up) and checks the groups and tools.
+  Windows setup for the tools bar, the retry buttons and `JARVIS_OLLAMA_CHANGES`: nothing to install; the setting is
+  one line in `.env`.
+  If the local model fails (Ollama stopped, model missing), the error comes with two buttons: **Try again
+  on Ollama** sends your message again, **Continue with Claude** switches the brain and sends it there with
+  the last few messages in front, because Claude can't resume Ollama's conversation.
   Tool arguments from a local model are tidied before they run (`backend/tools/lenient.py`: `"Mon"`
   becomes `mon`, empty unused fields are dropped); Claude's tools are untouched. To compare local models
   on Ultron's real tools (nothing is executed), pull them and run
   `python scripts/bench_ollama_tools.py qwen3:14b gpt-oss:20b --runs 3` (`-v` shows the misses,
-  `--strict` turns the tidying off). In our runs on a 24 GB Mac `qwen3:14b` passed all 15 cases (3 runs),
+  `--strict` turns the tidying off). The benchmark also covers things that sound like a tool but aren't, connector tools
+  (Gmail, Calendar, TickTick: real names, simplified arguments) and multi-step cases where a canned tool result goes
+  back to the model, which must answer from it (`-k name` runs only matching cases). `--routing` needs no
+  model: it checks which tool groups each of ~30 sample messages switches on. In our runs on a 24 GB Mac `qwen3:14b` passed all 15 cases (3 runs),
   `gpt-oss:20b` 12 of 15 and `gemma4:e4b` only 8 (it said it had acted without calling the tool).
   `show_on_canvas` is only offered once a message needs it (any capability group, or words like "table" or
   "canvas"), because a model with nothing to show makes things up.

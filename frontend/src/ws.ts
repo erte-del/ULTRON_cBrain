@@ -97,7 +97,7 @@ export type ServerEvent =
   | { type: 'tool.started'; id: string; name: string; detail: string; label: string }
   | { type: 'tool.finished'; id: string; is_error: boolean }
   | { type: 'assistant.retry'; attempt: number; max: number; error: string }
-  | { type: 'error'; message: string; id?: string }
+  | { type: 'error'; message: string; id?: string; fallback?: boolean }
   | { type: 'notice'; message: string }
   | { type: 'confirm.request'; id: string; title: string; summary: string; details: [string, string][] }
   | { type: 'confirm.resolved'; id: string; status: ConfirmStatus }
@@ -115,10 +115,13 @@ export type ServerEvent =
   | { type: 'voice.wake'; text: string } // you said "Hey Ultron"; text = what followed
   | { type: 'voice.audio'; text: string; audio: string | null } // a sentence to say: base64 WAV, or null: the browser says it
   | ({ type: 'settings.state' } & BrainSettings)
+  | { type: 'ollama.groups'; on: string[]; all: ToolGroup[] }
   | ({ type: 'usage.update' } & UsageSnapshot)
 
 // Browser -> server
 export type ClientEvent =
+  | { type: 'user.groups'; on: string[] }
+  | { type: 'user.fallback'; action: 'retry' | 'claude'; text: string; files: string[]; history: { role: 'user' | 'assistant'; text: string }[] }
   | { type: 'user.text'; text: string; files?: string[]; location?: [number, number]; status?: PhoneStatus; voice?: boolean }
   | { type: 'user.voice'; mode: ListenMode } // what the mic is for (the mic itself goes as binary frames)
   | { type: 'user.confirm'; id: string; approved: boolean }
@@ -314,6 +317,11 @@ export class UltronSocket {
 // ---------------------------------------------------------------------------
 // Chat state: turns the event stream into a list of messages.
 
+export interface ToolGroup {
+  name: string
+  title: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'notice' | 'confirm'
@@ -325,8 +333,10 @@ export interface ChatMessage {
   expert?: boolean // Opus was consulted via ask_expert
   sources?: Source[]
   files?: string[] // role 'user': names of attached files
+  fileIds?: string[] // role 'user': their ids, to send the message again
   done?: boolean
   error?: string
+  fallback?: boolean // the local model failed: offer "try again" and "continue with Claude"
 }
 
 export interface TerminalTab {
@@ -347,6 +357,7 @@ interface ChatState {
   terminals: TerminalTab[] // open terminal tabs, oldest first
   selectedImage: ImageSelection | null
   settings: BrainSettings | null
+  groups: { on: string[]; all: ToolGroup[] } | null // Ollama: which tool groups are switched on
   usage: UsageSnapshot | null
   savedChats: SavedChat[]
   maxSavedChats: number
@@ -365,6 +376,7 @@ type Action =
   | { kind: 'override'; model: ModelAlias | null }
   | { kind: 'answer'; id: string; approved: boolean }
   | { kind: 'closeCard'; id: string }
+  | { kind: 'fallbackUsed'; id: string }
   | { kind: 'select'; selection: ImageSelection | null }
   | { kind: 'tab'; tab: string }
   | { kind: 'closeTerminal'; id: string }
@@ -461,8 +473,8 @@ function baseReducer(state: ChatState, action: Action): ChatState {
         ...state,
         busy: true,
         messages: [
-          ...state.messages,
-          { id: nextLocalId(), role: 'user', text: action.text, files: action.files.map((f) => f.name) },
+          ...state.messages.map((m) => (m.fallback ? { ...m, fallback: false } : m)), // a new message ends the old offer
+          { id: nextLocalId(), role: 'user', text: action.text, files: action.files.map((f) => f.name), fileIds: action.files.map((f) => f.id) },
         ],
       }
 
@@ -476,6 +488,9 @@ function baseReducer(state: ChatState, action: Action): ChatState {
           m.confirm ? { ...m, confirm: { ...m.confirm, status: action.approved ? 'approved' : 'denied' } } : m,
         ),
       }
+
+    case 'fallbackUsed':
+      return { ...state, messages: updateMessage(state.messages, action.id, (m) => ({ ...m, fallback: false })) }
 
     case 'closeCard': {
       const cards = state.cards.filter((c) => c.id !== action.id)
@@ -577,6 +592,14 @@ function baseReducer(state: ChatState, action: Action): ChatState {
           }
         case 'conversation.new': {
           if (ev.reason === 'button') return { ...state, messages: [] }
+          if (ev.reason === 'provider')
+            return {
+              ...state,
+              messages: [
+                ...state.messages,
+                { id: nextLocalId(), role: 'notice', info: true, text: 'Brain switched: this is a new conversation, and the new brain does not see the messages above.' },
+              ],
+            }
           if (ev.reason === 'ultron')
             return { ...state, messages: [{ id: nextLocalId(), role: 'notice', info: true, text: 'New chat started.' }] }
           // Started over by itself after a long break: say so above your new message.
@@ -652,6 +675,8 @@ function baseReducer(state: ChatState, action: Action): ChatState {
           const terminal = { id: `terminal-${++terminalCount}`, number: terminalCount, claude: ev.claude }
           return { ...state, terminals: [...state.terminals, terminal], stageTab: terminal.id }
         }
+        case 'ollama.groups':
+          return { ...state, groups: { on: ev.on, all: ev.all } }
         case 'settings.state': {
           const { type: _type, ...settings } = ev
           return { ...state, settings }
@@ -669,7 +694,11 @@ function baseReducer(state: ChatState, action: Action): ChatState {
           if (ev.id) {
             return {
               ...state,
-              messages: updateMessage(state.messages, ev.id, (m) => ({ ...m, error: ev.message })),
+              messages: updateMessage(
+                state.messages.map((m) => (m.id !== ev.id && m.fallback ? { ...m, fallback: false } : m)), // only the latest offers it
+                ev.id,
+                (m) => ({ ...m, error: ev.message, fallback: ev.fallback }),
+              ),
             }
           }
           return {
@@ -694,6 +723,7 @@ const initialState: ChatState = {
   terminals: [],
   selectedImage: null,
   settings: null,
+  groups: null,
   usage: null,
   savedChats: [],
   maxSavedChats: 5,
@@ -771,6 +801,29 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
     return true
   }, [])
 
+  // After an Ollama error: send the failed message again, on Ollama or on Claude (with the recent chat).
+  const messagesRef = useRef(state.messages)
+  useEffect(() => {
+    messagesRef.current = state.messages
+  }, [state.messages])
+  const fallback = useCallback((id: string, action: 'retry' | 'claude') => {
+    const all = messagesRef.current
+    const at = all.findIndex((m) => m.id === id)
+    const before = all.slice(0, at)
+    const last = before.map((m) => m.role).lastIndexOf('user') // the message that failed, even if it was only a file
+    if (at === -1 || last === -1) return
+    const failed = before[last]
+    const files = failed.fileIds ?? []
+    if (!failed.text.trim() && files.length === 0) return
+    const history = before
+      .slice(0, last)
+      .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.text.trim())
+      .map((m) => ({ role: m.role as 'user' | 'assistant', text: m.text }))
+    if (socketRef.current?.send({ type: 'user.fallback', action, text: failed.text, files, history })) {
+      dispatch({ kind: 'fallbackUsed', id })
+    }
+  }, [])
+
   const voiceMode = useCallback((mode: ListenMode) => {
     socketRef.current?.send({ type: 'user.voice', mode })
   }, [])
@@ -803,6 +856,10 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
 
   const setGatewayModel = useCallback((gateway_model: string) => {
     socketRef.current?.send({ type: 'settings.update', gateway_model })
+  }, [])
+
+  const setGroups = useCallback((on: string[]) => {
+    socketRef.current?.send({ type: 'user.groups', on })
   }, [])
 
   const setOllamaModel = useCallback((ollama_model: string) => {
@@ -862,5 +919,5 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
   const setStageTab = useCallback((tab: string) => dispatch({ kind: 'tab', tab }), [])
   const closeTerminal = useCallback((id: string) => dispatch({ kind: 'closeTerminal', id }), [])
 
-  return { ...state, sendText, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setOllamaModel, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
+  return { ...state, sendText, fallback, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setOllamaModel, setGroups, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
 }

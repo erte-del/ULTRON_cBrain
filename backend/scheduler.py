@@ -4,7 +4,8 @@ A loop checks every half minute which jobs are due. Each run is its own short
 conversation, separate from yours, and tells you the result through notify.py.
 
 Jobs run on the local model (JARVIS_OLLAMA_MODEL) when one is set, except jobs that
-say "brain": "claude". If the local model is down or fails twice, the job runs on Claude
+say "brain": "claude" and jobs that may change things (an "allow" list) unless
+JARVIS_OLLAMA_CHANGES=all. If the local model is down or fails twice, the job runs on Claude
 instead, and the notification says so. The local model starts each job with no connectors
 and switches on the ones the job's text mentions (brain/capabilities.py).
 
@@ -117,7 +118,8 @@ def job_prompt(job: dict) -> str:
 
 
 def runs_local(job: dict) -> bool:
-    return bool(config.OLLAMA_MODEL) and job.get("brain") != "claude"
+    # A job that may change things (an "allow" list) is unattended: it stays on Claude unless you said "all".
+    return bool(config.OLLAMA_MODEL) and job.get("brain") != "claude" and (not job.get("allow") or config.OLLAMA_CHANGES == "all")
 
 
 def ollama_up() -> bool:

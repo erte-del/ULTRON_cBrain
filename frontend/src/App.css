@@ -1584,6 +1584,44 @@
   border-color: var(--border) !important;
 }
 
+/* Ollama: the tool groups the local model has on */
+.tools-bar { padding: 0 12px 6px; font-size: 12px; }
+.tools-toggle {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text-dim); font: inherit; padding: 4px 10px; cursor: pointer; text-align: left;
+}
+.tools-label { letter-spacing: 0.08em; font-weight: 600; }
+.tools-on { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tools-panel { margin-top: 6px; }
+.tools-note { color: var(--text-dim); margin-bottom: 6px; }
+.tools-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tools-chip {
+  font: inherit; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--text-dim); border: 1px solid var(--border);
+}
+.tools-chip.on { color: var(--text); border-color: var(--accent); background: var(--accent-2); }
+
+/* Under an Ollama error: try again, or hand the message to Claude */
+.fallback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.fallback-actions button {
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.fallback-actions .btn-deny { border-color: var(--border); }
+.fallback-note { flex-basis: 100%; color: var(--text-dim); font-size: 12px; }
+
 /* "Thinking" dots before the first word arrives */
 .typing {
   display: flex;

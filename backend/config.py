@@ -181,6 +181,14 @@ OLLAMA_CONNECTORS = [
     if c.strip()
 ]
 
+# What the local model may change (the confirmation gate still asks about anything that reaches
+# other people). "none": it only looks things up. "chat" (default): it can also add a reminder, a
+# note, a memory... in your chats, but a scheduled job that is allowed to change things stays on
+# Claude. "all": those jobs run on the local model too.
+OLLAMA_CHANGES = os.getenv("JARVIS_OLLAMA_CHANGES", "chat").strip().lower()
+if OLLAMA_CHANGES not in ("none", "chat", "all"):
+    raise SystemExit(f"JARVIS_OLLAMA_CHANGES={OLLAMA_CHANGES!r}: use none, chat or all")
+
 # If any of these are set, Claude Code uses them instead of the Pro login.
 _API_AUTH_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")
 # Where Claude Code's model names go. Your own values (from .env) are kept for the

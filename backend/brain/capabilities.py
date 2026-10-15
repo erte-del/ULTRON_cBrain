@@ -46,60 +46,89 @@ CANVAS_TOOL = "show_on_canvas"
 CANVAS_PROMPT = ("About the canvas",)
 
 GROUPS: tuple[Group, ...] = (
-    Group("canvas", r"\bcanvas\b|\btables?\b|\bcharts?\b|\bshow me\b|\bdisplay\b|\bon (the )?screen\b",
+    # The words are deliberately narrow: a wrong hit loads tools and a connector the model then
+    # misuses, and restarts the session. "drive to the airport" is not Google Drive, "unit tests"
+    # are not homework, "play it safe" is not Spotify. tests/test_capabilities.py pins both sides.
+    Group("canvas", r"\bcanvas\b|\btables?\b|\bcharts?\b|\bon (the )?screen\b",
           (CANVAS_TOOL,), "", CANVAS_PROMPT),
-    Group("gmail", r"\be-?mails?\b|\binbox\b|\bgmail\b|\bunread\b|\bmail from\b", ("find_contact",), "Gmail",
+    Group("gmail", r"\be-?mails?\b|\binbox\b|\bgmail\b|\bunread (mail|messages?)\b|\bmail from\b", ("find_contact",), "Gmail",
           ("About the user's accounts", "About people")),
     Group("calendar", r"\bcalendar\b|\bmeetings?\b|\bappointments?\b|\bagenda\b|\bbriefing\b|\bwrap-?up\b"
-                      r"|\bweekly review\b|\bwhat'?s on\b|\bam i free\b|\bmy (day|schedule)\b|\bevents?\b|\bleave by\b",
+                      r"|\bweekly review\b|\bwhat'?s on\b|\bam i free\b|\bmy (day|schedule)\b"
+                      r"|\b(my|upcoming|today'?s|tomorrow'?s) events?\b|\b(any|what) events\b|\bevents? (today|tomorrow|this (week|weekend)|next week)\b"
+                      r"|\bleave by\b",
           (), "Google Calendar", ("About the calendar",)),
-    Group("tasks", r"\bremind\w*\b|\btasks?\b|\bto-?dos?\b|\bticktick\b|\bdue\b|\boverdue\b|\bdeadlines?\b"
-                   r"|\bbriefing\b|\bwrap-?up\b|\bweekly review\b",
+    Group("tasks", r"\bremind\w*\b|\btasks?\b|\bto-?dos?\b|\bticktick\b|\bdue (today|tomorrow|this|next|soon|on|by)\b|\bwhat'?s due\b|\bwhat is due\b"
+                   r"|\bdue (mon|tues|wednes|thurs|fri|satur|sun)day\b"
+                   r"|\boverdue\b|\bdeadlines?\b|\bbriefing\b|\bwrap-?up\b|\bweekly review\b",
           (), "TickTick", ("About reminders and tasks",)),
-    Group("drive", r"\bdrive\b|\bgoogle docs?\b|\bspreadsheets?\b|\bgoogle sheets?\b", (), "Google Drive", ()),
-    Group("vercel", r"\bvercel\b|\bdeploy\w*\b|\bbuilds?\b|\bproduction\b|\bruntime (logs?|errors?)\b", (), "Vercel", (),
+    Group("drive", r"\bgoogle drive\b|\bmy drive\b|\bin drive\b|\bgoogle docs?\b|\bspreadsheets?\b|\bgoogle sheets?\b",
+          (), "Google Drive", ()),
+    Group("vercel", r"\bvercel\b|\bdeploy\w*\b|\b(builds?|production) (fail\w*|errors?|logs?|status|broke\w*)\b"
+                    r"|\b(did|has|have) (my |the )?(latest |last )?build\b|\bruntime (logs?|errors?)\b", (), "Vercel", (),
           "About Vercel: you can only look things up. For \"did my latest deployment work\" call list_deployments "
           "with limit 1 and no state filter, and say its state (READY, ERROR, BUILDING). Use list_projects for project names."),
-    Group("shopify", r"\bshopify\b|\bmy store\b|\borders\b|\bmy orders?\b|\bproducts?\b|\binventory\b|\bsales\b", (), "Shopify", (),
+    Group("shopify", r"\bshopify\b|\bmy (shop|store)\b|\b(store|shop) (orders?|products?|inventory|sales|stock)\b"
+                     r"|\bmy (orders?|products?|inventory|sales)\b|\bstock levels?\b|\bhow many (orders|sales)\b", (), "Shopify", (),
           "About Shopify: you can only look things up (orders, products, stock, sales numbers)."),
-    Group("school", r"\bhomework\b|\bassignments?\b|\bexams?\b|\btests?\b|\bquiz\w*\b|\brevis\w+\b|\bsyllabus\b"
-                    r"|\btextbook\b|\blectures?\b|\bslides?\b|\bpowerpoint\b|\bteams\b|\ba-?levels?\b",
+    Group("school", r"\bhomework\b|\bassignments?\b|\bexams?\b|\b(upcoming|class|school|maths?|physics|chemistry|biology|english|history) tests?\b"
+                    r"|\btests? (tomorrow|today|next week|on (mon|tues|wednes|thurs|fri)\w*)\b"
+                    r"|\bquiz\w*\b|\brevis(e|ion|ing)\b|\bsyllabus\b"
+                    r"|\btextbook\b|\blectures?\b|\bslides?\b|\bpowerpoint\b|\ba-?levels?\b",
           ("check_homework", "exam_countdown", "syllabus", "textbook", "lectures", "make_slides", "open_slides"),
           "TickTick", ("About homework", "About revision", "About slides")),
-    Group("notes", r"\bnotes?\b|\bobsidian\b|\bvault\b", ("search_notes", "read_note", "write_note", "delete_note"),
+    Group("notes", r"\bmy notes?\b|\bobsidian\b|\bvault\b|\b(search|find|read|write|save|add|delete)\b.{0,20}\bnotes?\b|\bnotes? (on|about|for)\b", ("search_notes", "read_note", "write_note", "delete_note"),
           "", ("About notes",)),
-    Group("mac", r"\bmac\b|\bbattery\b|\bwi-?fi\b|\bdark mode\b|\bclipboard\b|\btrash\b|\bfolders?\b|\bpython\b"
-                 r"|\bcsv\b|\bdisk\b|\bram\b|\bcpu\b",
+    Group("mac", r"\bmac\b|\bbattery\b|\bwi-?fi\b|\bdark mode\b|\bclipboard\b|\btrash\b|\bmy (\w+ )?folders?\b"
+                 r"|\b(run|write|use) (some |a )?python\b|\bpython (script|code)\b|\bcsv\b|\bdisk\b|\bram\b|\bcpu\b",
           ("mac_read", "mac_change", "run_python"), "", ("About this Mac",)),
-    Group("pc", r"\bpc\b|\bwindows\b", ("pc_read", "pc_change", "pc_run"), "", ("About the PC",)),
-    Group("travel", r"\bmaps?\b|\broutes?\b|\bdirections?\b|\btravel\b|\bflights?\b|\bhow long\b|\bcommute\b|\bnearby\b"
-                    r"|\bnear me\b|\bleave\b",
+    Group("pc", r"\bpc\b|\bwindows (pc|computer|laptop|machine)\b", ("pc_read", "pc_change", "pc_run"), "", ("About the PC",)),
+    Group("travel", r"\bmaps?\b|\broutes?\b|\bdirections?\b|\btravel\b|\bflights?\b|\bcommute\b|\bnearby\b"
+                    r"|\bhow long (does|will|would) it take\b|\bhow long (to (get|drive|walk|fly)|is the (drive|flight|walk))\b"
+                    r"|\bnear me\b|\bleave (by|at|for|before)\b|\b(when|what time) (should|do|must) i (need to )?leave\b",
           ("maps", "flights"), "", ("About flights", "About maps and travel")),
-    Group("images", r"\bimages?\b|\bpictures?\b|\bphotos?\b|\bdraw\b|\bgenerate\b",
+    Group("images", r"\bimages?\b|\bpictures?\b|\bphotos?\b|\bdraw (me |us )?(a|an|the)\b",
           ("image_search", "image_edit", "image_undo", "image_versions", "generate_image", "image_ai_edit"),
           "", ("About images",)),
-    Group("3d", r"\b3d\b|\bblender\b|\bstl\b|\bmodel of\b",
+    Group("3d", r"\b3d\b|\bblender\b|\bstl\b|\b3d model\b",
           ("search_3d_library", "show_from_3d_library", "show_3d_asset", "preview_3d", "revert_3d", "get_3d_spec",
            "export_3d"), "", ("About 3D objects",)),
     Group("video", r"\bvideos?\b|\bclips?\b|\bscreen ?record\w*\b", ("generate_video", "capture"), "",
           ("About videos", "About clipping")),
-    Group("instagram", r"\binstagram\b|\breels?\b|\bcaption\b|\bstock (footage|clips?|music)\b",
+    Group("instagram", r"\binstagram\b|\breels?\b|\bstock (footage|clips?|music)\b",
           ("instagram_preview", "instagram_stats", "instagram_comments", "instagram_queue", "instagram_post",
            "instagram_reply", "instagram_schedule", "instagram_cancel", "reel_edit", "stock_search", "stock_download"),
           "", ("About Instagram",)),
-    Group("music", r"\bplay\b|\bmusic\b|\bspotify\b|\bsongs?\b|\bplaylists?\b|\bvolume\b|\bpause\b|\bskip\b",
+    Group("music", r"\bmusic\b|\bspotify\b|\bsongs?\b|\bplaylists?\b"
+                  r"|\bplay\b(?! (it|things|that|this) (safe|by ear)\b| along\b| around\b| with\b| a (game|part|role|trick)\b"
+                  r"| the (game|fool|field|part)\b| (football|soccer|tennis|chess|cards|games?|sports?|outside|dead)\b)"
+                  r"|\bvolume (up|down)\b|\b(turn|set|raise|lower)\b.{0,15}\bvolume\b|\bpause (the )?(music|song|it)\b|\bskip (this|the|song|track|it)\b",
           ("spotify_control", "spotify_playlist_tracks", "phone_volume"), "Spotify", ("About music",)),
-    Group("youtube", r"\byoutube\b|\bshorts?\b", ("youtube", "watch_short"), "", ("About YouTube",)),
+    Group("youtube", r"\byoutube\b|\b(youtube |yt )shorts?\b|\bwatch (a |this |the )?short\b", ("youtube", "watch_short"), "", ("About YouTube",)),
     Group("amazon", r"\bamazon\b|\bwish ?list\b", ("amazon_read", "amazon_change"), "", ("About Amazon",)),
     Group("github", r"\bgithub\b|\brepos?\b|\bpull requests?\b", ("github",), "", ("About GitHub",)),
-    Group("messages", r"\bwhatsapp\b|\bmessage\b", ("whatsapp_send", "find_contact"), "", ("About WhatsApp",)),
-    Group("phone", r"\btaxi\b|\bcareem\b|\bfood\b|\bhungry\b", ("phone_taxi", "phone_food"), "", ()),
+    Group("messages", r"\bwhatsapp\b|\b(send|write) (a |an |him |her |them )?(message|msg)\b|\bmessage (him|her|them|\w+ (that|saying|about|to say))\b", ("whatsapp_send", "find_contact"), "", ("About WhatsApp",)),
+    Group("phone", r"\btaxi\b|\bcareem\b|\b(order|get|want|need) (some )?food\b|\bhungry\b", ("phone_taxi", "phone_food"), "", ()),
     Group("tracks", r"\bacc\b|\bassetto\b|\bbraking\b|\b(corner|turn) \d+", ("show_track", "track_info"), "",
           ("About ACC tracks",)),
-    Group("voice", r"\bvoice\b|\beleven ?labs\b", ("voice_usage",), "", ('For "how much voice',)),
-    Group("terminal", r"\bterminal\b|\bshell\b|\bcommand line\b", ("open_terminal", "read_terminal"), "", ()),
+    Group("voice", r"\beleven ?labs\b|\bvoice (usage|credits?|quota|minutes|limit)\b|\bhow much voice\b", ("voice_usage",), "", ('For "how much voice',)),
+    Group("terminal", r"\b(open|in|use|the) (a |the |my )?terminal\b|\bterminal (tab|window)\b|\bcommand line\b|\bshell (command|script)\b", ("open_terminal", "read_terminal"), "", ()),
 )
 BY_NAME = {g.name: g for g in GROUPS}
+
+# What the tools panel calls each group.
+TITLES = {
+    "canvas": "Canvas", "gmail": "Email", "calendar": "Calendar", "tasks": "Reminders & tasks", "drive": "Google Drive",
+    "vercel": "Vercel (look-up)", "shopify": "Shopify (look-up)", "school": "School", "notes": "Notes", "mac": "This Mac",
+    "pc": "Windows PC", "travel": "Maps & flights", "images": "Images", "3d": "3D", "video": "Video",
+    "instagram": "Instagram", "music": "Music", "youtube": "YouTube", "amazon": "Amazon", "github": "GitHub",
+    "messages": "WhatsApp", "phone": "Taxi & food", "tracks": "ACC tracks", "voice": "Voice usage", "terminal": "Terminal",
+}
+
+
+def catalog() -> list[dict[str, str]]:
+    """Every group, for the tools panel: [{name, title}]."""
+    return [{"name": g.name, "title": TITLES.get(g.name, g.name.title())} for g in GROUPS]
 
 # What a local model gets of connectors that have too many tools to list (Vercel alone has
 # ~180): looking things up and checking status. Everything else of theirs stays hidden.

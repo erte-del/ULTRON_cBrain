@@ -13,6 +13,9 @@ Client -> server:
     user.select_image {id, version} | {id: null}   you clicked an image on the canvas
     settings.update  {model_override: "haiku" | "sonnet" | "opus" | null}
     user.new_chat    {}                   start a fresh conversation
+    user.groups      {on: [name, ...]}    Ollama: switch exactly these tool groups on (the tools panel)
+    user.fallback    {action: "retry" | "claude", text, files, history: [{role, text}]}   after an Ollama error:
+                          send that message again, on Ollama or (with the recent chat) on Claude
     settings.update  {provider: "claude" | "omniroute" | "ollama"}   switch brain (starts a new chat)
     settings.update  {gateway_model}      pick one of the OmniRoute models
     user.save_chat   {messages, cards}    save this chat (at most 5; see storage/chat_store.py)
@@ -47,6 +50,7 @@ Server -> client:
                           runs: [{job_id, title, time, status, text}]}   scheduled jobs; runs newest first,
                          status = told | nothing | skipped | failed
     notification         {title, text, time}   a scheduled job is telling you something
+    ollama.groups        {on: [name], all: [{name, title}]}   the local model's tool groups, switched on by hand or by what you said
     settings.state       {provider, gateway_url, gateway_model, gateway_models, ollama_model, ollama_models}   the brain in use
     usage.update         {provider, windows, tokens, context_tokens}   see usage.py
     canvas.card          {id, kind, title, data}  show (or replace) a canvas card;
@@ -79,11 +83,18 @@ def status(state: str) -> Event:
     return {"type": "status", "state": state}
 
 
-def error(message: str, reply_id: str | None = None) -> Event:
+def error(message: str, reply_id: str | None = None, fallback: bool = False) -> Event:
     ev: Event = {"type": "error", "message": message}
     if reply_id:
         ev["id"] = reply_id
+    if fallback:  # the local model failed: offer "try again" and "continue with Claude"
+        ev["fallback"] = True
     return ev
+
+
+def groups_state(on: list[str], catalog: list[dict[str, str]]) -> Event:
+    """Which tool groups the local model has switched on, and all the groups there are."""
+    return {"type": "ollama.groups", "on": on, "all": catalog}
 
 
 def notice(message: str) -> Event:

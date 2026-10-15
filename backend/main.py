@@ -27,6 +27,7 @@ import terminal
 from brain.agent import Ultron
 from brain.base import ModelAlias
 from brain.brain_claudecode import ClaudeCodeBrain
+from brain import capabilities, handoff
 from brain.confirm import ConfirmationGate
 from PIL import Image, UnidentifiedImageError
 
@@ -55,6 +56,17 @@ MODELS: set[str] = {"haiku", "sonnet", "opus"}
 gate = ConfirmationGate()
 brain = ClaudeCodeBrain(can_use_tool=gate.can_use_tool)
 ultron = Ultron(brain)
+_telling: set[asyncio.Task] = set()
+
+
+def tell_groups() -> None:
+    """The local model's tool groups changed: every open page shows them."""
+    task = asyncio.create_task(hub.emit(groups_event()))
+    _telling.add(task)
+    task.add_done_callback(_telling.discard)
+
+
+brain.on_groups = tell_groups
 
 
 @asynccontextmanager
@@ -67,6 +79,8 @@ async def lifespan(app: FastAPI):
         problem = await use_ollama()
         if problem:
             log.warning("%s", problem)
+        else:
+            warm_local()
     jobs = asyncio.create_task(scheduler.loop())
     ig_token = asyncio.create_task(instagram.refresh_loop())
     ig_queue = asyncio.create_task(instagram.queue_loop())
@@ -508,7 +522,21 @@ async def use_ollama() -> str | None:
         brain.local_model = chosen
         if chosen not in ollama_models:
             ollama_models.append(chosen)
-    return None
+    return None  # the caller warms the model once it has settled on it (warm_local)
+
+
+_warming: set[asyncio.Task] = set()
+
+
+def warm_local() -> None:
+    """Load the chat model in the background, so the first message doesn't wait for it."""
+    task = asyncio.create_task(asyncio.to_thread(ollama.warm, brain.local_model))
+    _warming.add(task)
+    task.add_done_callback(_warming.discard)
+
+
+def groups_event() -> events.Event:
+    return events.groups_state(sorted(brain.groups), capabilities.catalog())
 
 
 def settings_event() -> events.Event:
@@ -637,11 +665,39 @@ async def switch_provider(provider: str) -> None:
         if problem:
             await hub.emit(events.error(problem))
             return
+        warm_local()
     await ultron.new_conversation(provider)
     await hub.emit(events.conversation_new("provider"))
     await hub.emit(settings_event())
     await hub.emit(ultron.usage_event())
     await brain.start()
+
+
+def clean_files(raw: object) -> list[str]:
+    """The ids of uploaded files or images in a message from the page; anything else is dropped."""
+    return [f for f in (raw if isinstance(raw, list) else []) if isinstance(f, str)
+            and (upload_store.UPLOAD_ID.match(f) or image_store.IMAGE_ID.match(f))]
+
+
+async def set_groups(names: list) -> None:
+    """The tools panel: switch exactly these groups on, then start the session again, so the
+    next message doesn't wait for it."""
+    await brain.set_groups({n for n in names if isinstance(n, str)})
+    await brain.start()
+
+
+async def continue_on_claude(
+    send: hub.Sender, text: str, history: object, files: list[str],
+    model_override: ModelAlias | None, selected_image: dict | None, device: str,
+) -> None:
+    """After an Ollama error: switch to Claude (a new session) and send the failed message there,
+    with the recent chat in front of it so Claude knows what was going on."""
+    await send(events.status("thinking"))  # the switch takes ~10 s: show that something is happening
+    await switch_provider("claude")
+    if brain.provider != "claude":
+        await send(events.status("idle"))
+        return  # switching failed; the error is already on screen
+    await run_turn(send, handoff.with_history(text, history), model_override, selected_image, files, device)
 
 
 @app.websocket("/ws")
@@ -657,6 +713,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     send = make_sender(ws)
     hub.connect(send)
     await send(settings_event())
+    await send(groups_event())
     await send(ultron.usage_event())
     await send(chats_event())
     await send(memory_event())
@@ -702,8 +759,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
             if kind == "user.text":
                 text = str(msg.get("text", "")).strip()
-                files = [f for f in msg.get("files") or [] if isinstance(f, str)
-                         and (upload_store.UPLOAD_ID.match(f) or image_store.IMAGE_ID.match(f))]
+                files = clean_files(msg.get("files"))
                 if not text and not files:
                     continue
                 # Run the turn in the background so this loop keeps listening
@@ -711,6 +767,29 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 task = asyncio.create_task(run_turn(send, text, model_override, selected_image, files, device,
                                                     phone_location(msg.get("location")), phone_status(msg.get("status")),
                                                     msg.get("voice") is True))
+                turns.add(task)
+                task.add_done_callback(turns.discard)
+
+            elif kind == "user.groups":
+                on = msg.get("on")
+                if brain.provider != "ollama" or not isinstance(on, list):
+                    await send(events.notice("Tool groups are for the Ollama brain."))
+                    continue
+                job = set_groups(on)
+                task = asyncio.create_task(job)
+                background.add(task)
+                task.add_done_callback(background.discard)
+
+            elif kind == "user.fallback":
+                text = str(msg.get("text", "")).strip()
+                files = clean_files(msg.get("files"))
+                if not text and not files:
+                    continue
+                if msg.get("action") == "claude":
+                    job = continue_on_claude(send, text, msg.get("history"), files, model_override, selected_image, device)
+                else:  # "retry": the same message again, on whatever brain is on
+                    job = run_turn(send, text, model_override, selected_image, files, device)
+                task = asyncio.create_task(job)
                 turns.add(task)
                 task.add_done_callback(turns.discard)
 
@@ -796,6 +875,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     if brain.provider == "ollama" and await use_ollama() is None \
                             and msg["ollama_model"] in ollama_models:
                         brain.local_model = msg["ollama_model"]
+                        warm_local()
                         await hub.emit(settings_event())
                     else:
                         await send(events.error(f"Can't use that Ollama model: {msg['ollama_model']}"))

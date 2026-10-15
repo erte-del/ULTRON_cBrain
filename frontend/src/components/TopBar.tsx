@@ -427,7 +427,7 @@ function Settings({ settings, onProvider }: Pick<TopBarProps, 'settings' | 'onPr
           >
             <span className="provider-name">Ollama · this computer</span>
             <span className="provider-note">
-              A local model ({settings?.ollama_model || 'ultron-qwen3-14b'}). Free, works offline, nothing leaves this computer.
+              A local model ({settings?.ollama_model || 'ultron-qwen3-14b'}). Free and works offline; nothing leaves this computer unless you choose "Continue with Claude" after an error.
               Slower and less capable than Claude: no web search, only your everyday connectors, and fewer tools.
             </span>
           </button>

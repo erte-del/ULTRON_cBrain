@@ -43,3 +43,17 @@ def default_model(models: list[str]) -> str | None:
     if config.OLLAMA_MODEL and has(models, config.OLLAMA_MODEL):
         return config.OLLAMA_MODEL
     return next((m for m in models if m.startswith("ultron-")), None)
+
+
+def warm(model: str, keep_alive: str = "30m") -> bool:
+    """Load the model into memory now, so the first message doesn't wait for it (a 14B model
+    takes several seconds to load). Asks Ollama for an empty generation; False if it can't."""
+    body = json.dumps({"model": model, "prompt": "", "keep_alive": keep_alive}).encode()
+    req = urllib.request.Request(config.OLLAMA_URL + "/api/generate", body, {"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            r.read()
+        return True
+    except (OSError, ValueError):
+        log.info("Could not warm up %s", model)
+        return False
