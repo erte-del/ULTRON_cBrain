@@ -35,6 +35,12 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 # Your calendar as text for Ultron's own check-ins (calendar_text.py): Google Calendar's private
 # "Secret address in iCal format". Whoever has it can read the calendar: keep it secret.
 GOOGLE_CALENDAR_ICAL_URL = os.getenv("GOOGLE_CALENDAR_ICAL_URL", "").strip()
+# Your unread Gmail as text over IMAP (mail_text.py), read-only: an app password, not your real one.
+# Without it, Ultron's check-ins use the Gmail connector instead (slower).
+GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "").strip()
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
+# The note in your vault with your school timetable (path in the vault); empty = look for one.
+SCHOOL_SCHEDULE_NOTE = os.getenv("JARVIS_SCHOOL_SCHEDULE_NOTE", "").strip()
 if GOOGLE_CALENDAR_ICAL_URL and not GOOGLE_CALENDAR_ICAL_URL.startswith("https://"):
     raise SystemExit("GOOGLE_CALENDAR_ICAL_URL must be the https:// address from Google Calendar's settings")
 # Ultron's own Instagram (tools/instagram.py). Ultron renews it into storage/instagram_token.json.

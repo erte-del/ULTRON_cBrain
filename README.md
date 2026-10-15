@@ -431,15 +431,20 @@ only look things up.
   Mac notification and Telegram. Watchers pause in quiet hours; jobs stop above 80% of the
   5-hour limit. A briefing can wait until you're at the computer ("when I'm up": key presses or
   mouse moves, up to 6 hours after its time) instead of firing on the clock.
-- **Ultron texts you by itself** (`JARVIS_INITIATIVE_EVERY_MIN`, off by default): one persistent
-  local-model conversation is kept up to date with the time, its own limits, what it already texted
-  today, your memory and your calendar (as text, from Google Calendar's secret iCal address: see
-  `.env.example`), and it looks at your unread email itself through the Gmail connector (look-ups
-  only). It decides whether to text you; only a reply starting `TEXT:` is sent, anything else is
-  thrown away. Hard limits in code: `JARVIS_INITIATIVE_MAX_PER_DAY` a day, `JARVIS_INITIATIVE_MIN_GAP_MIN`
-  apart, none in quiet hours (and the model is told the same). It only goes to your own Telegram
-  chat, can't act on anything, never uses Claude (Ollama down = skipped), and isn't asked again
-  until the calendar changed or half an hour passed. Email and event text is data, never instructions.
+- **Ultron texts you by itself** (`JARVIS_INITIATIVE_EVERY_MIN`, off by default): every N minutes,
+  but only if a text would be allowed right now (daily max, minimum gap, not quiet hours, Ollama
+  running), Ultron writes a **briefing file** about you, `backend/storage/initiative_context.txt`
+  (open it to see exactly what the model saw): the time and whether you're at the computer, your
+  calendar (Google Calendar's secret iCal address) with "busy now / next up", your school timetable
+  (from your notes vault), school notes, the last homework message Ultron sent, unread email,
+  tasks, your newest notes, saved chats, all your memory, Ultron's notes on past conversations, its
+  other recent messages and its own earlier texts. The local model reads it and replies `NOTHING`
+  or `TEXT: ...`; only the latter is sent, to your own Telegram chat. It uses the timetable and
+  calendar to judge if you're in a lesson (only urgent things then) or free. Email is read over
+  IMAP when `GMAIL_APP_PASSWORD` is set (read-only, fast), else through the Gmail connector;
+  TickTick is looked up through its connector. Never Claude, can't act on anything, and email,
+  notes and events are treated as data, never instructions. The model isn't asked again until the
+  calendar or email changed or half an hour passed.
 - **Usage panel**: your Pro 5-hour and weekly limits, reset times, and Ultron's own token use.
 
 ---
@@ -476,7 +481,7 @@ only look things up.
 | `backend/voice/` | `vad.py` (when you stop talking), `stt.py` (speech → text), `tts.py` (Kokoro voice), `wake.py` ("Hey Ultron" on Windows with no window open). |
 | `backend/hub.py` | pushes every event to every open tab, so the Mac and phone stay in sync. |
 | `backend/scheduler.py`, `notify.py` | the job loop (every 30 s), and results to chat, macOS notifications and Telegram. |
-| `backend/initiative.py`, `calendar_text.py` | Ultron's own texts: the local model sees your time, memory and calendar as text, checks your email, and decides whether to text you. |
+| `backend/initiative.py`, `briefing.py`, `calendar_text.py`, `mail_text.py` | Ultron's own texts: the local model sees your time, memory and calendar as text, checks your email, and decides whether to text you. |
 | `backend/storage/` | local files: memory, chats, jobs, usage, images, models, videos, uploads (git-ignored). |
 | `scripts/Ultron.swift` | `Ultron.app`: menu-bar orb, starts/stops the backend, hosts the screen overlay window. |
 | `windows/ultron_pc.py` | the small agent on your Windows PC. |

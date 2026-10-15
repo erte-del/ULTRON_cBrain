@@ -42,27 +42,53 @@ def _clean(text, limit: int) -> str:
     return text[:limit - 1] + "…" if len(text) > limit else text
 
 
-def _start(value) -> tuple[float, str]:
+def _moment(value) -> tuple[float, bool]:
+    """(timestamp, all day?) of a calendar start or end. Floating times count as local."""
     if isinstance(value, datetime):
-        moment = value.astimezone() if value.tzinfo else value.astimezone()  # floating time = local
-        return moment.timestamp(), moment.strftime("%a %H:%M")
-    day = datetime.combine(value, datetime.min.time()).astimezone()
-    return day.timestamp(), day.strftime("%a") + " all day"
+        return value.astimezone().timestamp(), False
+    return datetime.combine(value, datetime.min.time()).astimezone().timestamp(), True
 
 
-def calendar_text(now: datetime | None = None, hours: int = 36, data: bytes | None = None) -> str:
-    """Events from now to `hours` ahead, soonest first, one per line. RuntimeError if it can't be read."""
+def events(now: datetime | None = None, hours: int = 36, data: bytes | None = None) -> list[dict]:
+    """Events from now to `hours` ahead, soonest first: [{start, end, all_day, title, place}].
+    RuntimeError if the calendar can't be read."""
     now = (now or datetime.now()).astimezone()
     try:
         cal = icalendar.Calendar.from_ical(data if data is not None else _fetch())
-        events = recurring_ical_events.of(cal).between(now, now + timedelta(hours=hours))
+        found = recurring_ical_events.of(cal).between(now, now + timedelta(hours=hours))
     except (ValueError, KeyError) as e:
         raise RuntimeError(f"couldn't understand the calendar ({type(e).__name__})") from None
-    found = []
-    for ev in events:
+    out = []
+    for ev in found:
         if str(ev.get("STATUS", "")).upper() == "CANCELLED":
             continue
-        stamp, label = _start(ev["DTSTART"].dt)
-        place = f" @ {_clean(ev['LOCATION'], 60)}" if ev.get("LOCATION") else ""
-        found.append((stamp, f"- {label}: {_clean(ev.get('SUMMARY', '(no title)'), 80)}{place}"))
-    return "\n".join(line for _, line in sorted(found)[:MAX_EVENTS]) or f"(nothing in the next {hours} hours)"
+        start, all_day = _moment(ev["DTSTART"].dt)
+        end = _moment(ev["DTEND"].dt)[0] if ev.get("DTEND") else start
+        out.append({"start": start, "end": end, "all_day": all_day, "title": _clean(ev.get("SUMMARY", "(no title)"), 80),
+                    "place": _clean(ev["LOCATION"], 60) if ev.get("LOCATION") else ""})
+    return sorted(out, key=lambda e: e["start"])[:MAX_EVENTS]
+
+
+def line(ev: dict) -> str:
+    when = datetime.fromtimestamp(ev["start"]).astimezone()
+    label = when.strftime("%a") + " all day" if ev["all_day"] else f"{when:%a %H:%M}-{datetime.fromtimestamp(ev['end']):%H:%M}"
+    return f"- {label}: {ev['title']}" + (f" @ {ev['place']}" if ev["place"] else "")
+
+
+def calendar_text(now: datetime | None = None, hours: int = 36, data: bytes | None = None) -> str:
+    """The events as one line each. RuntimeError if the calendar can't be read."""
+    return "\n".join(line(e) for e in events(now, hours, data)) or f"(nothing in the next {hours} hours)"
+
+
+def busy_now(evs: list[dict], now: datetime) -> str:
+    """'In a meeting until 15:00 (Dentist)' or 'Nothing on the calendar right now; next at 14:00 (Dentist)'."""
+    t = now.astimezone().timestamp()
+    timed = [e for e in evs if not e["all_day"]]
+    current = [e for e in timed if e["start"] <= t < e["end"]]
+    if current:
+        e = current[0]
+        return f"On the calendar right now until {datetime.fromtimestamp(e['end']):%H:%M}: {e['title']}"
+    later = [e for e in timed if e["start"] > t]
+    if later:
+        return f"Nothing on the calendar right now; next is {later[0]['title']} at {datetime.fromtimestamp(later[0]['start']):%a %H:%M}"
+    return "Nothing on the calendar right now or in the next day and a half"

@@ -60,3 +60,5 @@ backend/library_tracks/info/
 
 # Ollama connector tool-name cache (rebuilt on its own)
 backend/storage/ollama_connector_tools.json
+backend/storage/initiative.json
+backend/storage/initiative_context.txt
