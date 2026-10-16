@@ -74,7 +74,8 @@ class InitiativeTest(unittest.IsolatedAsyncioTestCase):
     def test_the_model_is_told_its_limits_and_what_it_sent(self):
         state = {"last_check": 0, "view": "", "sent": [{"ts": NOON.timestamp() - 3600, "text": "Your 11am moved."}]}
         note = initiative.limits_note(state, NOON)
-        for part in ("at most 2 texts a day", "90 minutes apart", "Sent today: 1, 1 left", "Your 11am moved."):
+        for part in ("at most 2 texts a day", "90 minutes apart", "Sent today: 1, 1 left", "Your 11am moved.",
+                     "LAST text was 60 minutes ago", "hours left today: 11.0", "Don't send anything similar"):
             self.assertIn(part, note)
 
     def test_the_briefing_is_written_to_a_file_with_everything_in_it(self):

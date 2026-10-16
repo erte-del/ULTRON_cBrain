@@ -25,7 +25,7 @@ import hashlib
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from claude_agent_sdk import PermissionResultAllow, PermissionResultDeny, ToolPermissionContext
@@ -110,13 +110,41 @@ def due(state: dict, now: datetime) -> bool:
     return enabled() and now.timestamp() - state["last_check"] >= config.INITIATIVE_EVERY_MIN * 60 and may_text(state, now)
 
 
+def _ago(seconds: float) -> str:
+    minutes = max(0, int(seconds // 60))
+    return f"{minutes} minutes" if minutes < 120 else f"{minutes / 60:.1f} hours"
+
+
+def day_ends(now: datetime) -> datetime:
+    """When today's texting window closes: the start of quiet hours if that's still ahead, else midnight."""
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    if config.QUIET_HOURS:
+        hour, minute = map(int, config.QUIET_HOURS.split("-")[0].split(":"))
+        start = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if now < start < midnight:
+            return start
+    return midnight
+
+
 def limits_note(state: dict, now: datetime) -> str:
     today = sent_today(state, now)
     told = "".join(f"\n  {datetime.fromtimestamp(s['ts']).strftime('%H:%M')}: {s['text']}" for s in today)
-    left = config.INITIATIVE_MAX_PER_DAY - len(today)
-    return (f"[Your limits: at most {config.INITIATIVE_MAX_PER_DAY} texts a day, at least {config.INITIATIVE_MIN_GAP_MIN} "
-            f"minutes apart, none between {config.QUIET_HOURS or 'never'}. Sent today: {len(today)}, {left} left."
-            + (f" Already sent today:{told}" if told else "") + "]")
+    left = max(0, config.INITIATIVE_MAX_PER_DAY - len(today))
+    hours = max(0.0, (day_ends(now) - now).total_seconds() / 3600)
+    note = (f"[Your limits: at most {config.INITIATIVE_MAX_PER_DAY} texts a day, at least {config.INITIATIVE_MIN_GAP_MIN} "
+            f"minutes apart, none between {config.QUIET_HOURS or 'never'}. Sent today: {len(today)}, {left} left. "
+            f"Texting hours left today: {hours:.1f} (until {day_ends(now):%H:%M}). ")
+    if state["sent"]:
+        last = state["sent"][-1]
+        note += (f"Your LAST text was {_ago(now.timestamp() - last['ts'])} ago "
+                 f"({datetime.fromtimestamp(last['ts']):%a %H:%M}): \"{last['text']}\". "
+                 "Don't send anything similar to it. ")
+    else:
+        note += "You haven't texted them yet. "
+    note += (f"You have {left} text(s) for the next {hours:.1f} hours: only send this one if it is clearly "
+             "worth more than what could come up later today; if it is merely nice to know, reply NOTHING and "
+             "save the text.")
+    return note + (f" Already sent today:{told}" if told else "") + "]"
 
 
 def clean(text: str) -> str:

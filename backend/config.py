@@ -131,7 +131,7 @@ JOBS_MAX_USAGE = float(os.getenv("JARVIS_JOBS_MAX_USAGE", "0.8"))
 # your email), and may text you. 0 = off. Hard limits: at most MAX_PER_DAY texts a day, MIN_GAP_MIN
 # minutes apart, none in quiet hours.
 INITIATIVE_EVERY_MIN = int(os.getenv("JARVIS_INITIATIVE_EVERY_MIN", "0"))
-INITIATIVE_MAX_PER_DAY = int(os.getenv("JARVIS_INITIATIVE_MAX_PER_DAY", "3"))
+INITIATIVE_MAX_PER_DAY = int(os.getenv("JARVIS_INITIATIVE_MAX_PER_DAY", "5"))
 INITIATIVE_MIN_GAP_MIN = int(os.getenv("JARVIS_INITIATIVE_MIN_GAP_MIN", "90"))
 if INITIATIVE_EVERY_MIN and INITIATIVE_EVERY_MIN < 5:
     raise SystemExit("JARVIS_INITIATIVE_EVERY_MIN must be 0 (off) or at least 5")
