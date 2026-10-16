@@ -45,6 +45,7 @@ from .memory import forget, recall, remember
 from .notes import delete_note, read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
+from .acc import acc_read
 from .pc import leaves_folder as leaves_pc_folder, only_launches, opens_link, pc_change, pc_read, pc_run
 from .phone import phone_food, phone_taxi, phone_volume
 from .reels import reel_edit
@@ -184,6 +185,8 @@ TOOLS: list[UltronTool] = [
     # The Windows PC, same rules as this Mac: reading is free, moving or trashing outside its
     # Ultron folder asks (needs_ok).
     UltronTool(pc_read, "read"),
+    # ACC telemetry on the PC: only reads.
+    UltronTool(acc_read, "read"),
     UltronTool(pc_change, "act"),
     # Not sandboxed on Windows: always asks (ASK_TOOLS).
     UltronTool(pc_run, "act"),

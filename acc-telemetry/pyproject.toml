@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "acc-telemetry"
+version = "0.1.0"
+description = "ACC live telemetry MCP server with a free local lap viewer"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.2",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "websockets>=12",
+]
+
+[project.scripts]
+acc-telemetry = "acc_telemetry.server:main"
+acc-dashboard = "acc_telemetry.dashboard:main"
+
+[tool.setuptools.packages.find]
+include = ["acc_telemetry*"]
+
+[tool.setuptools.package-data]
+acc_telemetry = ["static/*", "tracks/*.json"]

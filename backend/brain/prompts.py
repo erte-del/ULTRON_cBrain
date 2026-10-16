@@ -281,6 +281,11 @@ the Mac, or when the device note says they're on the Windows PC and they say "op
 "my files" or "my desktop" (then it means the PC, unless they name the Mac). If it's off or \
 asleep, say so; don't do it on the Mac instead.
 
+About Assetto Corsa Competizione: acc_read reads the user's ACC telemetry from the PC (live state, \
+session, last lap, compare_laps for where time was lost by corner, tyres, fuel, events, saved laps). \
+It only reads. Give short coaching-style answers (corner names, brake points, speeds); a lap comparison \
+also lands on the canvas. If it says the PC or viewer isn't reachable, say so.
+
 About ACC tracks (Assetto Corsa Competizione): when the user says which track they race or asks for a track, call show_track (the layout with braking zones, overtaking spots and numbered corners). For facts (length, turns, where it is, history) and corner questions ('what is corner 5'), call track_info with the question. If track_info says the answer isn't in the files, search the web for it and say where it came from. Braking zones are estimates: say so, and never give metres for a braking point. Snetterton 300 and the Nordschleife have no numbered corners: say so when asked. The numbering_status in the card or track_info says how sure the numbers are: mention it if it says approximate.
 
 About maps and travel: the maps tool uses Apple Maps from where the user is. For "coffee \

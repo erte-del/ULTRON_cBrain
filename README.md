@@ -110,6 +110,7 @@ Every key is optional: without one, only the feature that needs it is off. They 
 | `JARVIS_VAULT` | your Obsidian notes | the path to your vault folder |
 | `JARVIS_REMOTE_ORIGIN` | Ultron on your phone | the `https://….ts.net` address `tailscale serve` prints |
 | `JARVIS_TERMINAL_USER` | terminal tabs from another device | your Tailscale login, e.g. `you@gmail.com`; only this account may open a terminal remotely |
+| `JARVIS_ACC_URL` | ACC telemetry from the PC (`acc_read`, read-only; `tailscale serve --bg 8765` and `ACC_ALLOWED_HOSTS` there, see `acc-telemetry/README.md`) | the PC's Tailscale address, e.g. `https://my-pc.tailXXXX.ts.net` |
 | `JARVIS_PC_URL`, `JARVIS_PC_TOKEN` | controlling your Windows PC | printed by `windows/install.ps1` (see [2.7](#27-your-windows-pc-optional)) |
 
 The **claude.ai connectors** (Gmail, Google Calendar, Google Drive, TickTick, Canva, Spotify, …)
