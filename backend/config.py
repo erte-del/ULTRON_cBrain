@@ -156,10 +156,12 @@ if PC_URL and not re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net", PC
     raise SystemExit(f"JARVIS_PC_URL={PC_URL!r}: use the PC's Tailscale address, e.g. https://pc.tail1234.ts.net")
 
 # ACC telemetry (optional): the lap viewer of acc-telemetry/ on the PC, published with
-# "tailscale serve --bg 8765". Read-only; empty = no acc_read tool.
+# "tailscale serve" (e.g. "--https=8443 http://127.0.0.1:8766"; the port is optional). Read-only;
+# empty = no acc_read tool.
+ACC_URL_PATTERN = r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net(:\d{1,5})?"
 ACC_URL = os.getenv("JARVIS_ACC_URL", "").strip().rstrip("/")
-if ACC_URL and not re.fullmatch(r"https://[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net", ACC_URL):
-    raise SystemExit(f"JARVIS_ACC_URL={ACC_URL!r}: use the PC's Tailscale address, e.g. https://pc.tail1234.ts.net")
+if ACC_URL and not re.fullmatch(ACC_URL_PATTERN, ACC_URL):
+    raise SystemExit(f"JARVIS_ACC_URL={ACC_URL!r}: use the PC's Tailscale address, e.g. https://pc.tail1234.ts.net:8443")
 
 # Which brain Ultron runs on. You can switch in the UI (gear icon); this is the choice
 # at startup.
