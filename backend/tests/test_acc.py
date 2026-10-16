@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import re
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -72,6 +73,14 @@ class AccTest(unittest.TestCase):
             self.assertFalse(err)
         self.assertIn("/api/tool/compare_laps?lap_a=last&lap_b=best", SEEN)
         self.assertEqual(shown, [[["Eau Rouge", "+0.250 s"]]])
+
+    def test_url_accepts_tailnet_port(self):
+        ok = ["https://inancools.tail73572e.ts.net:8443", "https://pc.tail1234.ts.net"]
+        bad = ["http://pc.tail1234.ts.net", "https://evil.example.com:8443", "https://pc.tail1234.ts.net:"]
+        for url in ok:
+            self.assertIsNotNone(re.fullmatch(config.ACC_URL_PATTERN, url), url)
+        for url in bad:
+            self.assertIsNone(re.fullmatch(config.ACC_URL_PATTERN, url), url)
 
     def test_unreachable(self):
         with mock.patch.object(config, "ACC_URL", "http://127.0.0.1:9"):
