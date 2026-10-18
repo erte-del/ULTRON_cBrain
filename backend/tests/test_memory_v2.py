@@ -414,6 +414,13 @@ class Recall(Base):
         self.assertTrue(all(re.fullmatch(r"\d{4}-\d\d-\d\d", r["date"]) for r in neighbours))
         self.assertNotIn("mem_5", seen)
 
+    def test_a_hit_linked_only_to_other_hits_still_shows_its_links(self):
+        found = {h["id"]: h for h in memory_search.search("EasyTV", touch=False)}
+        self.assertEqual(set(found), {"mem_1", "mem_2", "mem_4"})
+        self.assertEqual(set(found["mem_1"]["linked_to"]), {"mem_2", "mem_4"})   # both links, from this side too
+        self.assertNotIn("related", found["mem_1"])                              # nothing extra to repeat
+        self.assertIn("mem_1", found["mem_2"]["linked_to"])                      # and the other way round
+
     def test_recall_keeps_the_old_behaviour_for_plain_queries(self):
         text = call(memory.recall, {"query": "MORNING meetings"})["content"][0]["text"]
         self.assertIn("mem_5", text)

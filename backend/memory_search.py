@@ -59,6 +59,9 @@ def search(query: str = "", category: str | None = None, limit: int = HITS, touc
     out = []
     for m in hits:
         related = []
+        # Neighbours that are hits themselves aren't repeated under `related`, but they are listed by id, so
+        # a hit that is connected only to other hits doesn't look isolated.
+        linked = [n["other"] for n in memory_aux.neighbours(m["id"]) if n["other"] in chosen]
         near = [n for n in memory_aux.neighbours(m["id"]) if n["other"] in active]
         near.sort(key=lambda n: (-n["strength"], -active[n["other"]]["updated"]))  # equally linked: the newer first
         for n in near:
@@ -66,7 +69,10 @@ def search(query: str = "", category: str | None = None, limit: int = HITS, touc
             if other and n["other"] not in chosen and len(related) < RELATED_PER_HIT:
                 related.append({"id": other["id"], "text": other["text"], "date": _date(other["updated"]),
                                 "link": n["kind"] + (f" ({n['direction']})" if n["direction"] else "")})
-        out.append(_shape(m, related))
+        shaped = _shape(m, related)
+        if linked:
+            shaped["linked_to"] = linked
+        out.append(shaped)
     if touch and out:
         memory_store.touch([m["id"] for m in hits])
     return out
