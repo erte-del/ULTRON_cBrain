@@ -205,14 +205,37 @@ class Links(Base):
         self.write_old_file([(f"mem_{i}", "projects", t, "chat") for i, t in enumerate(REAL_ENTRIES.values(), 1)])
         self.local.side_effect = fake_enrich
 
-    def test_shared_names_make_links_and_a_rejected_link_stays_gone(self):
+    def test_shared_project_names_make_links_and_a_rejected_link_stays_gone(self):
         memory_jobs.refresh(apply=True)
         kinds = {(l["a"], l["b"], l["kind"]) for l in memory_aux.links()}
         self.assertIn(("mem_1", "mem_2", "same_project"), kinds)      # pricing - repo: both EasyTV
-        self.assertIn(("mem_3", "mem_4", "same_topic"), kinds)        # both Supabase (an org: weaker kind)
-        self.assertTrue(memory_aux.reject_link("mem_3", "mem_4", "same_topic"))
+        self.assertTrue(memory_aux.reject_link("mem_1", "mem_2", "same_project"))
         memory_jobs.refresh(apply=True)
-        self.assertNotIn(("mem_3", "mem_4", "same_topic"), {(l["a"], l["b"], l["kind"]) for l in memory_aux.links()})
+        self.assertNotIn(("mem_1", "mem_2", "same_project"), {(l["a"], l["b"], l["kind"]) for l in memory_aux.links()})
+
+    def test_a_shared_tool_name_alone_is_not_a_connection(self):
+        def memory(i, text, entities, topics):
+            return {**memory_store.with_defaults({"id": f"mem_{i}", "category": "projects", "text": text, "source": "chat",
+                                                  "created": 1, "updated": 1}), "entities": entities, "topics": topics}
+        tv = memory(1, "EasyTV is a private GitHub repo.", ents(("GitHub", "org")), ["tv"])
+        racing = memory(2, "Found a GitHub repo with racing game car data.", ents(("GitHub", "org")), ["games"])
+        iptv = memory(3, "IPTV player will use a private GitHub repo.", ents(("GitHub", "org")), ["tv"])
+        far, near = [1.0, 0.0], [0.9, 0.3]                              # cosine 0.95 vs 0.0
+        vectors = {"mem_1": far, "mem_2": [0.0, 1.0], "mem_3": near}
+        found = {(l["a"], l["b"]) for l in memory_graph.proposed_links([tv, racing, iptv], vectors)}
+        self.assertNotIn(("mem_1", "mem_2"), found)                    # same word, different meaning: no link
+        self.assertIn(("mem_1", "mem_3"), found)                       # same word and the same meaning: a link
+        self.assertEqual(memory_graph.proposed_links([tv, iptv], None), [])   # nothing to check against: no link
+
+    def test_generic_topic_words_link_nothing_and_topics_need_the_meaning_too(self):
+        def memory(i, topics):
+            return {**memory_store.with_defaults({"id": f"mem_{i}", "category": "projects", "text": "x", "source": "chat",
+                                                  "created": 1, "updated": 1}), "topics": topics}
+        a, b = memory(1, ["projects", "development"]), memory(2, ["projects", "development"])
+        self.assertEqual(memory_graph.proposed_links([a, b], {"mem_1": [1.0, 0.0], "mem_2": [0.7, 0.7]}), [])
+        c, d = memory(3, ["exams", "revision"]), memory(4, ["exams", "revision"])
+        self.assertEqual(memory_graph.proposed_links([c, d], {"mem_3": [1.0, 0.0], "mem_4": [0.0, 1.0]}), [])
+        self.assertEqual(len(memory_graph.proposed_links([c, d], {"mem_3": [1.0, 0.0], "mem_4": [0.7, 0.7]})), 1)
 
     def test_a_name_in_almost_every_memory_links_nothing(self):
         memories = [{**memory_store.with_defaults({"id": f"mem_{i}", "category": "facts", "text": "x", "source": "chat",
