@@ -139,6 +139,22 @@ INITIATIVE_MIN_GAP_MIN = int(os.getenv("JARVIS_INITIATIVE_MIN_GAP_MIN", "90"))
 if INITIATIVE_EVERY_MIN and INITIATIVE_EVERY_MIN < 5:
     raise SystemExit("JARVIS_INITIATIVE_EVERY_MIN must be 0 (off) or at least 5")
 
+# Memory v2 (memory_*.py): links between memories, smart writes, better recall. Everything runs on the
+# local model (Ollama); memories never go to a hosted embedding service. 0 = kill switch: memory works
+# like the old flat list (no judge, no links, word-match recall).
+MEMORY_V2 = os.getenv("JARVIS_MEMORY_V2", "1").strip() not in ("0", "false", "no", "off")
+# Compute what the nightly/migration passes would do, but write nothing (the model-call cache and cost
+# log excepted). Your own "remember" / panel edits still save.
+MEMORY_DRY_RUN = os.getenv("JARVIS_MEMORY_DRY_RUN", "0").strip() in ("1", "true", "yes", "on")
+# The embedding model, pulled with `ollama pull nomic-embed-text`. Not installed = word-match recall only.
+EMBED_MODEL = os.getenv("JARVIS_EMBED_MODEL", "nomic-embed-text").strip()
+# How long `remember` waits for the judge (add / merge / supersede?) before it just adds the memory
+# and leaves the check for the nightly pass.
+MEMORY_JUDGE_TIMEOUT_S = float(os.getenv("JARVIS_MEMORY_JUDGE_TIMEOUT_S", "8"))
+# If the local model is down, a cheap Claude model may judge (only the 5 candidate memories, never for
+# private or sensitive ones, and only under JOBS_MAX_USAGE of the 5-hour limit).
+MEMORY_CLAUDE_FALLBACK = os.getenv("JARVIS_MEMORY_CLAUDE_FALLBACK", "1").strip() not in ("0", "false", "no", "off")
+
 if HOST not in ("127.0.0.1", "localhost", "::1"):
     raise SystemExit(f"JARVIS_HOST={HOST!r} refused: Ultron only listens on this machine.")
 

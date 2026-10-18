@@ -25,6 +25,9 @@ import ollama
 import initiative
 import scheduler
 import watcher
+import memory_jobs
+import memory_panel
+import memory_surface
 import terminal
 from brain.agent import Ultron
 from brain.base import ModelAlias
@@ -86,6 +89,8 @@ async def lifespan(app: FastAPI):
     jobs = asyncio.create_task(scheduler.loop())
     check_ins = asyncio.create_task(initiative.loop())
     watches = asyncio.create_task(watcher.loop())
+    memory_pass = asyncio.create_task(memory_jobs.loop())
+    memory_nudges = asyncio.create_task(memory_surface.loop())
     ig_token = asyncio.create_task(instagram.refresh_loop())
     ig_queue = asyncio.create_task(instagram.queue_loop())
     ears = asyncio.create_task(wake.listen()) if config.BACKGROUND_WAKE else None
@@ -102,6 +107,8 @@ async def lifespan(app: FastAPI):
     jobs.cancel()
     check_ins.cancel()
     watches.cancel()
+    memory_pass.cancel()
+    memory_nudges.cancel()
     warm_up.cancel()
     await ultron.wrap_up()  # the last conversation's note
     await asyncio.gather(*ultron.notes)  # and any still being written
@@ -585,7 +592,7 @@ async def save_chat(messages: list, cards: list) -> None:
 
 
 def memory_event() -> events.Event:
-    return events.memory_list(memory_store.entries())
+    return memory_panel.event()
 
 
 def change_memory(kind: str, msg: dict) -> None:
@@ -838,6 +845,13 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             elif kind in ("user.memory_save", "user.memory_delete", "user.memory_wipe"):
                 try:
                     await asyncio.to_thread(change_memory, kind, msg)
+                except ValueError as e:
+                    await send(events.error(str(e)))
+                await hub.emit(memory_event())
+
+            elif kind in ("user.insight", "user.memory_pin", "user.link_reject", "user.nudges", "user.proposal", "user.memory_restore"):
+                try:
+                    await asyncio.to_thread(memory_panel.apply, kind, msg)
                 except ValueError as e:
                     await send(events.error(str(e)))
                 await hub.emit(memory_event())

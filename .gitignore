@@ -42,6 +42,11 @@ backend/storage/instagram_token.json
 graphify-out/
 backend/storage/chats.json
 backend/storage/memory.json
+backend/storage/backups/
+backend/storage/memory_embeddings.json
+backend/storage/memory_links.json
+backend/storage/memory_insights.json
+backend/storage/memory_state.json
 backend/storage/jobs.json
 backend/storage/homework_seen.json
 backend/storage/school.md

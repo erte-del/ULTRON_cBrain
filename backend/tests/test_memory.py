@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 import config
+import memory_ai
 from brain.brain_claudecode import ClaudeCodeBrain
 from storage import memory_store
 from tools import memory, registry
@@ -25,6 +26,9 @@ class MemoryTest(unittest.TestCase):
         self.addCleanup(patch.stop)
         self.vault = Path(tempfile.mkdtemp())  # never the real one
         patch = mock.patch.object(config, "VAULT_DIR", self.vault)
+        patch.start()
+        self.addCleanup(patch.stop)
+        patch = mock.patch.object(memory_ai, "embed", return_value=None)  # never the real Ollama in tests
         patch.start()
         self.addCleanup(patch.stop)
 
@@ -108,7 +112,7 @@ class MemoryTest(unittest.TestCase):
         saved = memory_store.learn(" - [people] Deniz is his cousin in Izmir.\n- [facts] lives in dubai.\n"
                                    "- [secrets] Nope.\n- [facts] His wifi password is kedi1234\nnothing else")
         self.assertEqual([m["text"] for m in saved], ["Deniz is his cousin in Izmir."])
-        self.assertEqual(saved[0]["source"], "conversation")
+        self.assertEqual(saved[0]["source"], "conversation_summary")
         self.assertIn("Deniz", (self.vault / "Ultron" / "memory" / "People.md").read_text())
         self.assertEqual(memory_store.learn("Remember: nothing"), [])
 

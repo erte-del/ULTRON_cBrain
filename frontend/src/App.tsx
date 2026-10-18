@@ -195,6 +195,8 @@ export default function App() {
         onSaveMemory={ultron.saveMemory}
         onDeleteMemory={ultron.deleteMemory}
         onWipeMemory={ultron.wipeMemory}
+        memoryExtras={ultron.memoryExtras}
+        memoryActions={ultron.memoryActions}
         jobs={ultron.jobs}
         jobRuns={ultron.jobRuns}
         onJob={ultron.updateJob}

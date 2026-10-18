@@ -24,6 +24,11 @@ Client -> server:
     user.memory_save {id?, text, category}   add a memory, or change the one with that id
     user.memory_delete {id}
     user.memory_wipe {}                  delete every memory
+    user.memory_pin  {id, pinned}        keep a memory in view / stop
+    user.insight     {id, verdict: "useful" | "not_useful" | "forget"}   rate an insight
+    user.link_reject {a, b, link_kind}   remove a link for good
+    user.nudges      {on}                the quiet proactive nudges switch (off by default)
+    user.proposal    {id, action: "approve" | "reject"}   a merge / archive Ultron suggests
     user.job_update  {id, action: "pause" | "resume" | "delete" | "run"}   a scheduled job
 
 Server -> client:
@@ -44,8 +49,11 @@ Server -> client:
     conversation.new     {reason: "button" | "idle" | "provider"}   Ultron forgot the conversation
     conversation.loaded  {messages, cards}   a saved chat was loaded: show these messages and cards
     chats.list           {chats: [{id, title, provider, saved_at}], max}   saved chats, newest first
-    memory.list          {memories: [{id, category, text, source, created, updated}], categories}
-                         everything Ultron remembers, most recently changed first
+    memory.list          {memories: [{id, category, text, source, created, updated, + v2 fields: confidence, pinned,
+                          expires_at, entities, topics, sensitive, use_count, last_used_at, history}], categories,
+                          links: [{a, b, kind, strength, source}], insights: [{id, kind, text, evidence, confidence,
+                          status, why, shown_to_you, surface_when}], proposals: [...], proactive: bool}
+                         everything Ultron remembers, most recently changed first (see memory_panel.py)
     jobs.list            {jobs: [{id, title, prompt, at, days, every_min, once, enabled, last_run}],
                           runs: [{job_id, title, time, status, text}]}   scheduled jobs; runs newest first,
                          status = told | nothing | skipped | failed
@@ -169,8 +177,8 @@ def chats_list(chats: list[dict], max_chats: int) -> Event:
     return {"type": "chats.list", "chats": chats, "max": max_chats}
 
 
-def memory_list(memories: list[dict]) -> Event:
-    return {"type": "memory.list", "memories": memories, "categories": list(memory_store.CATEGORIES)}
+def memory_list(memories: list[dict], extra: dict | None = None) -> Event:
+    return {"type": "memory.list", "memories": memories, "categories": list(memory_store.CATEGORIES), **(extra or {})}
 
 
 def jobs_list(jobs: list[dict], runs: list[dict]) -> Event:

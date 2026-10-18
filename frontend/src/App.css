@@ -180,6 +180,19 @@
 .saved-chat .provider-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .memory-menu { width: 420px; }
+.memory-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.memory-tab {
+  flex: 1; padding: 5px 6px; background: transparent; color: var(--text-dim); border: 1px solid var(--line, rgba(255,255,255,0.15));
+  font: 10px var(--sans); letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer;
+}
+.memory-tab.on, .memory-tab:hover { color: var(--text); border-color: var(--accent); }
+.memory-switch { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font: 12px/1.4 var(--sans); color: var(--text); }
+.insight { display: flex; flex-direction: column; gap: 3px; padding: 8px 2px; border-bottom: 1px solid rgba(255,255,255,0.08); list-style: none; }
+.insight.weak { opacity: 0.6; }
+.insight .provider-name { text-transform: uppercase; font-size: 10px; letter-spacing: 0.14em; color: var(--text-dim); }
+.insight-why { font: 11px/1.4 var(--sans); color: var(--text-dim); overflow-wrap: anywhere; }
+.insight .memory-actions { margin: 4px 0 0; }
+.icon-btn.active { color: var(--accent); }
 .memory-list {
   max-height: 46vh;
   margin: 0 0 8px;
@@ -2063,3 +2076,4 @@
 .track-hint { font-size: 13px; opacity: 0.7; }
 .track-foot { font-size: 12px; opacity: 0.75; line-height: 1.5; }
 .track-attr { opacity: 0.6; margin-top: 4px; }
+.saved-chat > .memory-btn { align-self: center; margin-left: 6px; }

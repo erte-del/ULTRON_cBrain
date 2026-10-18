@@ -47,9 +47,58 @@ export interface Memory {
   id: string // mem_3
   category: string // one of the categories the server sends
   text: string
-  source: string // 'chat' (Ultron saved it, you approved) or 'you' (added in the panel)
+  source: string // 'user_said', 'conversation_summary' or 'inferred' (older files: 'chat', 'you', 'conversation')
   created: number // unix seconds
   updated: number
+  // Memory v2 (all optional so an older server still works)
+  confidence?: number
+  pinned?: boolean
+  expires_at?: number | null
+  entities?: { name: string; type: string }[]
+  topics?: string[]
+  sensitive?: boolean
+  use_count?: number
+}
+
+export interface MemoryLink {
+  a: string
+  b: string
+  kind: string // same_person, same_project, same_topic, supersedes, contradicts, ...
+  strength: number
+  source: string // auto, judge, user
+}
+
+export interface Insight {
+  id: string
+  kind: string
+  text: string
+  evidence: string[] // memory ids / note labels
+  confidence: number
+  status: string // new, useful, not_useful
+  why: string // why it was found / would be surfaced
+  shown_to_you: boolean // false: stored, but under the 0.6 confidence bar
+}
+
+export interface Proposal {
+  id: string
+  kind: 'merge' | 'archive'
+  ids: string[]
+  reason: string
+}
+
+export interface MemoryActions {
+  pin: (id: string, pinned: boolean) => void
+  rate: (id: string, verdict: 'useful' | 'not_useful' | 'forget') => void
+  rejectLink: (link: MemoryLink) => void
+  setNudges: (on: boolean) => void
+  answerProposal: (id: string, action: 'approve' | 'reject') => void
+}
+
+export interface MemoryExtras {
+  links: MemoryLink[]
+  insights: Insight[]
+  proposals: Proposal[]
+  proactive: boolean
 }
 
 export interface Job {
@@ -107,7 +156,7 @@ export type ServerEvent =
   | { type: 'conversation.new'; reason: 'button' | 'idle' | 'provider' | 'ultron' }
   | { type: 'conversation.loaded'; messages: Pick<ChatMessage, 'role' | 'text' | 'files' | 'model'>[]; cards: CanvasCard[] }
   | { type: 'chats.list'; chats: SavedChat[]; max: number }
-  | { type: 'memory.list'; memories: Memory[]; categories: string[] }
+  | ({ type: 'memory.list'; memories: Memory[]; categories: string[] } & Partial<MemoryExtras>)
   | { type: 'jobs.list'; jobs: Job[]; runs: JobRun[] }
   | { type: 'notification'; title: string; text: string; time: number }
   | { type: 'voice.speech'; active: boolean } // voice mode: you started / stopped talking
@@ -136,6 +185,11 @@ export type ClientEvent =
   | { type: 'user.memory_save'; id?: string; text: string; category: string }
   | { type: 'user.memory_delete'; id: string }
   | { type: 'user.memory_wipe' }
+  | { type: 'user.memory_pin'; id: string; pinned: boolean }
+  | { type: 'user.insight'; id: string; verdict: 'useful' | 'not_useful' | 'forget' }
+  | { type: 'user.link_reject'; a: string; b: string; link_kind: string }
+  | { type: 'user.nudges'; on: boolean }
+  | { type: 'user.proposal'; id: string; action: 'approve' | 'reject' }
   | { type: 'user.job_update'; id: string; action: JobAction }
 
 // voice: voice mode; wake: listening only for "Hey Ultron"; off: the mic is off.
@@ -363,6 +417,7 @@ interface ChatState {
   maxSavedChats: number
   memories: Memory[]
   memoryCategories: string[]
+  memoryExtras: MemoryExtras
   jobs: Job[]
   jobRuns: JobRun[]
   hearing: boolean // voice mode: you're talking right now
@@ -633,7 +688,17 @@ function baseReducer(state: ChatState, action: Action): ChatState {
         case 'voice.transcript':
           return { ...state, hearing: false }
         case 'memory.list':
-          return { ...state, memories: ev.memories, memoryCategories: ev.categories }
+          return {
+            ...state,
+            memories: ev.memories,
+            memoryCategories: ev.categories,
+            memoryExtras: {
+              links: ev.links ?? [],
+              insights: ev.insights ?? [],
+              proposals: ev.proposals ?? [],
+              proactive: ev.proactive ?? false,
+            },
+          }
         case 'jobs.list':
           return { ...state, jobs: ev.jobs, jobRuns: ev.runs }
         case 'notification':
@@ -729,6 +794,7 @@ const initialState: ChatState = {
   maxSavedChats: 5,
   memories: [],
   memoryCategories: [],
+  memoryExtras: { links: [], insights: [], proposals: [], proactive: false },
   jobs: [],
   jobRuns: [],
   hearing: false,
@@ -895,6 +961,14 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
     socketRef.current?.send({ type: 'user.memory_wipe' })
   }, [])
 
+  const memoryActions: MemoryActions = {
+    pin: (id, pinned) => socketRef.current?.send({ type: 'user.memory_pin', id, pinned }),
+    rate: (id, verdict) => socketRef.current?.send({ type: 'user.insight', id, verdict }),
+    rejectLink: (l) => socketRef.current?.send({ type: 'user.link_reject', a: l.a, b: l.b, link_kind: l.kind }),
+    setNudges: (on) => socketRef.current?.send({ type: 'user.nudges', on }),
+    answerProposal: (id, action) => socketRef.current?.send({ type: 'user.proposal', id, action }),
+  }
+
   const updateJob = useCallback((id: string, action: JobAction) => {
     socketRef.current?.send({ type: 'user.job_update', id, action })
   }, [])
@@ -919,5 +993,5 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
   const setStageTab = useCallback((tab: string) => dispatch({ kind: 'tab', tab }), [])
   const closeTerminal = useCallback((id: string) => dispatch({ kind: 'closeTerminal', id }), [])
 
-  return { ...state, sendText, fallback, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, updateJob, setProvider, setGatewayModel, setOllamaModel, setGroups, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
+  return { ...state, sendText, fallback, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, memoryActions, updateJob, setProvider, setGatewayModel, setOllamaModel, setGroups, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
 }

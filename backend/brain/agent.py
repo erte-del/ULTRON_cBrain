@@ -11,6 +11,10 @@ from typing import AsyncIterator
 import events
 import gateway
 import hub
+import memory_panel
+import memory_search
+import memory_surface
+import memory_write
 import notify
 import usage
 from config import NEW_CHAT_AFTER_IDLE_MIN
@@ -76,6 +80,8 @@ class Ultron:
         self.brain = brain
         self.transcript: list[str] = []  # this conversation, for its note in the vault
         self.started = 0.0
+        self.woke = False  # has this conversation had its memory prefix yet?
+        self.shown_insights: set[str] = set()  # insights already offered in this conversation
         self.notes: set[asyncio.Task] = set()  # old conversations' notes still being written
 
     def usage_event(self) -> events.Event:
@@ -94,9 +100,9 @@ class Ultron:
             path = await asyncio.to_thread(memory_store.save_conversation, title.strip("# "), body, started or None)
             if path:
                 log.info("Conversation note saved: %s", path)
-            if saved := await asyncio.to_thread(memory_store.learn, learned):
+            if saved := await asyncio.to_thread(memory_write.learn, learned):
                 log.info("Learned from the conversation: %s", ", ".join(m["id"] for m in saved))
-                await hub.emit(events.memory_list(memory_store.entries()))
+                await hub.emit(memory_panel.event())
         except Exception:
             log.exception("Couldn't write the conversation note")  # the chat itself is unaffected
 
@@ -104,6 +110,8 @@ class Ultron:
         """End this conversation and start another. Its note is written in the background,
         so the new chat is ready straight away."""
         note = asyncio.create_task(self.wrap_up())  # takes the transcript before anything new arrives
+        self.woke = bool(resume)  # a loaded chat already has its context
+        self.shown_insights = set()
         self.notes.add(note)
         note.add_done_callback(self.notes.discard)
         if resume:
@@ -163,7 +171,13 @@ class Ultron:
             prompt = "[Your last reply was cut short. Its confirmation cards: " + "; ".join(cards) + ".]\n" + prompt
         # The system prompt replaces Claude Code's, which carried the date: without this
         # "tomorrow" or "next Friday" can't be resolved.
-        prompt = f"[Now: {now_note()}]\n{prompt}"
+        related = ""
+        if not self.woke:  # step 5 of memory v2: what the first message reminds Ultron of (the system prompt was built before it)
+            self.woke = True
+            skip = {m["id"] for m in memory_store.prompt_selection()[0]}
+            related = await asyncio.to_thread(memory_search.wake_context, text, skip)
+        related += memory_surface.related_hint(text, voice, self.shown_insights)  # at most one "Related:" idea, never in voice
+        prompt = f"[Now: {now_note()}]\n{related}{prompt}"
         if voice:  # said out loud: the reply is read out (see the system prompt)
             prompt = f"[Spoken]\n{prompt}"
         if device:  # Mac tools act on the Mac, wherever the user is talking from

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { gatewayModelName } from '../labels'
 import { useNow } from '../useNow'
-import type { BrainSettings, ConnectionState, Job, JobAction, JobRun, Memory, Provider, SavedChat } from '../ws'
+import type { BrainSettings, ConnectionState, Job, JobAction, JobRun, Memory, MemoryActions, MemoryExtras, Provider, SavedChat } from '../ws'
 
 interface TopBarProps {
   connection: ConnectionState
@@ -24,6 +24,8 @@ interface TopBarProps {
   onSaveMemory: (text: string, category: string, id?: string) => void
   onDeleteMemory: (id: string) => void
   onWipeMemory: () => void
+  memoryExtras: MemoryExtras
+  memoryActions: MemoryActions
   jobs: Job[]
   jobRuns: JobRun[]
   onJob: (id: string, action: JobAction) => void
@@ -125,11 +127,91 @@ function SavedChats(props: Pick<TopBarProps, 'savedChats' | 'maxSavedChats' | 'c
   )
 }
 
-type MemoryProps = Pick<TopBarProps, 'memories' | 'memoryCategories' | 'onSaveMemory' | 'onDeleteMemory' | 'onWipeMemory'>
+type MemoryProps = Pick<TopBarProps, 'memories' | 'memoryCategories' | 'onSaveMemory' | 'onDeleteMemory' | 'onWipeMemory' | 'memoryExtras' | 'memoryActions'>
+
+const LINK_WORDS: Record<string, string> = {
+  same_person: 'same person',
+  same_project: 'same project',
+  same_topic: 'same topic',
+  supersedes: 'replaces',
+  contradicts: 'disagrees with',
+  follow_up_of: 'follows up',
+  caused_by: 'caused by',
+}
+
+function ConnectionsView({ memories, extras, actions }: { memories: Memory[]; extras: MemoryExtras; actions: MemoryActions }) {
+  const byId = new Map(memories.map((m) => [m.id, m]))
+  const links = extras.links.filter((l) => byId.has(l.a) && byId.has(l.b)).sort((x, y) => y.strength - x.strength)
+  const clip = (t: string) => (t.length > 70 ? `${t.slice(0, 70)}…` : t)
+  return (
+    <ul className="memory-list">
+      {links.length === 0 && <li className="memory-empty">No connections yet. They appear as Ultron learns who and what your memories are about.</li>}
+      {links.map((l) => (
+        <li key={`${l.a}-${l.b}-${l.kind}`} className="saved-chat">
+          <div className="provider">
+            <span className="provider-name">
+              {LINK_WORDS[l.kind] ?? l.kind} · {l.source === 'auto' ? 'automatic' : l.source}
+            </span>
+            <span className="provider-note">{clip(byId.get(l.a)!.text)}</span>
+            <span className="provider-note">↔ {clip(byId.get(l.b)!.text)}</span>
+          </div>
+          <button type="button" className="icon-btn" onClick={() => actions.rejectLink(l)} aria-label="Remove this connection" title="Not related: remove for good">
+            ×
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function InsightsView({ extras, actions }: { extras: MemoryExtras; actions: MemoryActions }) {
+  return (
+    <>
+      <label className="memory-switch" title="Off by default. When on, Ultron may mention something close by (2 a day at most, only while you are at the computer, never in quiet hours).">
+        <input type="checkbox" checked={extras.proactive} onChange={(e) => actions.setNudges(e.target.checked)} />
+        Quiet nudges (off unless you turn them on)
+      </label>
+      {extras.proposals.length > 0 && (
+        <ul className="memory-list">
+          {extras.proposals.map((p) => (
+            <li key={p.id} className="saved-chat">
+              <div className="provider">
+                <span className="provider-name">suggestion · {p.kind}</span>
+                <span className="provider-note">{p.ids.join(' + ')}: {p.reason}</span>
+              </div>
+              <button type="button" className="memory-btn" onClick={() => actions.answerProposal(p.id, 'approve')}>Do it</button>
+              <button type="button" className="memory-btn" onClick={() => actions.answerProposal(p.id, 'reject')}>No</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ul className="memory-list">
+        {extras.insights.length === 0 && <li className="memory-empty">No patterns noticed yet. They are guesses, found overnight.</li>}
+        {extras.insights.map((i) => (
+          <li key={i.id} className={`insight${i.shown_to_you ? '' : ' weak'}`}>
+            <span className="provider-name">
+              {i.kind.replace('_', ' ')} · confidence {i.confidence.toFixed(2)}
+              {i.shown_to_you ? '' : ' · not shown (under 0.6)'}
+              {i.status !== 'new' ? ` · ${i.status.replace('_', ' ')}` : ''}
+            </span>
+            <span className="provider-note">{i.text}</span>
+            <span className="insight-why">Why: {i.why}. Evidence: {i.evidence.join(', ')}</span>
+            <span className="memory-actions">
+              <button type="button" className="memory-btn" onClick={() => actions.rate(i.id, 'useful')}>Useful</button>
+              <button type="button" className="memory-btn" onClick={() => actions.rate(i.id, 'not_useful')}>Not useful</button>
+              <button type="button" className="memory-btn danger" onClick={() => actions.rate(i.id, 'forget')}>Forget</button>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
 
 /** What Ultron remembers about you: search, add, edit, delete, export, wipe. */
-function MemoryMenu({ memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory }: MemoryProps) {
+function MemoryMenu({ memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, memoryExtras, memoryActions }: MemoryProps) {
   const { open, setOpen, ref } = usePopup()
+  const [tab, setTab] = useState<'memories' | 'connections' | 'insights'>('memories')
   const [search, setSearch] = useState('')
   // The memory being edited; id undefined = a new one.
   const [draft, setDraft] = useState<{ id?: string; text: string; category: string } | null>(null)
@@ -170,7 +252,23 @@ function MemoryMenu({ memories, memoryCategories, onSaveMemory, onDeleteMemory, 
       {open && (
         <div className="settings-menu memory-menu" role="dialog" aria-label="Memory">
           <div className="settings-head">MEMORY · {memories.length}</div>
-          {draft ? (
+          {!draft && (
+            <div className="memory-tabs" role="tablist">
+              {(['memories', 'connections', 'insights'] as const).map((t) => (
+                <button key={t} type="button" role="tab" aria-selected={tab === t} className={`memory-tab${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
+                  {t}
+                  {t === 'insights' && memoryExtras.proposals.length + memoryExtras.insights.filter((i) => i.shown_to_you).length > 0
+                    ? ` · ${memoryExtras.insights.filter((i) => i.shown_to_you).length}`
+                    : ''}
+                </button>
+              ))}
+            </div>
+          )}
+          {!draft && tab === 'connections' && (
+            <ConnectionsView memories={memories} extras={memoryExtras} actions={memoryActions} />
+          )}
+          {!draft && tab === 'insights' && <InsightsView extras={memoryExtras} actions={memoryActions} />}
+          {!draft && tab !== 'memories' ? null : draft ? (
             <form
               className="memory-form"
               onSubmit={(e) => {
@@ -231,8 +329,22 @@ function MemoryMenu({ memories, memoryCategories, onSaveMemory, onDeleteMemory, 
                       onClick={() => setDraft({ id: m.id, text: m.text, category: m.category })}
                       title="Edit"
                     >
-                      <span className="provider-name">{m.category}</span>
+                      <span className="provider-name">
+                        {m.category}
+                        {m.source === 'inferred' ? ' · guess' : ''}
+                        {m.expires_at ? ` · until ${new Date(m.expires_at * 1000).toLocaleDateString([], { day: 'numeric', month: 'short' })}` : ''}
+                      </span>
                       <span className="provider-note">{m.text}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`icon-btn${m.pinned ? ' active' : ''}`}
+                      onClick={() => memoryActions.pin(m.id, !m.pinned)}
+                      aria-label={m.pinned ? 'Unpin' : 'Pin'}
+                      aria-pressed={!!m.pinned}
+                      title={m.pinned ? 'Pinned: always in view. Click to unpin' : 'Pin: always keep this in view'}
+                    >
+                      ★
                     </button>
                     <button
                       type="button"
@@ -440,7 +552,7 @@ function Settings({ settings, onProvider }: Pick<TopBarProps, 'settings' | 'onPr
 
 export default function TopBar({
   connection, busy, settings, canStartNewChat, onNewChat, onProvider,
-  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, onTyping, ...chats
+  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, memoryExtras, memoryActions, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, onTyping, ...chats
 }: TopBarProps) {
   const now = useNow()
   const status =
@@ -523,6 +635,8 @@ export default function TopBar({
           onSaveMemory={onSaveMemory}
           onDeleteMemory={onDeleteMemory}
           onWipeMemory={onWipeMemory}
+          memoryExtras={memoryExtras}
+          memoryActions={memoryActions}
         />
         <ScheduleMenu jobs={jobs} jobRuns={jobRuns} onJob={onJob} />
         <Settings settings={settings} onProvider={onProvider} />

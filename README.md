@@ -337,6 +337,77 @@ only look things up.
 
 - **Memory**: preferences, people, projects, decisions. See, edit or delete them all in the
   memory panel. Passwords, card numbers and keys are always refused.
+
+### Memory v2 (steps 1-4: linked memory, smart saves, better recall)
+
+Ultron's memory now links what it knows. Everything runs on your **local** Ollama; memories never go to a
+hosted embedding service.
+
+- **Smart save.** When Ultron remembers something it first looks at the 5 most similar memories. A near-copy
+  is merged (the old wording stays in the memory's `history`); a plan whose date moved ("test moved to 19 Nov")
+  replaces the old one, which is **archived with the reason**, not deleted; a disagreement is saved but
+  **flagged** (a `contradicts` link) and Ultron asks you which is right. The check is quick (a rule first, then
+  the local judge with a short timeout). If the local model is down, a cheap Claude model may judge (only the
+  few candidate memories, never family/health/money, `#private` or "important" ones, and only under
+  `JARVIS_JOBS_MAX_USAGE`); otherwise the memory is saved as it is and checked in the nightly pass.
+- **Links** (`storage/memory_links.json`): same person / project / topic from the names and themes each memory
+  mentions (found by the local model, cached), plus `supersedes` / `contradicts` from the judge.
+  A link you reject isn't made again.
+- **Recall** finds by words *and* meaning, favours recent, often-useful and sure memories, and shows each hit's
+  linked neighbours with their dates ("EasyTV pricing" also brings the Supabase upgrade note). It records
+  `last_used_at` / `use_count`. Without the embedding model it uses word matching only.
+- **Fields.** Each memory in `memory.json` also has `last_used_at, use_count, confidence, expires_at, entities,
+  topics, pinned, archived, history, sensitive`. Old sources are renamed: `chat`/`you` -> `user_said`,
+  `conversation` -> `conversation_summary` (`inferred` is for Ultron's own guesses, never above what you said).
+  Embeddings, links, insights and settings sit in separate files beside `memory.json`
+  (`memory_embeddings.json`, `memory_links.json`, `memory_insights.json`, `memory_state.json`), all git-ignored.
+- **Obsidian mirror** only lists memories in use (archived ones stay in `memory.json`); Ultron's guesses appear
+  under their own "guesses" heading with their confidence.
+- **Kill switch & dry run.** `JARVIS_MEMORY_V2=0` goes back to the old flat memory (no judge, no links,
+  word-match recall). `JARVIS_MEMORY_DRY_RUN=1` makes the nightly pass compute but write nothing.
+- **Try it on a copy first:** `cd backend && .venv/bin/python memory_cli.py dry-run "EasyTV pricing" Supabase`
+  runs the whole migration on a temp copy and prints what it would do (labels, links, expiry dates, duplicates,
+  recall before/after). `memory_cli.py migrate` does it for real (copies `memory.json` to `storage/backups/`
+  first; safe to repeat). The nightly pass (3 am, `memory_jobs.py`) only starts after `migrate` has been run once.
+- **Wake-up context (step 5).** The system prompt lists memories pinned first, then those expiring within
+  7 days, then the newest (same ~1,500-character budget). Because the system prompt is built before you say
+  anything, the memories (plus one linked neighbour each) that relate to your **first message** of a chat are
+  added to that message's `[Now: …]` prefix instead (max ~1,000 characters, skipping ones already listed;
+  none with the kill switch off).
+- **Pattern finder (step 6, `memory_insights.py`).** Each night, deadlines (expiring within 7 days) and flagged
+  contradictions come from rules; recurring topics, unfinished things, commitments and decisions to revisit come
+  from the local model reading the last 30 days of conversation notes and memories. Each insight has evidence,
+  a confidence and a `surface_when`; **below 0.6 it is stored but never shown**. Memories that are sensitive,
+  `#private` or name something marked important, and `#private` notes, are never read. Notes are passed as data
+  (emails can be quoted in them), and the output is checked (no secrets, real evidence only, at most 8 pieces of
+  evidence, confidence capped at 0.8). Insights never become memories. `memory_cli.py insights` lists them.
+- **Surfacing (step 7, `memory_surface.py`).** In chat, a matching insight may become ONE `Related:` line at the end
+  of a reply: never in voice replies, one per reply, each once per conversation. Proactive nudges are **off until
+  you run `memory_cli.py nudges on`** (the app switch comes in step 9). They only go out while you are at the
+  computer, outside quiet hours, at most 2 a day (60 min apart), 1 per topic per week, never after you dismissed
+  the insight twice, and on a day you have a test only about that test (found from memories with an expiry date
+  today that mention a test/exam). They use the same `notify.route` as watchers (a toast in the open page, else
+  Telegram); family/health/money topics get neutral wording. Dry-run (`JARVIS_MEMORY_DRY_RUN=1`) and the kill
+  switch send nothing. The caps live in `memory_state.json` under `caps`.
+- **Decay (step 8, `memory_decay.py`).** Expired memories are archived (not deleted; unpinned only). Guesses nobody
+  used for 30 days lose 0.1 confidence a week. Merges and archives are only *proposed*
+  (`memory_cli.py proposals`, `approve ID`, `reject ID`); a rejected proposal isn't made again.
+- **In the app (step 9).** The memory button now has three tabs: *memories* (as before, plus a ★ to pin a memory
+  so it is always in view and never expires, and "guess" / "until <date>" labels), *connections* (every link, with
+  × to remove one for good) and *insights* (each pattern with its confidence, **why** it was found and its
+  evidence, buttons Useful / Not useful / Forget, patterns under 0.6 shown greyed as "not shown", this week's
+  merge / archive suggestions with Do it / No, and the **Quiet nudges** switch, off by default). The `memory.list`
+  message gained `links`, `insights`, `proposals`, `proactive` and the new memory fields; old fields are unchanged.
+- **Tools (step 10).** `recall` (read) now returns `date`, `source`, `confidence` and `related`; new:
+  `memory_related(memory_id)` (read), `memory_insights(status)` (read) and `memory_pin(memory_id, pinned)` (act, runs
+  without a card). `remember` tells Ultron when it merged, replaced or flagged something.
+- **Cost:** `memory_cli.py cost` prints model calls and tokens per day, local vs Claude.
+- **Meaning search needs the embedding model:** `ollama pull nomic-embed-text` (about 270 MB, runs on the
+  local Ollama; change it with `JARVIS_EMBED_MODEL`). Without it, recall still works with words.
+
+*Windows setup:* nothing new to install except `winget install Ollama.Ollama` (if not already) and
+`ollama pull nomic-embed-text`; the `.env` lines are in `.env.example` (`JARVIS_MEMORY_*`, `JARVIS_EMBED_MODEL`).
+All file access is UTF-8 and path-neutral.
 - **Saved chats**: up to 5, with their canvas cards.
 - **Obsidian notes**: searches and reads your vault, writes new notes, and deletes a note or folder on request (always asks first; it goes to the vault's `.trash`, so Obsidian can restore it). `#private` notes are never read or deleted.
 - **Important things**: mark a file, folder or note important and Ultron asks before touching it.
@@ -495,6 +566,7 @@ only look things up.
 | `backend/hub.py` | pushes every event to every open tab, so the Mac and phone stay in sync. |
 | `backend/watcher.py`, `whatsapp_read.py`, `storage/watch_store.py` | the "notify me when X responds" rules and their minute-by-minute check. |
 | `backend/scheduler.py`, `notify.py` | the job loop (every 30 s), and results to chat, macOS notifications and Telegram. |
+| `backend/memory_*.py`, `storage/memory_aux.py` | Memory v2: `memory_write` (smart save), `memory_search` (recall), `memory_graph` (links), `memory_ai` (local model calls, cost log), `memory_jobs` (migration + nightly pass), `memory_cli` (dry-run / migrate / cost). |
 | `backend/initiative.py`, `briefing.py`, `calendar_text.py`, `mail_text.py` | Ultron's own texts: the local model sees your time, memory and calendar as text, checks your email, and decides whether to text you. |
 | `backend/storage/` | local files: memory, chats, jobs, usage, images, models, videos, uploads (git-ignored). |
 | `scripts/Ultron.swift` | `Ultron.app`: menu-bar orb, starts/stops the backend, hosts the screen overlay window. |
