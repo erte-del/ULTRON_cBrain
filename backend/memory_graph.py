@@ -12,7 +12,12 @@ Automatic links are recomputed by the nightly pass and when a memory is saved; l
 are never removed by it, and a link you reject is not made again.
 """
 
+import collections
+import re
+
 import numpy as np
+
+import memory_text
 
 from storage import memory_aux
 
@@ -24,7 +29,32 @@ NEAR_MISS_MIN = 1.0     # cosine band [this, SEMANTIC_MIN) linked on meaning alo
 # Topic words that say nothing about what a memory is about.
 GENERIC_TOPICS = frozenset("projects project development code coding technology tech ai tools preferences general "
                            "integration features feature apps app".split())
+RARE_WORD_MAX = 12      # a word in more memories than this is too common to connect two of them
+RARE_WORD_COSINE = 0.65  # ... and a shared rare word only links when the meanings agree this much
+# Tools and platforms: they appear in many unrelated notes, so they are never "the project" or "the person".
+TOOLS = frozenset("""obsidian github android ios windows macos mac linux python javascript typescript html css kotlin
+react node vite vercel claude chatgpt ollama whatsapp spotify telegram tailscale ticktick gmail google discord
+instagram youtube steam""".split())
+# Words that are rare enough but say nothing about the subject.
+COMMON_WORDS = frozenset("""build building built plan planning free open created saved project feature code monday tuesday
+wednesday thursday friday saturday sunday january february march april june july august september october
+november december turkish english dubai note notes reel reels prompt prompts player ultron user wants plans using used working""".split())
 KIND_FOR_TYPE = {"person": ("same_person", 0.9), "project": ("same_project", 0.8)}
+
+
+_WORDS = re.compile(r"[A-Za-z][A-Za-z0-9\-]*")
+
+
+def _proper_words(text: str) -> frozenset[str]:
+    """Stems of the names and acronyms in a text: ALL-CAPS ("IPTV") or Capitalised ("Supabase") words that
+    don't just start a sentence. Ordinary words ("want", "time") never count as a shared subject."""
+    found = set()
+    for m in _WORDS.finditer(text):
+        word = m.group()
+        starts = not text[:m.start()].rstrip().rstrip('"\'(') or text[:m.start()].rstrip()[-1:] in ".!?:;"
+        if (word.isupper() and len(word) > 1) or (word[0].isupper() and not starts and not word.isupper()):
+            found.add(memory_text.stem(word))
+    return frozenset(found)
 
 
 def _entity_map(memories: list[dict]) -> dict[str, list[tuple[str, str]]]:
@@ -33,6 +63,14 @@ def _entity_map(memories: list[dict]) -> dict[str, list[tuple[str, str]]]:
     for m in memories:
         for e in m["entities"]:
             found.setdefault(e["name"].casefold(), []).append((m["id"], e["type"]))
+    # One type per name: the model labels the same name differently from note to note, and a link's kind
+    # must not depend on which note happened to call it a "project". Tools are never a project or a person.
+    for name, owners in found.items():
+        if name in TOOLS:
+            kind = "other"
+        else:
+            kind = max(collections.Counter(t for _, t in owners).items(), key=lambda kv: (kv[1], kv[0] == "other"))[0]
+        found[name] = [(i, kind) for i, _ in owners]
     return found
 
 
@@ -47,11 +85,14 @@ def proposed_links(memories: list[dict], vectors: dict[str, list[float]] | None 
     best: dict[tuple[str, str], dict] = {}
     vectors = vectors or {}
 
-    def agree(a: str, b: str) -> bool:
+    def agree_at(a: str, b: str, minimum: float) -> bool:
         if a not in vectors or b not in vectors:
             return False
         x, y = np.array(vectors[a], dtype=np.float32), np.array(vectors[b], dtype=np.float32)
-        return float(x @ y / max(np.linalg.norm(x) * np.linalg.norm(y), 1e-9)) >= CONFIRM_MIN
+        return float(x @ y / max(np.linalg.norm(x) * np.linalg.norm(y), 1e-9)) >= minimum
+
+    def agree(a: str, b: str) -> bool:
+        return agree_at(a, b, CONFIRM_MIN)
 
     def offer(a: str, b: str, kind: str, strength: float, why: str) -> None:
         key = tuple(sorted((a, b)))
@@ -85,6 +126,16 @@ def proposed_links(memories: list[dict], vectors: dict[str, list[float]] | None 
     for (a, b), topics in shared.items():
         if len(topics) >= 2 and agree(a, b):
             offer(a, b, "same_topic", min(0.6, 0.35 + 0.1 * (len(topics) - 2)), "both about " + ", ".join(topics[:3]))
+
+    # A distinctive word two memories both use ("iptv"), when their meanings agree too.
+    df = collections.Counter(w for m in memories for w in memory_text.token_set(m["text"]))
+    rare = {w for w, n in df.items() if 2 <= n <= RARE_WORD_MAX and len(w) > 3 and w not in COMMON_WORDS and w not in TOOLS}
+    words = {m["id"]: _proper_words(m["text"]) & rare for m in memories}
+    for i, a in enumerate(memories):
+        for b in memories[i + 1:]:
+            shared = words[a["id"]] & words[b["id"]]
+            if shared and agree_at(a["id"], b["id"], RARE_WORD_COSINE):
+                offer(a["id"], b["id"], "same_topic", 0.5, "both about " + ", ".join(sorted(shared)[:3]))
 
     ids = [m["id"] for m in memories if m["id"] in vectors]
     if len(ids) > 1:

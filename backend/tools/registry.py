@@ -41,7 +41,7 @@ from .instagram import (instagram_cancel, instagram_comments, instagram_post, in
 from .jobs import change_job, list_jobs, schedule_job
 from .mac import mac_change, mac_read, run_python
 from .maps import maps
-from .memory import forget, memory_insights_tool, memory_pin, memory_related, recall, remember
+from .memory import forget, memory_insights_tool, memory_pin, memory_related, memory_unlink, recall, remember
 from .notes import delete_note, read_note, search_notes, write_note
 from .important import mark_important, unmark_important
 from .images import image_edit, image_search, image_undo, image_versions
@@ -168,6 +168,7 @@ TOOLS: list[UltronTool] = [
     UltronTool(recall, "read"),
     UltronTool(memory_related, "read"),
     UltronTool(memory_insights_tool, "read"),
+    UltronTool(memory_unlink, "act"),  # only removes a link (undone by nothing, but no memory changes); runs without a card
     UltronTool(memory_pin, "act"),  # pinning only keeps a memory in view; you can unpin it in the memory panel
     # Your Obsidian notes: reading is free (never #private ones), a write asks only for notes you marked important.
     UltronTool(search_notes, "read"),
@@ -246,6 +247,7 @@ TITLES = {
     "remember": "Remember this",
     "forget": "Forget this",
     "memory_pin": "Pin this memory",
+    "memory_unlink": "Remove a memory link",
     "write_note": "Save to your notes",
     "delete_note": "Delete this note or folder",
     "schedule_job": "Schedule a job",

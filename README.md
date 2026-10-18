@@ -399,8 +399,8 @@ hosted embedding service.
   merge / archive suggestions with Do it / No, and the **Quiet nudges** switch, off by default). The `memory.list`
   message gained `links`, `insights`, `proposals`, `proactive` and the new memory fields; old fields are unchanged.
 - **Tools (step 10).** `recall` (read) now returns `date`, `source`, `confidence` and `related`; new:
-  `memory_related(memory_id)` (read), `memory_insights(status)` (read) and `memory_pin(memory_id, pinned)` (act, runs
-  without a card). `remember` tells Ultron when it merged, replaced or flagged something.
+  `memory_related(memory_id)` (read), `memory_insights(status)` (read) and `memory_pin(memory_id, pinned)` and `memory_unlink(memory_a, memory_b, kind?)` (act, run
+  without a card; unlink removes a wrong connection for good, the memories stay). `remember` tells Ultron when it merged, replaced or flagged something.
 - **Cost:** `memory_cli.py cost` prints model calls and tokens per day, local vs Claude.
 - **Meaning search needs the embedding model:** `ollama pull nomic-embed-text` (about 270 MB, runs on the
   local Ollama; change it with `JARVIS_EMBED_MODEL`). Without it, recall still works with words.

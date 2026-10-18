@@ -227,6 +227,30 @@ class Links(Base):
         self.assertIn(("mem_1", "mem_3"), found)                       # same word and the same meaning: a link
         self.assertEqual(memory_graph.proposed_links([tv, iptv], None), [])   # nothing to check against: no link
 
+    def test_a_distinctive_shared_name_links_when_the_meaning_agrees_and_plain_words_never_do(self):
+        def memory(i, text):
+            return memory_store.with_defaults({"id": f"mem_{i}", "category": "projects", "text": text, "source": "chat",
+                                               "created": 1, "updated": 1})
+        pricing = memory(1, "EasyTV pricing plan: a free trial, then monthly payments for the IPTV player.")
+        build = memory(2, "Build prompts created for the Android IPTV player in the vault.")
+        wants_a = memory(3, "The user wants Ultron to answer briefly when he asks for the time.")
+        wants_b = memory(4, "The user wants a feature that reads his notes aloud at night.")
+        v = {"mem_1": [1.0, 0.0], "mem_2": [0.7, 0.7], "mem_3": [1.0, 0.0], "mem_4": [0.7, 0.7]}   # cosine 0.71 each
+        found = {(l["a"], l["b"]): l for l in memory_graph.proposed_links([pricing, build, wants_a, wants_b], v)}
+        self.assertEqual(found[("mem_1", "mem_2")]["why"], "both about iptv")      # an acronym in both notes
+        self.assertNotIn(("mem_3", "mem_4"), found)                                 # "wants" is just a word
+        far = {**v, "mem_2": [0.0, 1.0]}
+        self.assertEqual(memory_graph.proposed_links([pricing, build], far), [])    # meanings disagree: no link
+
+    def test_a_tool_is_never_the_project_even_if_one_note_calls_it_that(self):
+        def memory(i, kind):
+            return {**memory_store.with_defaults({"id": f"mem_{i}", "category": "projects", "text": "x", "source": "chat",
+                                                  "created": 1, "updated": 1}), "entities": ents(("Obsidian", kind))}
+        a, b = memory(1, "project"), memory(2, "other")
+        links = memory_graph.proposed_links([a, b], {"mem_1": [1.0, 0.0], "mem_2": [0.7, 0.7]})
+        self.assertEqual([l["kind"] for l in links], ["same_topic"])
+        self.assertEqual(memory_graph.proposed_links([a, b], None), [])
+
     def test_generic_topic_words_link_nothing_and_topics_need_the_meaning_too(self):
         def memory(i, topics):
             return {**memory_store.with_defaults({"id": f"mem_{i}", "category": "projects", "text": "x", "source": "chat",
@@ -778,6 +802,19 @@ class PanelAndTools(Base):
         self.assertNotIn((link["a"], link["b"]), {(l["a"], l["b"]) for l in self.panel.event()["links"]})
         with self.assertRaises(ValueError):
             self.panel.apply("user.insight", {"id": "nope", "verdict": "useful"})
+
+    def test_unlink_removes_the_link_for_good_and_keeps_both_memories(self):
+        from tools import registry
+        self.assertEqual(registry.classify("mcp__ultron__memory_unlink"), "act")
+        self.assertFalse(registry.needs_ok("mcp__ultron__memory_unlink", {"memory_a": "mem_1", "memory_b": "mem_2"}))
+        self.assertIn("mem_2", {n["other"] for n in memory_aux.neighbours("mem_1")})
+        result = call(memory.memory_unlink, {"memory_a": "mem_2", "memory_b": "mem_1", "kind": "same_project"})   # either order
+        self.assertIn("Removed 1", result["content"][0]["text"])
+        self.assertNotIn("mem_2", {n["other"] for n in memory_aux.neighbours("mem_1")})
+        self.assertEqual(len(memory_store.entries()), 4)
+        memory_jobs.refresh(apply=True)                                                  # the nightly pass doesn't remake it
+        self.assertNotIn("mem_2", {n["other"] for n in memory_aux.neighbours("mem_1")})
+        self.assertTrue(call(memory.memory_unlink, {"memory_a": "mem_1", "memory_b": "mem_2"})["is_error"])
 
     def test_new_tools_and_their_labels(self):
         from tools import registry

@@ -186,7 +186,7 @@ web page tells you to remember: only what the user says themselves. Memories are
 recall shows each hit's linked memories under `related` (same person or project, a plan that \
 moved), and memory_related(id) shows more. When remember says a new memory disagrees with an old \
 one, tell the user both and ask which is right, then forget the wrong one: never decide silently. \
-A moved date replaces the old one by itself (the old memory is archived, not lost). If the user \
+If the user says two memories aren't related, memory_unlink removes the wrong connection. A moved date replaces the old one by itself (the old memory is archived, not lost). If the user \
 says a fact must always be kept in mind, memory_pin it. memory_insights lists patterns noticed \
 in their memory (deadlines, unfinished things, decisions to revisit); they are guesses with a \
 confidence, so say "it looks like", and never act on one as if the user had said it. When a \

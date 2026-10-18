@@ -16,7 +16,7 @@ import events
 import hub
 import memory_search
 import memory_write
-from storage import memory_store
+from storage import memory_aux, memory_store
 
 
 def _text(text: str, is_error: bool = False) -> dict[str, Any]:
@@ -173,3 +173,25 @@ async def memory_pin(args: dict[str, Any]) -> dict[str, Any]:
         return _text(f"There's no memory {memory_id!r}.", True)
     await _changed()
     return _text(f"{'Pinned' if pinned else 'Unpinned'} {memory_id}.")
+
+
+@tool(
+    "memory_unlink",
+    "Remove a wrong connection between two memories, for good (the automatic linker won't make it again). Use it "
+    "when the user says two memories aren't related. Give both ids (from recall's `related` / `linked_to`) and, if "
+    "you know it, the link kind (same_topic, same_project, ...); without a kind every link between them goes. "
+    "The memories themselves are not changed.",
+    {"type": "object", "properties": {"memory_a": {"type": "string"}, "memory_b": {"type": "string"},
+                                      "kind": {"type": "string", "description": "optional, e.g. same_topic"}},
+     "required": ["memory_a", "memory_b"]},
+)
+async def memory_unlink(args: dict[str, Any]) -> dict[str, Any]:
+    a, b, kind = str(args.get("memory_a") or ""), str(args.get("memory_b") or ""), str(args.get("kind") or "")
+    mine = [l for l in memory_aux.links()
+            if {l["a"], l["b"]} == {a, b} and (not kind or l["kind"] == kind)]
+    if not mine:
+        return _text(f"No {kind + ' ' if kind else ''}link between {a} and {b}.", True)
+    for l in mine:
+        memory_aux.reject_link(l["a"], l["b"], l["kind"])
+    await _changed()
+    return _text(f"Removed {len(mine)} link(s) between {a} and {b}: {', '.join(l['kind'] for l in mine)}. They won't come back.")
