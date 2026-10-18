@@ -8,11 +8,14 @@ hides WhatsApp and switches back to the app you were in (the browser with Ultron
 presses Enter while WhatsApp is the frontmost app, so the key can't land anywhere else.
 
 Pressing keys needs macOS Accessibility permission for Ultron (System Settings →
-Privacy & Security → Accessibility). Ultron can't read messages.
+Privacy & Security → Accessibility). Reading is separate: tools/whatsapp_inbox.py.
 """
 
 import asyncio
+import json
 import re
+from datetime import datetime
+from typing import Callable
 from typing import Any
 from urllib.parse import quote
 

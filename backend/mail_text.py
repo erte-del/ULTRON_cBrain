@@ -82,3 +82,31 @@ def unread(now: datetime | None = None) -> list[dict]:
 
 def mail_text(mails: list[dict]) -> str:
     return "\n".join(f"- {m['when']} From {m['from']}: {m['subject']} — {m['snippet']}" for m in mails) or "(no unread email in the last 3 days)"
+
+
+def headers(since: datetime, limit: int = 100) -> list[dict]:
+    """Inbox mail received on or after `since`'s day, newest first, headers only (nothing is
+    marked as read): [{id, from, subject, sent (timestamp)}]. For watches ("tell me when X
+    replies"). RuntimeError (never with the password in it) if Gmail can't be read."""
+    try:
+        with imaplib.IMAP4_SSL(HOST, timeout=30, ssl_context=config.ssl_context()) as box:
+            box.login(config.GMAIL_ADDRESS, config.GMAIL_APP_PASSWORD)
+            box.select("INBOX", readonly=True)
+            _, found = box.search(None, "SINCE", since.strftime("%d-%b-%Y"))
+            out = []
+            for num in reversed(found[0].split()[-limit:]):
+                _, data = box.fetch(num, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID)])")
+                raw = next((part[1] for part in data if isinstance(part, tuple)), b"")
+                msg = email.message_from_bytes(raw)
+                try:
+                    sent = email.utils.parsedate_to_datetime(str(msg["Date"])).timestamp() if msg["Date"] else 0.0
+                except (TypeError, ValueError, IndexError):
+                    sent = 0.0
+                out.append({"id": _clean(str(msg["Message-ID"] or f"{msg['From']}|{msg['Date']}"), 200),
+                            "from": _clean(_decode(msg["From"]), 100), "subject": _clean(_decode(msg["Subject"]), 120),
+                            "sent": sent})
+            return out
+    except imaplib.IMAP4.error:
+        raise RuntimeError("Gmail refused the login (check GMAIL_ADDRESS and the app password)") from None
+    except (OSError, TypeError, ValueError) as e:
+        raise RuntimeError(f"couldn't read Gmail ({type(e).__name__})") from None

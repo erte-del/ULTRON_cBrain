@@ -56,11 +56,13 @@ from .spotify import spotify_control, spotify_playlist_tracks
 from .slides import lectures, make_slides, open_slides
 from .syllabus import syllabus
 from .telegram import text_me
+from .watch import list_watches, stop_watch, watch_for_reply
 from .textbook import textbook
 from .tracks import show_track, track_info
 from .uploads import read_upload
 from .video import generate_video
 from .whatsapp import whatsapp_send
+from .whatsapp_inbox import whatsapp_messages
 from .youtube import watch_short, youtube
 
 SERVER_NAME = "ultron"
@@ -141,6 +143,7 @@ TOOLS: list[UltronTool] = [
     UltronTool(capture, "act"),
     # Sends a message in your name.
     UltronTool(whatsapp_send, "act"),
+    UltronTool(whatsapp_messages, "read"),  # read-only, from the Mac app's own database
     # Instagram: the preview only shows the Reel (and its cover) on the canvas, comments are only
     # read; posting, scheduling and replying are public, so they always ask.
     UltronTool(instagram_preview, "read"),
@@ -172,6 +175,10 @@ TOOLS: list[UltronTool] = [
     UltronTool(schedule_job, "act"),
     UltronTool(change_job, "act"),
     UltronTool(list_jobs, "read"),
+    # Watches ('tell me when X replies') are standing rules, checked by watcher.py without a model.
+    UltronTool(watch_for_reply, "act"),
+    UltronTool(stop_watch, "act"),
+    UltronTool(list_watches, "read"),
     # Adding only adds protection; lifting it asks (see ASK_TOOLS).
     UltronTool(mark_important, "act"),
     UltronTool(unmark_important, "act"),
@@ -239,6 +246,8 @@ TITLES = {
     "delete_note": "Delete this note or folder",
     "schedule_job": "Schedule a job",
     "change_job": "Change a scheduled job",
+    "watch_for_reply": "Watch for a reply",
+    "stop_watch": "Stop a watch",
     "unmark_important": "Stop protecting this",
     "mac_change": "Change something on this Mac",
     "pc_change": "Change something on the PC",

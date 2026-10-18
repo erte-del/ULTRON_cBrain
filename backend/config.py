@@ -39,6 +39,9 @@ GOOGLE_CALENDAR_ICAL_URL = os.getenv("GOOGLE_CALENDAR_ICAL_URL", "").strip()
 # Without it, Ultron's check-ins use the Gmail connector instead (slower).
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "").strip()
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
+# WhatsApp desktop's chat database on this Mac (whatsapp_read.py reads it, read-only, for "tell me when X
+# texts me"). Empty = the usual place. The backend's app needs Full Disk Access to open it.
+WHATSAPP_DB = os.getenv("JARVIS_WHATSAPP_DB", "").strip()
 # The note in your vault with your school timetable (path in the vault); empty = look for one.
 SCHOOL_SCHEDULE_NOTE = os.getenv("JARVIS_SCHOOL_SCHEDULE_NOTE", "").strip()
 if GOOGLE_CALENDAR_ICAL_URL and not GOOGLE_CALENDAR_ICAL_URL.startswith("https://"):

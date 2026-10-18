@@ -24,6 +24,7 @@ import hub
 import ollama
 import initiative
 import scheduler
+import watcher
 import terminal
 from brain.agent import Ultron
 from brain.base import ModelAlias
@@ -84,6 +85,7 @@ async def lifespan(app: FastAPI):
             warm_local()
     jobs = asyncio.create_task(scheduler.loop())
     check_ins = asyncio.create_task(initiative.loop())
+    watches = asyncio.create_task(watcher.loop())
     ig_token = asyncio.create_task(instagram.refresh_loop())
     ig_queue = asyncio.create_task(instagram.queue_loop())
     ears = asyncio.create_task(wake.listen()) if config.BACKGROUND_WAKE else None
@@ -99,6 +101,7 @@ async def lifespan(app: FastAPI):
     ig_token.cancel()
     jobs.cancel()
     check_ins.cancel()
+    watches.cancel()
     warm_up.cancel()
     await ultron.wrap_up()  # the last conversation's note
     await asyncio.gather(*ultron.notes)  # and any still being written

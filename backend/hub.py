@@ -29,11 +29,14 @@ def has_clients() -> bool:
     return bool(_clients)
 
 
-async def emit(event: Event) -> None:
-    """Send an event to every connected tab."""
+async def emit(event: Event) -> int:
+    """Send an event to every connected tab; how many received it (0 = nobody is looking)."""
+    delivered = 0
     for send in list(_clients):
         try:
             await send(event)
+            delivered += 1
         except Exception:
             log.debug("Dropping a tab that failed to receive", exc_info=True)
             _clients.discard(send)
+    return delivered

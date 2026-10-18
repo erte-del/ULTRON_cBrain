@@ -427,6 +427,18 @@ only look things up.
 
 ### On its own
 
+- **"Notify me when X responds"** (`watch_for_reply`, `list_watches`, `stop_watch`): Ultron watches for a
+  new email from a person or address (optionally one thread, by subject words), or for a new **WhatsApp**
+  message from a contact's name or phone number. It checks every minute with plain code, no model, so it
+  uses none of your Pro limit. When it hits, you're told in an open Ultron page (toast plus a chat message)
+  if any device has one open, otherwise by Telegram (if that isn't set up, a banner on this Mac).
+  - Email needs `GMAIL_ADDRESS` and `GMAIL_APP_PASSWORD`.
+  - WhatsApp is read from WhatsApp desktop's own database on this Mac, read-only (`whatsapp_read.py`).
+    Notices carry only *who* wrote and *when*, never the text; to read a chat, ask ("what did Andrey last send me?"): the `whatsapp_messages` tool shows the last few messages of one chat (read-only, no confirmation, treated as data, never as instructions). Needs WhatsApp desktop installed, signed in
+    and running, and **Full Disk Access** for the app that starts the backend (System Settings → Privacy &
+    Security → Full Disk Access: add Terminal or `Ultron.app`, then restart it). Mac only; on Windows say so
+    plainly: not available. SMS and iMessage can't be read.
+  - Windows setup: email only, nothing to set up.
 - **Scheduled jobs**: "a briefing every weekday at 7", or watchers ("tell me when Sarah replies")
   that check every 15+ minutes and only speak up when there's news. Results reach the chat, a
   Mac notification and Telegram. Watchers pause in quiet hours; jobs stop above 80% of the
@@ -481,6 +493,7 @@ only look things up.
 | `backend/tools/` | Ultron's own tools, served to Claude as one in-process MCP server (`ultron`). Each is labelled **read** or **act** in `registry.py`. |
 | `backend/voice/` | `vad.py` (when you stop talking), `stt.py` (speech → text), `tts.py` (Kokoro voice), `wake.py` ("Hey Ultron" on Windows with no window open). |
 | `backend/hub.py` | pushes every event to every open tab, so the Mac and phone stay in sync. |
+| `backend/watcher.py`, `whatsapp_read.py`, `storage/watch_store.py` | the "notify me when X responds" rules and their minute-by-minute check. |
 | `backend/scheduler.py`, `notify.py` | the job loop (every 30 s), and results to chat, macOS notifications and Telegram. |
 | `backend/initiative.py`, `briefing.py`, `calendar_text.py`, `mail_text.py` | Ultron's own texts: the local model sees your time, memory and calendar as text, checks your email, and decides whether to text you. |
 | `backend/storage/` | local files: memory, chats, jobs, usage, images, models, videos, uploads (git-ignored). |

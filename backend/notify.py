@@ -53,6 +53,28 @@ async def push(title: str, text: str) -> None:
             log.warning("Telegram notification failed: %s", e)
 
 
+async def route(title: str, text: str) -> str:
+    """Tell the user something they asked to hear ("notify me when X replies"): in an open
+    Ultron page if there is one (a toast and a chat message), otherwise by Telegram.
+    Returns where it went: "ui", "telegram" or "mac" (no page open and no Telegram: a banner on
+    this Mac, so it isn't lost). RuntimeError if nothing could carry it."""
+    _unseen.append(f"{title}: {text}")
+    del _unseen[:-MAX_UNSEEN]
+    if await hub.emit(events.notification(title, text, time.time())):
+        return "ui"
+    if telegram.configured():
+        try:
+            await asyncio.to_thread(telegram.send_text, f"{title}\n\n{text}")
+            return "telegram"
+        except RuntimeError as e:  # never includes the bot token
+            log.warning("Telegram notification failed: %s", e)
+    try:
+        await _mac(title, text)
+        return "mac"
+    except (OSError, TimeoutError):
+        raise RuntimeError("no Ultron page is open, Telegram isn't working, and the Mac banner failed") from None
+
+
 async def text_only(title: str, text: str) -> None:
     """Text the user's phone and nothing else (no banner, no chat card), for Ultron's own
     check-ins (initiative.py). Ultron still hears about it with the next message.

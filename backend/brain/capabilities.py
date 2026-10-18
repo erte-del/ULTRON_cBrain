@@ -107,7 +107,7 @@ GROUPS: tuple[Group, ...] = (
     Group("youtube", r"\byoutube\b|\b(youtube |yt )shorts?\b|\bwatch (a |this |the )?short\b", ("youtube", "watch_short"), "", ("About YouTube",)),
     Group("amazon", r"\bamazon\b|\bwish ?list\b", ("amazon_read", "amazon_change"), "", ("About Amazon",)),
     Group("github", r"\bgithub\b|\brepos?\b|\bpull requests?\b", ("github",), "", ("About GitHub",)),
-    Group("messages", r"\bwhatsapp\b|\b(send|write) (a |an |him |her |them )?(message|msg)\b|\bmessage (him|her|them|\w+ (that|saying|about|to say))\b", ("whatsapp_send", "find_contact"), "", ("About WhatsApp",)),
+    Group("messages", r"\bwhatsapp\b|\b(last|latest|new) (message|text)\b|\b(send|write) (a |an |him |her |them )?(message|msg)\b|\bmessage (him|her|them|\w+ (that|saying|about|to say))\b", ("whatsapp_send", "whatsapp_messages", "find_contact"), "", ("About WhatsApp",)),
     Group("phone", r"\btaxi\b|\bcareem\b|\b(order|get|want|need) (some )?food\b|\bhungry\b", ("phone_taxi", "phone_food"), "", ()),
     Group("tracks", r"\bacc\b|\bassetto\b|\bbraking\b|\b(corner|turn) \d+", ("show_track", "track_info"), "",
           ("About ACC tracks",)),
