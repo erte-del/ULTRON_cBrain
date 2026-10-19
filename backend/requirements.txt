@@ -1,6 +1,6 @@
 fastapi==0.141.1
 uvicorn[standard]==0.54.0
-claude-agent-sdk==0.2.160
+claude-agent-sdk==0.2.168
 python-dotenv==1.2.3
 pillow==12.3.0
 trimesh==5.1.0
@@ -13,7 +13,7 @@ pypdf==6.19.0
 python-pptx==1.0.2
 openpyxl==3.1.5
 yt-dlp[default]==2026.8.19
-truststore==0.10.4
+truststore==0.10.5
 faster-whisper==1.2.1
 kokoro-onnx==0.6.1
 sounddevice==0.5.2; sys_platform == "win32"

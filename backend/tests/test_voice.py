@@ -168,8 +168,18 @@ class GroqTest(unittest.TestCase):
         with patch.object(config, "GROQ_API_KEY", "gsk_test"), \
                 patch.object(stt, "groq", side_effect=OSError("offline")), \
                 patch.object(stt, "local", return_value="hello") as local:
-            self.assertEqual(stt.transcribe(np.zeros(1600, np.float32)), "hello")
+            self.assertEqual(stt.transcribe(np.full(1600, 0.1, np.float32)), "hello")
             local.assert_called_once()
+
+    def test_phantom_thank_you_is_dropped(self):
+        quiet = np.full(16000, 0.01, np.float32)  # a faint hiss
+        loud = np.full(16000, 0.1, np.float32)  # someone really talking
+        with patch.object(config, "GROQ_API_KEY", ""), patch.object(stt, "local", return_value="Thank you, sir."):
+            self.assertEqual(stt.transcribe(quiet), "")
+            self.assertEqual(stt.transcribe(loud), "Thank you, sir.")
+            self.assertEqual(stt.transcribe(np.zeros(16000, np.float32)), "")
+        with patch.object(config, "GROQ_API_KEY", ""), patch.object(stt, "local", return_value="Remind me at five."):
+            self.assertEqual(stt.transcribe(quiet), "Remind me at five.")
 
 
 class SpeakingTest(unittest.TestCase):

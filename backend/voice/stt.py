@@ -26,6 +26,12 @@ GROQ_MODEL = "whisper-large-v3-turbo"
 GROQ_TIMEOUT_S = 10
 NO_SPEECH = 0.6  # parts Whisper thinks are more likely silence than this are dropped
 
+# Whisper invents these on near-silent or noisy audio. Dropped when the audio is quiet.
+PHANTOMS = {"thank you", "thanks", "thank you sir", "thanks sir", "thank you very much", "thank you so much",
+            "thanks for watching", "thank you for watching", "you", "bye", "okay", "ok"}
+SILENT = 0.005  # loudest 100 ms below this (RMS, full scale 1.0): nothing was said, don't transcribe
+QUIET = 0.03  # a phantom phrase from audio never louder than this is Whisper's invention
+
 HINT = "Ultron, TickTick, Spotify, Gmail, Canva, WhatsApp, Obsidian."
 # Listening for "Hey Ultron": the hint makes Whisper write the name it would otherwise hear as
 # Aldron, Uldren or Aldrin; ordinary speech isn't turned into it.
@@ -52,14 +58,37 @@ def load():
     return _model
 
 
+def loudest(audio: np.ndarray) -> float:
+    """RMS of the loudest 100 ms of the audio."""
+    n = 1600
+    if len(audio) < n:
+        return float(np.sqrt(np.mean(np.square(audio)))) if len(audio) else 0.0
+    cut = audio[: len(audio) - len(audio) % n].reshape(-1, n)
+    return float(np.sqrt(np.mean(np.square(cut), axis=1)).max())
+
+
+def phantom(text: str, audio: np.ndarray) -> bool:
+    """Whisper's "Thank you" on quiet audio, when nobody said anything."""
+    return " ".join(re.findall(r"[\w']+", text.lower())) in PHANTOMS and loudest(audio) < QUIET
+
+
 def transcribe(audio: np.ndarray) -> str:
     """The words in 16 kHz float32 audio ("" if there were none)."""
+    if loudest(audio) < SILENT:
+        return ""
+    text = ""
     if config.GROQ_API_KEY:
         try:
-            return groq(audio)
+            text = groq(audio)
         except Exception as e:  # never log the request: it carries the key
             log.warning("Groq speech to text failed (%s); using the local model", e)
-    return local(audio)
+            text = local(audio)
+    else:
+        text = local(audio)
+    if phantom(text, audio):
+        log.info("Ignored a phantom transcript: %r", text)
+        return ""
+    return text
 
 
 def _wav(audio: np.ndarray) -> bytes:

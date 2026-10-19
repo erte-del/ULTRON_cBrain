@@ -320,6 +320,9 @@ only look things up.
 - **Voice mode**: Ultron hears when you stop talking, writes it down (Groq Whisper, or
   faster-whisper on this computer), and answers out loud sentence by sentence (Kokoro voice,
   ~2 s to the first word). Spoken answers are 1–3 sentences; anything longer goes on the canvas.
+  Whisper's habit of inventing "Thank you" on silence or hiss is filtered (`voice/stt.py`: silent audio
+  isn't transcribed, and a lone "thank you" from quiet audio is dropped; if your mic is very quiet and
+  real thank-yous vanish, lower `QUIET`).
   Say "yes" / "no" to confirmation cards. Talk over it to interrupt; "stop" just stops it. A card
   still waiting when you interrupt ends as "Stopped — not done", and Ultron is told how its cards
   ended, so it never guesses whether something (an Instagram post) went out.
