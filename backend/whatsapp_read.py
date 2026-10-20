@@ -80,8 +80,10 @@ def _chats(con: sqlite3.Connection, who: str) -> list[tuple]:
                        "FROM ZWACHATSESSION s LEFT JOIN ZWAMESSAGE m ON m.ZCHATSESSION = s.Z_PK "
                        "GROUP BY s.Z_PK ORDER BY last DESC").fetchall()
     who = who.lower()
-    return [r[:3] for r in rows if who in str(r[1] or "").lower()
-            or (len(number) >= 6 and number in digits(str(r[2] or "").split("@")[0]))]
+    found = [r[:3] for r in rows if who in str(r[1] or "").lower()
+             or (len(number) >= 6 and number in digits(str(r[2] or "").split("@")[0]))]
+    # A chat named exactly this comes first ("Rain" is not "Rain World", even if that one is newer).
+    return sorted(found, key=lambda r: str(r[1] or "").lower() != who)
 
 
 def _columns(con: sqlite3.Connection, table: str) -> set[str]:

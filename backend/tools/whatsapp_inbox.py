@@ -11,7 +11,7 @@ from typing import Any
 from claude_agent_sdk import tool
 
 import whatsapp_read
-from tools import contacts
+from tools import contacts, whatsapp_groups
 
 
 def _text(text: str, is_error: bool = False) -> dict[str, Any]:
@@ -46,8 +46,22 @@ def sender_label(m: dict[str, Any], contact_names: dict[str, str]) -> str:
     },
 )
 async def whatsapp_messages(args: dict[str, Any]) -> dict[str, Any]:
+    who, count = str(args.get("who") or ""), int(args.get("count") or 5)
     try:
-        found = whatsapp_read.chat(str(args.get("who") or ""), int(args.get("count") or 5))
+        groups = whatsapp_read.groups("")
+        known = whatsapp_groups.aliases().get(whatsapp_groups._key(who))
+        if known and any(g["name"] == known for g in groups):
+            who = known  # what the user has called a group before
+        try:
+            found = whatsapp_read.chat(who, count)
+        except RuntimeError:  # no chat has those words in its name: maybe a group they meant loosely
+            verdict, close, _ = whatsapp_groups.resolve(who, groups)
+            if verdict == "ask":
+                raise RuntimeError("not sure which group that is; closest: " + ", ".join(g["name"] for g in close)
+                                   + ". Ask the user which") from None
+            if verdict != "use":
+                raise
+            found = whatsapp_read.chat(close[0]["name"], count)
     except (RuntimeError, ValueError) as e:
         return _text(f"Couldn't read WhatsApp: {e}.", True)
     names, warning = {}, ""

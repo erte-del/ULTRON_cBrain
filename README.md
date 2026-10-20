@@ -426,10 +426,18 @@ All file access is UTF-8 and path-neutral.
 ### Messages and your phone
 
 - **WhatsApp**: finds the person in your Contacts and sends after you approve. It can also message a **group** by
-  name ("tell Rain I'm late"): the approval card shows the exact message and group. If several groups match
-  ("Rain", "Rain World") nothing is sent: Ultron lists them and asks which. A group has no link that opens it, so
-  Ultron drives WhatsApp's chat search with key presses (they only go to WhatsApp while it's in front), then checks
-  WhatsApp's database that the message really landed in that group and tells you if it didn't. Group messages are one
+  name ("tell Rain I'm late"): the approval card shows the exact message and group. You don't have to say a group's exact name
+  ("the science gc", "scince habibis", "the boys"): `whatsapp_groups` matches your words against your group names
+  and what you've called groups before; a clear winner is used, if it's close Ultron lists the closest and asks
+  (never guesses). After a send you approved, your words are saved as a People memory (`WhatsApp group alias: "the
+  boys" = "Science Habibis"`), so it doesn't ask next time; see or delete it in the memory panel. Reading a chat
+  (`whatsapp_messages`) understands the same loose names. WhatsApp can be anywhere (a picture open, the Communities or Calls tab, a search
+  already open): Ultron first gets back to the chat list. A group has no link that opens it, so
+  Ultron searches WhatsApp for the name, reads the screen (macOS text recognition, on this Mac only), clicks the result
+  whose title is exactly that name, reads the chat's title, and only types the message if it matches; then it
+  checks WhatsApp's database that the message really landed in that group. Needs Accessibility **and Screen
+  Recording** for the app that starts the backend, and Xcode's command line tools (`xcode-select --install`, once, to
+  build the text reader). Group messages are one
   line. Reading a chat shows **who** said each thing, as `Name (number) (time): text`: the name WhatsApp shows for a
   saved contact, else the Contacts entry with the same number (spaces, dashes, brackets, `00`/`+`/leading `0` are
   ignored; numbers saved without a country code get `JARVIS_DEFAULT_COUNTRY_CODE`, default 971), else `Unknown`.

@@ -67,3 +67,4 @@ backend/library_tracks/info/
 backend/storage/ollama_connector_tools.json
 backend/storage/initiative.json
 backend/storage/initiative_context.txt
+backend/storage/bin/

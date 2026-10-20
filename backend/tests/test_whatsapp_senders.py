@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 import whatsapp_read
-from tools import contacts, whatsapp_inbox
+from tools import contacts, whatsapp_groups, whatsapp_inbox
 
 NOW = 100.0
 
@@ -101,6 +101,54 @@ class NumberTest(unittest.TestCase):
         with mock.patch.object(contacts, "_run", mock.AsyncMock(return_value=people)):
             index = asyncio.run(contacts.number_index())
         self.assertEqual(index, {"971501234567": "Omar", "905321382011": "Lena"})
+
+
+GROUP_NAMES = ["Rain", "Rain World", "Science Habibis", "Bizim Aile", "Mincraf General"]
+GROUPS = [{"id": f"{i}@g.us", "name": n} for i, n in enumerate(GROUP_NAMES)]
+
+
+def pick(said, saved=()):
+    with mock.patch.object(whatsapp_groups, "aliases", lambda: dict(saved)):
+        verdict, found, _ = whatsapp_groups.resolve(said, GROUPS)
+    return verdict, [g["name"] for g in found]
+
+
+class WhichGroupTest(unittest.TestCase):
+    def test_loose_words_find_the_group(self):
+        for said in ["science habibis", "the science habibis gc", "Science", "scince habibis", "my bizim aile group"]:
+            self.assertEqual(pick(said)[0], "use", said)
+        self.assertEqual(pick("the science gc")[1], ["Science Habibis"])
+        self.assertEqual(pick("scince habibis")[1], ["Science Habibis"])
+
+    def test_exact_name_beats_longer_names(self):
+        self.assertEqual(pick("rain"), ("use", ["Rain"]))
+        self.assertEqual(pick("the rain gc"), ("use", ["Rain"]))
+        self.assertEqual(pick("rain world"), ("use", ["Rain World"]))
+
+    def test_unsure_asks_and_nothing_fits_says_so(self):
+        verdict, names = pick("mincraf")
+        self.assertEqual(verdict, "use")  # only one group has it
+        self.assertEqual(pick("ra")[0], "ask")
+        self.assertEqual(pick("football")[0], "none")
+
+    def test_saved_name_for_a_group(self):
+        self.assertEqual(pick("the boys", {"boys": "Science Habibis"}), ("use", ["Science Habibis"]))
+        self.assertEqual(pick("the boys")[0], "none")
+
+    def test_remembers_what_the_user_called_it(self):
+        saved = []
+        with mock.patch.object(whatsapp_groups.memory_store, "entries", lambda: list(saved)), \
+                mock.patch.object(whatsapp_groups.memory_store, "add",
+                                  lambda text, cat: saved.insert(0, {"id": "m1", "text": text}) or saved[0]):
+            self.assertIn("Remembered", whatsapp_groups.remember_alias("the boys", "Science Habibis"))
+            self.assertEqual(whatsapp_groups.aliases(), {"boys": "Science Habibis"})
+            self.assertEqual(whatsapp_groups.remember_alias("the boys", "Science Habibis"), "")  # already known
+            self.assertEqual(whatsapp_groups.remember_alias("Science Habibis", "Science Habibis"), "")  # just its name
+            self.assertEqual(len(saved), 1)
+
+    def test_read_only_tool(self):
+        from tools import registry
+        self.assertEqual(registry.classify("mcp__ultron__whatsapp_groups"), "read")
 
 
 if __name__ == "__main__":

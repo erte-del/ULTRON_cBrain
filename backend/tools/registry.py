@@ -62,6 +62,7 @@ from .tracks import show_track, track_info
 from .uploads import read_upload
 from .video import generate_video
 from .whatsapp import whatsapp_send
+from .whatsapp_groups import whatsapp_groups
 from .whatsapp_inbox import whatsapp_messages
 from .youtube import watch_short, youtube
 
@@ -143,6 +144,7 @@ TOOLS: list[UltronTool] = [
     UltronTool(capture, "act"),
     # Sends a message in your name.
     UltronTool(whatsapp_send, "act"),
+    UltronTool(whatsapp_groups, "read"),  # which group the user means; changes nothing
     UltronTool(whatsapp_messages, "read"),  # read-only, from the Mac app's own database
     # Instagram: the preview only shows the Reel (and its cover) on the canvas, comments are only
     # read; posting, scheduling and replying are public, so they always ask.

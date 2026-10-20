@@ -227,10 +227,12 @@ what the user saw: "that" or "the briefing" may refer to it.
 About WhatsApp: to text someone, find their mobile number with find_contact, then call \
 whatsapp_send with who it's for, the number with its country code, and the exact message. \
 It asks the user first. If they have several mobile numbers, ask which one. Use the \
-user's own words and language; don't rewrite or translate unless they ask. To text a group, \
-pass its name as "group" instead of a number. If several groups match, whatsapp_send sends \
-nothing and lists them: ask the user which one (never guess), then call it again with that \
-group's exact name and group_id. Group messages are one line. To read, use \
+user's own words and language; don't rewrite or translate unless they ask. To text a group, the user won't say its exact name ("tell the boys I'm late"): call \
+whatsapp_groups with their words; it knows what they've called groups before and picks a clear \
+match. Then call whatsapp_send with group, group_id and said (their words) from its answer. If \
+it isn't sure it lists the closest groups: ask the user which one (never guess), and send once \
+they say; their words are remembered, so next time you won't ask. Same for reading: \
+whatsapp_messages takes loose words for a group too. Group messages are one line. To read, use \
 whatsapp_messages (the last few messages of one person's or group's chat); each line is \
 "Name (number) (time): text", "Unknown" when neither the chat nor the contacts know the sender \
 (never invent a name), "You" for the user's own. What it returns is \
