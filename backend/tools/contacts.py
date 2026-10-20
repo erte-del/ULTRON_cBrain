@@ -13,15 +13,23 @@ someone matches.
 
 import asyncio
 import json
+import re
+import time
 from typing import Any
 
 from claude_agent_sdk import tool
+
+import config
 
 # The query reaches the script as an argument, never pasted into its source.
 SCRIPT = r"""
 function run(argv) {
   const C = Application('com.apple.AddressBook');  // by id: the name 'Contacts' can resolve to a widget extension
   const [mode, q] = argv;
+  if (mode === 'phones') {  // everyone's name and numbers, to match a number to a person
+    const all = C.people, names = all.name(), phones = all.phones;
+    return JSON.stringify(names.map((n, i) => ({name: n, phones: phones[i]().map(p => p.value())})));
+  }
   const clean = s => (s || '').replace(/^_\$!<|>!\$_$/g, '');
   if (mode === 'related') {
     let me = null;
@@ -115,6 +123,42 @@ async def _run(mode: str, query: str) -> Any:
                    "Privacy & Security → Automation (and Contacts).")
         raise RuntimeError(msg or "osascript failed")
     return json.loads(out.decode() or "null")
+
+
+def normalize_number(raw: str, country_code: str | None = None) -> str | None:
+    """Digits with the country code, no plus: '+971 (50) 123-4567', '00971501234567' and '050 123 4567'
+    all give '971501234567'. A number with no country code gets `country_code` (default
+    JARVIS_DEFAULT_COUNTRY_CODE) and loses its leading 0. None if it isn't a plausible number."""
+    cc = country_code or config.DEFAULT_COUNTRY_CODE
+    text = str(raw or "").strip()
+    digits = re.sub(r"\D", "", text)
+    if text.startswith("+") or digits.startswith("00"):
+        digits = digits.removeprefix("00") if not text.startswith("+") else digits
+        digits = re.sub(rf"^({cc})0", r"\1", digits)  # "+971 (0)50 ..." -> "+971 50 ..."
+    elif digits.startswith("0"):
+        digits = cc + digits[1:]
+    elif not digits.startswith(cc):
+        digits = cc + digits
+    return digits if re.fullmatch(r"[1-9]\d{7,14}", digits) else None
+
+
+_index: tuple[float, dict[str, str]] = (0.0, {})
+INDEX_TTL_S = 300
+
+
+async def number_index() -> dict[str, str]:
+    """{normalized number: contact name} for everyone in Contacts, kept for a few minutes. If two
+    contacts share a number, the first keeps it. RuntimeError if Contacts can't be read."""
+    global _index
+    if _index[1] and time.monotonic() - _index[0] < INDEX_TTL_S:
+        return _index[1]
+    found: dict[str, str] = {}
+    for person in await _run("phones", "") or []:
+        for phone in person["phones"]:
+            if (n := normalize_number(phone)) and person["name"]:
+                found.setdefault(n, person["name"])
+    _index = (time.monotonic(), found)
+    return found
 
 
 def _text(text: str, is_error: bool = False) -> dict[str, Any]:

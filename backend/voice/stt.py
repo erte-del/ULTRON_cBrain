@@ -32,7 +32,10 @@ PHANTOMS = {"thank you", "thanks", "thank you sir", "thanks sir", "thank you ver
 SILENT = 0.005  # loudest 100 ms below this (RMS, full scale 1.0): nothing was said, don't transcribe
 QUIET = 0.03  # a phantom phrase from audio never louder than this is Whisper's invention
 
+HINT_QUIET = 0.08  # a lone name from the hint below, in audio this quiet, is Whisper reading the hint back
+
 HINT = "Ultron, TickTick, Spotify, Gmail, Canva, WhatsApp, Obsidian."
+HINT_WORDS = set(re.findall(r"[\w']+", HINT.lower()))
 # Listening for "Hey Ultron": the hint makes Whisper write the name it would otherwise hear as
 # Aldron, Uldren or Aldrin; ordinary speech isn't turned into it.
 WAKE_HINT = "Hey Ultron."
@@ -68,8 +71,15 @@ def loudest(audio: np.ndarray) -> float:
 
 
 def phantom(text: str, audio: np.ndarray) -> bool:
-    """Whisper's "Thank you" on quiet audio, when nobody said anything."""
-    return " ".join(re.findall(r"[\w']+", text.lower())) in PHANTOMS and loudest(audio) < QUIET
+    """Whisper's "Thank you" on quiet audio, when nobody said anything. Also its echo of the
+    spelling hint ("TickTick."), which it writes when it hears hiss, and bare punctuation."""
+    words = re.findall(r"[\w']+", text.lower())
+    if not words:
+        return True
+    quiet = loudest(audio)
+    if " ".join(words) in PHANTOMS and quiet < QUIET:
+        return True
+    return set(words) <= HINT_WORDS and quiet < HINT_QUIET
 
 
 def transcribe(audio: np.ndarray) -> str:

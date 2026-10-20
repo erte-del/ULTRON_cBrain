@@ -55,5 +55,63 @@ class WhatsAppTest(unittest.TestCase):
             self.assertTrue(result["is_error"], fronts)
 
 
+GROUPS = [{"id": "1@g.us", "name": "Rain"}, {"id": "2@g.us", "name": "Rain World"}]
+
+
+def run_group(args, found, sent_ok=True):
+    """whatsapp_send to a group with fake commands and a fake group list. Returns (result, calls)."""
+    calls = []
+
+    async def fake_run(*cmd):
+        calls.append(cmd)
+        return whatsapp.WHATSAPP_ID if cmd[-1] == whatsapp.FRONT_APP else ""
+
+    with mock.patch.object(whatsapp, "_run", fake_run), mock.patch.object(whatsapp, "CHAT_LOAD_S", 0), \
+            mock.patch.object(whatsapp, "SEARCH_S", 0), mock.patch.object(whatsapp, "CONFIRM_S", 0), \
+            mock.patch.object(whatsapp.whatsapp_read, "groups", lambda name: [g for g in found if name.lower() in g["name"].lower()]), \
+            mock.patch.object(whatsapp.whatsapp_read, "sent_after", lambda *a: sent_ok), \
+            mock.patch.object(asyncio, "sleep", mock.AsyncMock()):
+        return asyncio.run(whatsapp.whatsapp_send.handler(args)), calls
+
+
+class WhatsAppGroupTest(unittest.TestCase):
+    def test_several_matches_are_returned_never_guessed(self):
+        result, calls = run_group({"group": "Ra", "message": "Hi"}, GROUPS)
+        self.assertEqual(calls, [])  # nothing opened or typed
+        self.assertNotIn("is_error", result)
+        text = result["content"][0]["text"]
+        self.assertIn("NOT SENT", text)
+        self.assertIn("1@g.us", text)
+        self.assertIn("2@g.us", text)
+
+    def test_rain_with_rain_world_still_asks(self):
+        result, calls = run_group({"group": "Rain", "message": "Hi"}, GROUPS)
+        self.assertEqual(calls, [])
+        self.assertIn("NOT SENT", result["content"][0]["text"])
+
+    def test_sends_to_the_chosen_group_and_confirms(self):
+        result, calls = run_group({"group": "Rain", "group_id": "1@g.us", "message": "Hi all"}, GROUPS)
+        self.assertNotIn("is_error", result)
+        self.assertIn("confirmed", result["content"][0]["text"])
+        typed = [c[3] for c in calls if len(c) == 4 and c[2] == whatsapp.TYPE_TEXT]
+        self.assertEqual(typed, ["Rain", "Hi all"])
+        self.assertEqual(calls.count(("osascript", "-e", whatsapp.PRESS_ENTER)), 2)
+
+    def test_the_card_name_must_be_the_real_group(self):
+        result, calls = run_group({"group": "Rain World", "group_id": "1@g.us", "message": "Hi"}, GROUPS)
+        self.assertTrue(result["is_error"])
+        self.assertEqual(calls, [])
+
+    def test_unconfirmed_send_is_reported(self):
+        result, _ = run_group({"group": "Rain", "group_id": "1@g.us", "message": "Hi"}, GROUPS, sent_ok=False)
+        self.assertTrue(result["is_error"])
+
+    def test_needs_exactly_one_target(self):
+        for args in ({"message": "Hi"}, {"message": "Hi", "phone": "+971566966461", "group": "Rain"}):
+            result, calls = run_group(args, GROUPS)
+            self.assertTrue(result["is_error"])
+            self.assertEqual(calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()

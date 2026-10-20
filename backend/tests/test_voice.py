@@ -171,6 +171,15 @@ class GroqTest(unittest.TestCase):
             self.assertEqual(stt.transcribe(np.full(1600, 0.1, np.float32)), "hello")
             local.assert_called_once()
 
+    def test_hint_echo_and_punctuation_are_dropped(self):
+        quiet = np.full(16000, 0.03, np.float32)
+        with patch.object(config, "GROQ_API_KEY", ""):
+            for heard in ("TickTick.", "Ultron, TickTick.", "."):
+                with patch.object(stt, "local", return_value=heard):
+                    self.assertEqual(stt.transcribe(quiet), "")
+            with patch.object(stt, "local", return_value="Open TickTick."):
+                self.assertEqual(stt.transcribe(quiet), "Open TickTick.")
+
     def test_phantom_thank_you_is_dropped(self):
         quiet = np.full(16000, 0.01, np.float32)  # a faint hiss
         loud = np.full(16000, 0.1, np.float32)  # someone really talking

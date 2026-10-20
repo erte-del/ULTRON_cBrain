@@ -425,7 +425,15 @@ All file access is UTF-8 and path-neutral.
 
 ### Messages and your phone
 
-- **WhatsApp**: finds the person in your Contacts and sends after you approve.
+- **WhatsApp**: finds the person in your Contacts and sends after you approve. It can also message a **group** by
+  name ("tell Rain I'm late"): the approval card shows the exact message and group. If several groups match
+  ("Rain", "Rain World") nothing is sent: Ultron lists them and asks which. A group has no link that opens it, so
+  Ultron drives WhatsApp's chat search with key presses (they only go to WhatsApp while it's in front), then checks
+  WhatsApp's database that the message really landed in that group and tells you if it didn't. Group messages are one
+  line. Reading a chat shows **who** said each thing, as `Name (number) (time): text`: the name WhatsApp shows for a
+  saved contact, else the Contacts entry with the same number (spaces, dashes, brackets, `00`/`+`/leading `0` are
+  ignored; numbers saved without a country code get `JARVIS_DEFAULT_COUNTRY_CODE`, default 971), else `Unknown`.
+  Your own messages are `You`. Mac only; Windows setup: nothing (no WhatsApp reading/sending on Windows).
 - **Telegram**: Ultron's own bot texts *you* ("send that list to my phone").
 - **Phone volume**, **Careem taxis** and **Careem Food** via MacroDroid (you book and pay) **(android phone)**.
 - **Use it from your phone** anywhere through Tailscale; swipe between chat, canvas and panels.

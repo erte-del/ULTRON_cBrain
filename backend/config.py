@@ -42,6 +42,9 @@ GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "").strip(
 # WhatsApp desktop's chat database on this Mac (whatsapp_read.py reads it, read-only, for "tell me when X
 # texts me"). Empty = the usual place. The backend's app needs Full Disk Access to open it.
 WHATSAPP_DB = os.getenv("JARVIS_WHATSAPP_DB", "").strip()
+# Country code (digits, no +) added to contact numbers saved without one ("050 123 4567"), so a number
+# in a WhatsApp group can be matched to a contact. Default 971 (UAE).
+DEFAULT_COUNTRY_CODE = re.sub(r"\D", "", os.getenv("JARVIS_DEFAULT_COUNTRY_CODE", "971")) or "971"
 # The note in your vault with your school timetable (path in the vault); empty = look for one.
 SCHOOL_SCHEDULE_NOTE = os.getenv("JARVIS_SCHOOL_SCHEDULE_NOTE", "").strip()
 if GOOGLE_CALENDAR_ICAL_URL and not GOOGLE_CALENDAR_ICAL_URL.startswith("https://"):

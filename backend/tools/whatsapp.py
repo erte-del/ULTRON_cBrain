@@ -1,5 +1,11 @@
 """WhatsApp: send a message from the WhatsApp app on this Mac. (act: asks you first)
 
+To a person (by number) or to a group chat (by name). A group has no link that opens it, so Ultron
+opens WhatsApp's chat search, types the group's name and picks the result, then types the message.
+Several groups matching the name are never guessed between: the matches come back and nothing is
+sent. After sending, the Mac's WhatsApp database is read (read-only) to confirm the message landed
+in that group.
+
 WhatsApp has no API for personal accounts, and unofficial "linked device" libraries can
 get a number banned. So Ultron uses the app itself: WhatsApp's own whatsapp://send link
 opens the chat with the message typed in (it only loads chats while it's in front, so it
@@ -17,9 +23,12 @@ import re
 from datetime import datetime
 from typing import Callable
 from typing import Any
+import time
 from urllib.parse import quote
 
 from claude_agent_sdk import tool
+
+import whatsapp_read
 
 FRONT_APP = ('tell application "System Events" to get bundle identifier of first application process '
              'whose frontmost is true')
@@ -31,6 +40,13 @@ PRESS_ENTER = 'tell application "System Events" to key code 36'
 CHAT_LOAD_S = 2.5
 SENT_S = 1.0  # after Enter, so the send goes out before WhatsApp is hidden
 OPEN_TIMEOUT_S = 15
+# Group chats: ponytail: these key presses were not tried against the live app; adjust here if the search
+# doesn't open the right chat. Cmd+F focuses WhatsApp's chat search, Return opens the top result.
+SEARCH = 'tell application "System Events" to keystroke "f" using command down'
+TYPE_TEXT = 'on run argv\ntell application "System Events" to keystroke (item 1 of argv)\nend run'
+SEARCH_S = 1.5  # for the results to appear, and for the chat to open after Return
+CONFIRM_S = 6  # how long to look for the sent message in WhatsApp's database
+MAX_GROUP_MESSAGE = 1000
 
 
 def phone_digits(phone: str) -> str | None:
@@ -71,28 +87,118 @@ def _text(text: str, is_error: bool = False) -> dict[str, Any]:
     return result
 
 
+def _same(a: str, b: str) -> bool:
+    return " ".join(a.split()).casefold() == " ".join(b.split()).casefold()
+
+
+def _find_group(group_id: str, name: str) -> tuple[dict | None, str]:
+    """(the group to send to, '') or (None, why not / the question to ask the user). The group must be
+    exactly the one the approval card names: an id has to match its name, a bare name has to be the only
+    group containing it."""
+    try:
+        found = whatsapp_read.groups("" if group_id else name)
+    except RuntimeError as e:
+        return None, f"Couldn't look up WhatsApp groups: {e}."
+    if group_id:
+        group = next((g for g in found if g["id"] == group_id), None)
+        if group is None:
+            return None, "No WhatsApp group has that id; not sent. Look it up again by name."
+        if not _same(group["name"], name):
+            return None, (f"That id is the group {group['name']!r}, not {name!r}; not sent. "
+                          "Pass the group's exact name with its id.")
+        return group, ""
+    if not found:
+        return None, f"No WhatsApp group has {name!r} in its name; not sent."
+    if len(found) == 1 and _same(found[0]["name"], name):
+        return found[0], ""
+    options = "; ".join(f"{g['name']!r} (group_id {g['id']})" for g in found[:10])
+    return None, (f"NOT SENT. {len(found)} group(s) match {name!r}: {options}. Don't guess: ask the user which "
+                  "one, then call whatsapp_send again with that group's exact name and its group_id.")
+
+
+async def _send_to_group(group: dict, message: str) -> dict[str, Any]:
+    if "\n" in message or len(message) > MAX_GROUP_MESSAGE:
+        return _text(f"A group message must be one line of at most {MAX_GROUP_MESSAGE} characters; not sent.", True)
+    started = time.time()
+    try:
+        back_to = await _run("osascript", "-e", FRONT_APP)
+        await _run("open", "-b", WHATSAPP_ID)
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + OPEN_TIMEOUT_S
+        while not await _whatsapp_in_front():
+            if loop.time() > deadline:
+                return _text("WhatsApp didn't open; the message was not sent.", True)
+            await asyncio.sleep(0.5)
+        await asyncio.sleep(CHAT_LOAD_S)
+        async def key(*script: str) -> None:
+            # Every key press only goes ahead while WhatsApp is in front, so none lands in another app.
+            if not await _whatsapp_in_front():
+                raise RuntimeError("WhatsApp lost focus; stopped before sending")
+            await _run("osascript", "-e", *script)
+
+        await key(SEARCH)
+        await asyncio.sleep(0.5)
+        await key(TYPE_TEXT, group["name"])
+        await asyncio.sleep(SEARCH_S)
+        await key(PRESS_ENTER)
+        await asyncio.sleep(SEARCH_S)
+        await key(TYPE_TEXT, message)
+        await key(PRESS_ENTER)
+        confirmed = False
+        for _ in range(int(CONFIRM_S / 0.5) + 1):
+            if confirmed := whatsapp_read.sent_after(group["id"], message, started):
+                break
+            await asyncio.sleep(0.5)
+        if back_to != WHATSAPP_ID:
+            await _return_to(back_to)
+    except (RuntimeError, OSError, TimeoutError) as e:
+        return _text(f"WhatsApp: {e}. The message may be typed somewhere but not sent.", True)
+    if confirmed:
+        return _text(f"Sent to the group {group['name']!r} (confirmed in WhatsApp).")
+    return _text(f"Pressed Send for the group {group['name']!r}, but the message did not show up in that group's chat. "
+                 "Tell the user to check WhatsApp: it may be unsent, or have gone to a different chat.", True)
+
+
+async def _return_to(back_to: str) -> None:
+    await asyncio.sleep(SENT_S)
+    await _run("osascript", "-e", HIDE)
+    if re.fullmatch(r"[\w.-]+", back_to):
+        await _run("open", "-b", back_to)
+
+
 @tool(
     "whatsapp_send",
-    "Send a WhatsApp message from the WhatsApp app on this Mac. Look the person up with "
-    "find_contact first and use their mobile number with the country code. The user "
-    "approves the exact message before it's sent. Can't read messages.",
+    "Send a WhatsApp message from the WhatsApp app on this Mac, to a person or to a group chat. "
+    "For a person: look them up with find_contact first and pass their mobile number with the country "
+    "code. For a group: pass the group's name (e.g. 'Rain'); if several groups match, nothing is sent "
+    "and you get the matches back: ask the user which one, then call again with that group's exact name "
+    "and its group_id. The user approves the exact message and the target before it's sent. "
+    "Can't read messages (use whatsapp_messages).",
     {
         "type": "object",
         "properties": {
-            "to": {"type": "string", "description": "Who it's for, as the user knows them (e.g. 'Mom')."},
+            "to": {"type": "string", "description": "Who it's for, as the user knows them (e.g. 'Mom'). Not for groups."},
             "phone": {"type": "string", "description": "Their number with country code, e.g. +90 532 138 20 11."},
+            "group": {"type": "string", "description": "A group chat's name, e.g. 'Rain'. Instead of phone."},
+            "group_id": {"type": "string", "description": "The group's id, from an earlier answer listing several matches."},
             "message": {"type": "string", "description": "The exact text to send."},
         },
-        "required": ["to", "phone", "message"],
+        "required": ["message"],
     },
 )
 async def whatsapp_send(args: dict[str, Any]) -> dict[str, Any]:
-    digits = phone_digits(str(args.get("phone") or ""))
     message = str(args.get("message") or "").strip()
-    if not digits:
-        return _text("That number has no country code (e.g. +90 or +971); not sent.", True)
+    phone, group = str(args.get("phone") or "").strip(), " ".join(str(args.get("group") or "").split())
     if not message:
         return _text("The message is empty; not sent.", True)
+    if bool(phone) == bool(group):
+        return _text("Say who it's for: either a phone number or a group name, not both; not sent.", True)
+    if group:
+        target, why = _find_group(str(args.get("group_id") or "").strip(), group)
+        return await _send_to_group(target, message) if target else _text(why, not why.startswith("NOT SENT"))
+    digits = phone_digits(phone)
+    if not digits:
+        return _text("That number has no country code (e.g. +90 or +971); not sent.", True)
     try:
         back_to = await _run("osascript", "-e", FRONT_APP)  # usually the browser with Ultron
         await _run("open", f"whatsapp://send?phone={digits}&text={quote(message)}")
@@ -108,10 +214,7 @@ async def whatsapp_send(args: dict[str, Any]) -> dict[str, Any]:
                          "It may still be typed in the chat.", True)
         await _run("osascript", "-e", PRESS_ENTER)
         if back_to != WHATSAPP_ID:
-            await asyncio.sleep(SENT_S)
-            await _run("osascript", "-e", HIDE)
-            if re.fullmatch(r"[\w.-]+", back_to):
-                await _run("open", "-b", back_to)
+            await _return_to(back_to)
     except (RuntimeError, OSError, TimeoutError) as e:
         return _text(f"WhatsApp: {e}. The message may be typed in the chat but not sent.", True)
     return _text(f"Pressed Send in WhatsApp for {args.get('to') or digits}. "
