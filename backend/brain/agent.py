@@ -16,6 +16,7 @@ import memory_search
 import memory_surface
 import memory_write
 import notify
+import ui_state
 import usage
 from config import NEW_CHAT_AFTER_IDLE_MIN
 from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
@@ -109,6 +110,8 @@ class Ultron:
     async def new_conversation(self, provider: str | None = None, resume: str | None = None) -> None:
         """End this conversation and start another. Its note is written in the background,
         so the new chat is ready straight away."""
+        if ui_state.reset():  # every chat starts with the standard look
+            await hub.emit(events.ui_layout(""))
         note = asyncio.create_task(self.wrap_up())  # takes the transcript before anything new arrives
         self.woke = bool(resume)  # a loaded chat already has its context
         self.shown_insights = set()

@@ -6,6 +6,7 @@ import ScreenOverlay from './components/ScreenOverlay'
 import { LogPanel, TerminalPanel, UsagePanel } from './components/SidePanels'
 import Stage, { Core } from './components/Stage'
 import TopBar from './components/TopBar'
+import UiStyle from './components/UiStyle'
 import { screenOverlaySupported, useScreenOverlay } from './screen/useScreenOverlay'
 import { useSwipePanes } from './useSwipePanes'
 import { morph } from './morph'
@@ -176,7 +177,10 @@ export default function App() {
 
   return (
     <div className="hud">
+      <UiStyle css={ultron.uiCss} />
       <TopBar
+        customised={ultron.uiCss !== ''}
+        onResetUi={ultron.resetUi}
         connection={ultron.connection}
         busy={ultron.busy}
         settings={ultron.settings}

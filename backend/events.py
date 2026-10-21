@@ -30,6 +30,8 @@ Client -> server:
     user.nudges      {on}                the quiet proactive nudges switch (off by default)
     user.proposal    {id, action: "approve" | "reject"}   a merge / archive Ultron suggests
     user.job_update  {id, action: "pause" | "resume" | "delete" | "run"}   a scheduled job
+    user.ui_reset    {}                   the reset button: back to the standard look
+    (user.text also carries viewport {w, h, sw, sh, dpr, voice}: the page window, so Ultron knows the screen size)
 
 Server -> client:
     status               {state: "idle" | "thinking"}
@@ -66,6 +68,8 @@ Server -> client:
                          kind "model3d": data = {model_id, current, versions[], exports[]}
                          kind "video": data = {video_id, status, progress, url, ...} (video_store)
     canvas.clear         {}  remove every card from the canvas
+    ui.layout            {css}  Ultron's own style sheet for this chat, on top of the standard look;
+                         "" = the standard look (every new chat starts there; see ui_state.py)
     terminal.open        {claude}  open a new terminal tab (a fresh shell at /ws/terminal);
                          claude = start Claude Code in it
     voice.speech         {active}         voice mode: you started (true) or stopped (false) talking
@@ -207,6 +211,10 @@ def voice_wake(text: str) -> Event:
 
 def voice_audio(text: str, wav: bytes | None) -> Event:
     return {"type": "voice.audio", "text": text, "audio": base64.b64encode(wav).decode() if wav else None}
+
+
+def ui_layout(css: str) -> Event:
+    return {"type": "ui.layout", "css": css}
 
 
 def canvas_card(card_id: str, kind: str, title: str, data: dict[str, Any]) -> Event:

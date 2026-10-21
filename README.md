@@ -336,6 +336,8 @@ only look things up.
 - **Read your files**: drop images, PDFs, text, code, CSV or JSON into the chat.
 - **Three brains**: Claude (Pro), OmniRoute (Gemini, Groq, …) or Ollama (a model on this computer, free and offline), switched with the gear icon. Ollama chat has no web search and only your everyday connectors (`JARVIS_OLLAMA_CONNECTORS`). What it may change is `JARVIS_OLLAMA_CHANGES`: `chat` (default) lets it add reminders, notes and memories in your chats, `none` makes it look things up only.
 
+- **Ultron can change how the page looks, for one chat.** Every message tells it your window size and which layout you're seeing, and its `change_ui` tool restyles the page (panel sizes, hidden panels, colors, fonts, a bigger canvas for a wide table, map or video) when you ask or when something shows better another way. The reset button in the top bar (next to New chat; lit while the look is changed) puts the standard look back, and every new chat, loaded chat or brain switch starts there too. The top bar and approval cards can't be hidden, whatever the style sheet says. Windows setup: nothing to set up.
+
 ### Knowing you
 
 - **Memory**: preferences, people, projects, decisions. See, edit or delete them all in the
@@ -612,10 +614,10 @@ All file access is UTF-8 and path-neutral.
 
 - Page → server: `user.text`, `user.stop`, `user.confirm`, `user.select_image`, `user.new_chat`,
   `user.save_chat`, `user.load_chat`, `user.delete_chat`, `user.memory_*`, `user.job_update`,
-  `settings.update`, plus voice audio.
+  `user.ui_reset`, `settings.update`, plus voice audio (`user.text` also carries the window size).
 - Server → page: `assistant.text_delta`, `assistant.done`, `status`, `tool.started`,
   `tool.finished`, `canvas.card`, `confirm.request`, `confirm.resolved`, `conversation.new`,
-  `conversation.loaded`, `chats.list`, `memory.list`, `jobs.list`, `notification`,
+  `conversation.loaded`, `ui.layout`, `chats.list`, `memory.list`, `jobs.list`, `notification`,
   `usage.update`, `settings.state`, `terminal.open`, `notice`, `error`.
 
 ### How devices connect

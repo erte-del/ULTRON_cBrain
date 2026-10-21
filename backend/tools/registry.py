@@ -26,6 +26,7 @@ from storage import job_store, memory_store
 from . import connectors, important, lenient, mac, web
 from .amazon import amazon_change, amazon_read
 from .chat import new_chat
+from .ui import change_ui
 from .capture import capture
 from .canvas import clear_canvas, open_terminal, read_terminal, show_on_canvas
 from .contacts import find_contact
@@ -84,6 +85,7 @@ TOOLS: list[UltronTool] = [
     UltronTool(ask_expert, "read"),
     UltronTool(show_on_canvas, "read"),
     UltronTool(clear_canvas, "read"),  # only hides cards in this chat window
+    UltronTool(change_ui, "read"),  # restyles the page for this chat; reset button and new chat undo it
     # Only opens the tab: what runs in the shell is up to you, typing in it.
     # Restarts the chat after the reply, like the button: nothing outside Ultron changes.
     UltronTool(new_chat, "act"),

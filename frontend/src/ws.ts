@@ -151,6 +151,7 @@ export type ServerEvent =
   | { type: 'confirm.request'; id: string; title: string; summary: string; details: [string, string][] }
   | { type: 'confirm.resolved'; id: string; status: ConfirmStatus }
   | { type: 'canvas.clear' }
+  | { type: 'ui.layout'; css: string } // Ultron's own style sheet for this chat; '' = the standard look
   | { type: 'canvas.card'; id: string; kind: string; title: string; data: Record<string, unknown> }
   | { type: 'terminal.open'; claude: boolean }
   | { type: 'conversation.new'; reason: 'button' | 'idle' | 'provider' | 'ultron' }
@@ -167,11 +168,22 @@ export type ServerEvent =
   | { type: 'ollama.groups'; on: string[]; all: ToolGroup[] }
   | ({ type: 'usage.update' } & UsageSnapshot)
 
+/** The window, so Ultron knows how much room there is (sent with every message). */
+export interface Viewport {
+  w: number
+  h: number
+  sw: number // the display
+  sh: number
+  dpr: number
+  voice?: boolean
+}
+
 // Browser -> server
 export type ClientEvent =
   | { type: 'user.groups'; on: string[] }
   | { type: 'user.fallback'; action: 'retry' | 'claude'; text: string; files: string[]; history: { role: 'user' | 'assistant'; text: string }[] }
-  | { type: 'user.text'; text: string; files?: string[]; location?: [number, number]; status?: PhoneStatus; voice?: boolean }
+  | { type: 'user.text'; text: string; files?: string[]; location?: [number, number]; status?: PhoneStatus; voice?: boolean; viewport?: Viewport }
+  | { type: 'user.ui_reset' } // the reset button: back to the standard look
   | { type: 'user.voice'; mode: ListenMode } // what the mic is for (the mic itself goes as binary frames)
   | { type: 'user.confirm'; id: string; approved: boolean }
   | { type: 'user.select_image'; id: string | null; version?: number }
@@ -408,6 +420,7 @@ interface ChatState {
   modelOverride: ModelAlias | null
   cards: CanvasCard[]
   stageTab: string // centre panel: 'core', 'cards', or the id of a 3D model or terminal
+  uiCss: string // Ultron's own look for this chat ('' = standard); every new chat starts standard
   terminals: TerminalTab[] // open terminal tabs, oldest first
   selectedImage: ImageSelection | null
   settings: BrainSettings | null
@@ -645,7 +658,10 @@ function baseReducer(state: ChatState, action: Action): ChatState {
               m.confirm ? { ...m, confirm: { ...m.confirm, status: ev.status } } : m,
             ),
           }
+        case 'ui.layout':
+          return { ...state, uiCss: ev.css }
         case 'conversation.new': {
+          state = { ...state, uiCss: '' } // every chat starts with the standard look
           if (ev.reason === 'button') return { ...state, messages: [] }
           if (ev.reason === 'provider')
             return {
@@ -678,6 +694,7 @@ function baseReducer(state: ChatState, action: Action): ChatState {
             messages: ev.messages.map((m) => ({ ...m, id: nextLocalId(), done: true, model: m.model || undefined })),
             cards,
             selectedImage: null,
+            uiCss: '',
             stageTab: cards.some((c) => c.kind !== 'model3d') ? 'cards' : 'core',
           }
         }
@@ -785,6 +802,7 @@ const initialState: ChatState = {
   modelOverride: null,
   cards: [],
   stageTab: 'core',
+  uiCss: '',
   terminals: [],
   selectedImage: null,
   settings: null,
@@ -808,6 +826,7 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
   const socketRef = useRef<UltronSocket | null>(null)
   const overrideRef = useRef<ModelAlias | null>(null)
   const hereRef = useRef<[number, number] | undefined>(undefined)
+  const voiceRef = useRef(false) // voice mode is on: Ultron is told, so it knows which layout you see
   const batteryRef = useRef<BatteryManager | undefined>(undefined) // live: always the current level
 
   // Off this Mac (your phone, through Tailscale's https), "near me" means near the phone:
@@ -854,6 +873,10 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
     const trimmed = text.trim()
     if (!trimmed && files.length === 0) return false
     const nav = navigator as PhoneNavigator
+    const viewport: Viewport = {
+      w: window.innerWidth, h: window.innerHeight, sw: screen.width, sh: screen.height, dpr: window.devicePixelRatio,
+      voice: voiceRef.current || undefined,
+    }
     const status: PhoneStatus | undefined = onPhone ? {
       battery: batteryRef.current?.level,
       charging: batteryRef.current?.charging,
@@ -861,7 +884,7 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
       dark: matchMedia('(prefers-color-scheme: dark)').matches,
     } : undefined
     if (!socketRef.current?.send({
-      type: 'user.text', text: trimmed, files: files.map((f) => f.id), location: hereRef.current, status, voice: voice || undefined,
+      type: 'user.text', text: trimmed, files: files.map((f) => f.id), location: hereRef.current, status, voice: voice || undefined, viewport,
     })) return false
     dispatch({ kind: 'user', text: trimmed, files })
     return true
@@ -891,6 +914,7 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
   }, [])
 
   const voiceMode = useCallback((mode: ListenMode) => {
+    voiceRef.current = mode === 'voice'
     socketRef.current?.send({ type: 'user.voice', mode })
   }, [])
 
@@ -930,6 +954,11 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
 
   const setOllamaModel = useCallback((ollama_model: string) => {
     socketRef.current?.send({ type: 'settings.update', ollama_model })
+  }, [])
+
+  const resetUi = useCallback(() => {
+    dispatch({ kind: 'server', ev: { type: 'ui.layout', css: '' } })
+    socketRef.current?.send({ type: 'user.ui_reset' })
   }, [])
 
   const newChat = useCallback(() => {
@@ -993,5 +1022,5 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
   const setStageTab = useCallback((tab: string) => dispatch({ kind: 'tab', tab }), [])
   const closeTerminal = useCallback((id: string) => dispatch({ kind: 'closeTerminal', id }), [])
 
-  return { ...state, sendText, fallback, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, memoryActions, updateJob, setProvider, setGatewayModel, setOllamaModel, setGroups, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
+  return { ...state, resetUi, sendText, fallback, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, memoryActions, updateJob, setProvider, setGatewayModel, setOllamaModel, setGroups, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
 }

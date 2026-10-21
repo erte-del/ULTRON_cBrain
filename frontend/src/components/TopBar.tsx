@@ -33,6 +33,8 @@ interface TopBarProps {
   screenOpen: boolean
   onScreen: () => void
   onTyping?: () => void // set in voice mode: back to typing
+  customised: boolean // Ultron changed the look for this chat
+  onResetUi: () => void // back to the standard look
 }
 
 /** A menu under a top-bar button that closes on a click outside or Esc. */
@@ -552,7 +554,7 @@ function Settings({ settings, onProvider }: Pick<TopBarProps, 'settings' | 'onPr
 
 export default function TopBar({
   connection, busy, settings, canStartNewChat, onNewChat, onProvider,
-  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, memoryExtras, memoryActions, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, onTyping, ...chats
+  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, memoryExtras, memoryActions, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, onTyping, customised, onResetUi, ...chats
 }: TopBarProps) {
   const now = useNow()
   const status =
@@ -604,6 +606,18 @@ export default function TopBar({
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path d="M4 5h11M4 5v14h14V9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             <path d="M18 2v6M15 5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className={`icon-btn reset-ui${customised ? ' active' : ''}`}
+          onClick={onResetUi}
+          aria-label="Reset the look"
+          title={customised ? 'Ultron changed the look for this chat. Back to the standard look.' : 'The look is standard. Pressing this puts it back after Ultron changes it.'}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M4 5h16v14H4zM4 10h16M10 10v9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            <path d="M14 14.5a2.5 2.5 0 1 1 .8 1.8M14 12.5v2h2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </button>
         {screenSupported && (

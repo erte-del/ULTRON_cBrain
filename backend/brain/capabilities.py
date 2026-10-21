@@ -51,6 +51,10 @@ GROUPS: tuple[Group, ...] = (
     # are not homework, "play it safe" is not Spotify. tests/test_capabilities.py pins both sides.
     Group("canvas", r"\bcanvas\b|\btables?\b|\bcharts?\b|\bon (the )?screen\b",
           (CANVAS_TOOL,), "", CANVAS_PROMPT),
+    Group("ui", r"\b(layout|rearrange|resize|re-?arrange|bigger|larger|smaller|wider|narrower|zoom|fullscreen|full screen)\b"
+                r"|\b(hide|show|move|swap|enlarge|shrink|change|make)\b.{0,25}\b(panel|chat|canvas|orb|core|screen|ui|interface|look|theme|font|text size)\b"
+                r"|\b(your|the) (ui|interface|look|theme)\b|\b(dark|light) (mode|theme)\b|\bstandard look\b",
+          ("change_ui",), "", ("About the look of the screen",)),
     Group("gmail", r"\be-?mails?\b|\binbox\b|\bgmail\b|\bunread (mail|messages?)\b|\bmail from\b", ("find_contact",), "Gmail",
           ("About the user's accounts", "About people")),
     Group("calendar", r"\bcalendar\b|\bmeetings?\b|\bappointments?\b|\bagenda\b|\bbriefing\b|\bwrap-?up\b"
@@ -122,7 +126,7 @@ TITLES = {
     "vercel": "Vercel (look-up)", "shopify": "Shopify (look-up)", "school": "School", "notes": "Notes", "mac": "This Mac",
     "pc": "Windows PC", "travel": "Maps & flights", "images": "Images", "3d": "3D", "video": "Video",
     "instagram": "Instagram", "music": "Music", "youtube": "YouTube", "amazon": "Amazon", "github": "GitHub",
-    "messages": "WhatsApp", "phone": "Taxi & food", "tracks": "ACC tracks", "voice": "Voice usage", "terminal": "Terminal",
+    "messages": "WhatsApp", "phone": "Taxi & food", "tracks": "ACC tracks", "voice": "Voice usage", "terminal": "Terminal", "ui": "Screen look",
 }
 
 

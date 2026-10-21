@@ -29,6 +29,7 @@ import memory_jobs
 import memory_panel
 import memory_surface
 import terminal
+import ui_state
 from brain.agent import Ultron
 from brain.base import ModelAlias
 from brain.brain_claudecode import ClaudeCodeBrain
@@ -731,6 +732,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     await send(chats_event())
     await send(memory_event())
     await send(jobs_event())
+    if ui_state.css:  # this chat has its own look
+        await send(events.ui_layout(ui_state.css))
     for request in gate.pending_requests():  # questions asked before this tab opened
         await send(request)
     if (said := wake.take()) is not None:  # this is the window "Hey Ultron" opened
@@ -777,7 +780,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     continue
                 # Run the turn in the background so this loop keeps listening
                 # (confirmations, your voice). The brain runs one turn at a time.
-                task = asyncio.create_task(run_turn(send, text, model_override, selected_image, files, device,
+                task = asyncio.create_task(run_turn(send, text, model_override, selected_image, files,
+                                                    device + ui_state.screen_note(msg.get("viewport")),
                                                     phone_location(msg.get("location")), phone_status(msg.get("status")),
                                                     msg.get("voice") is True))
                 turns.add(task)
@@ -825,6 +829,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 task = asyncio.create_task(greet(send))
                 background.add(task)
                 task.add_done_callback(background.discard)
+
+            elif kind == "user.ui_reset":
+                ui_state.reset()
+                await hub.emit(events.ui_layout(""))
 
             elif kind == "user.new_chat":
                 # Not tied to this tab: closing it mustn't cut the restart short.
