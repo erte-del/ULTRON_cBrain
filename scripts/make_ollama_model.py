@@ -20,8 +20,12 @@ NO_THINK = "{{ if and $.IsThinkSet (not $.Think) -}}"
 
 shown = subprocess.run(["ollama", "show", base, "--modelfile"], capture_output=True, text=True,
                        encoding="utf-8", check=True).stdout
-if NO_THINK not in shown:
+if NO_THINK not in shown and "\nRENDERER " not in shown:
     sys.exit(f"{base}'s template has no thinking switch to patch (is it a Qwen3 model? run: ollama pull {base})")
+if NO_THINK not in shown:
+    # Qwen3.5 and newer: Ollama builds the prompt in code, so there is no template to patch. Only the
+    # window is set; the model still thinks a little before each reply (still faster than qwen3:14b).
+    print(f"Note: {base} has no template to patch, so it keeps thinking before replies.")
 lines = [ln for ln in shown.replace(NO_THINK, "{{ if true -}}").splitlines() if not ln.startswith("PARAMETER num_ctx")]
 text = "\n".join(lines) + "\nPARAMETER num_ctx 32768\n"
 with tempfile.TemporaryDirectory() as tmp:
