@@ -155,7 +155,10 @@ export type ServerEvent =
   | { type: 'canvas.card'; id: string; kind: string; title: string; data: Record<string, unknown> }
   | { type: 'terminal.open'; claude: boolean }
   | { type: 'conversation.new'; reason: 'button' | 'idle' | 'provider' | 'ultron' }
-  | { type: 'conversation.loaded'; messages: Pick<ChatMessage, 'role' | 'text' | 'files' | 'model'>[]; cards: CanvasCard[] }
+  | { type: 'conversation.loaded'; messages: Pick<ChatMessage, 'role' | 'text' | 'files' | 'model' | 'turn'>[]; cards: CanvasCard[] }
+  | { type: 'conversation.turn'; turn: number } // your message starts turn N
+  | { type: 'conversation.trimmed'; keep_from: number; dropped: number } // trim_chat: the turns before keep_from are gone
+  | { type: 'conversation.restored' } // the last trim was undone
   | { type: 'chats.list'; chats: SavedChat[]; max: number }
   | ({ type: 'memory.list'; memories: Memory[]; categories: string[] } & Partial<MemoryExtras>)
   | { type: 'jobs.list'; jobs: Job[]; runs: JobRun[] }
@@ -262,6 +265,7 @@ export interface CanvasCard {
   kind: string // 'text' | 'table' for now; more kinds in later steps
   title: string
   data: Record<string, unknown>
+  turn?: number // the turn that last touched it: a trim removes the cards only the cleared part used
 }
 
 export type ConnectionState = 'connecting' | 'open' | 'closed'
@@ -399,6 +403,7 @@ export interface ChatMessage {
   expert?: boolean // Opus was consulted via ask_expert
   sources?: Source[]
   files?: string[] // role 'user': names of attached files
+  turn?: number // role 'user': its turn number (Ultron's [Turn N]); a trim cuts at one
   fileIds?: string[] // role 'user': their ids, to send the message again
   done?: boolean
   error?: string
@@ -419,6 +424,8 @@ interface ChatState {
   retry: string | null // e.g. "model overloaded(2/10)" while Claude Code retries
   modelOverride: ModelAlias | null
   cards: CanvasCard[]
+  turn: number // the latest turn number Ultron announced
+  trimmedAway: { messages: ChatMessage[]; cards: CanvasCard[] } | null // what the last trim removed, to bring back
   stageTab: string // centre panel: 'core', 'cards', or the id of a 3D model or terminal
   uiCss: string // Ultron's own look for this chat ('' = standard); every new chat starts standard
   terminals: TerminalTab[] // open terminal tabs, oldest first
@@ -502,6 +509,10 @@ function logLine(state: ChatState, action: Action): Omit<LogLine, 'id' | 'time'>
           return { text: `NEW CONVERSATION${ev.reason === 'idle' ? ' (IDLE OVER 1H)' : ''}`, tone: 'ok' }
         case 'conversation.loaded':
           return { text: 'SAVED CHAT LOADED', tone: 'ok' }
+        case 'conversation.trimmed':
+          return { text: `CHAT TRIMMED · ${ev.dropped} EARLIER TURN${ev.dropped === 1 ? '' : 'S'} CLEARED`, tone: 'ok' }
+        case 'conversation.restored':
+          return { text: 'CHAT TRIM UNDONE', tone: 'ok' }
         case 'settings.state':
           if (state.settings?.provider !== ev.provider) {
             const brain = { claude: 'CLAUDE (PRO LOGIN)', omniroute: `OMNIROUTE (${ev.gateway_model})`, ollama: `OLLAMA (${ev.ollama_model})` }
@@ -660,8 +671,42 @@ function baseReducer(state: ChatState, action: Action): ChatState {
           }
         case 'ui.layout':
           return { ...state, uiCss: ev.css }
+        case 'conversation.turn': {
+          // The message you just sent is this turn (a retry has none of its own to tag).
+          const i = state.messages.map((m) => m.role === 'user' && m.turn === undefined).lastIndexOf(true)
+          const messages = i === -1 ? state.messages : state.messages.map((m, j) => (j === i ? { ...m, turn: ev.turn } : m))
+          return { ...state, turn: ev.turn, messages }
+        }
+        case 'conversation.trimmed': {
+          const at = state.messages.findIndex((m) => m.role === 'user' && m.turn !== undefined && m.turn >= ev.keep_from)
+          const cut = at === -1 ? Math.max(0, state.messages.map((m) => m.role).lastIndexOf('user')) : at
+          const gone = state.cards.filter((c) => c.turn !== undefined && c.turn < ev.keep_from)
+          const cards = state.cards.filter((c) => !gone.includes(c))
+          const tabGone = gone.some((c) => c.id === state.stageTab)
+          return {
+            ...state,
+            messages: state.messages.slice(cut),
+            cards,
+            trimmedAway: { messages: state.messages.slice(0, cut), cards: gone },
+            selectedImage: gone.some((c) => c.id === state.selectedImage?.id) ? null : state.selectedImage,
+            stageTab: tabGone ? (cards.some((c) => c.kind !== 'model3d') ? 'cards' : 'core') : state.stageTab,
+          }
+        }
+        case 'conversation.restored': {
+          const back = state.trimmedAway
+          if (!back) return state
+          const ids = new Set(state.cards.map((c) => c.id))
+          return {
+            ...state,
+            messages: [...back.messages, ...state.messages],
+            cards: [...back.cards.filter((c) => !ids.has(c.id)), ...state.cards],
+            trimmedAway: null,
+          }
+        }
         case 'conversation.new': {
-          state = { ...state, uiCss: '' } // every chat starts with the standard look
+          // every chat starts with the standard look and counts its turns from 1 again
+          const untag = <T extends { turn?: number }>(x: T): T => ({ ...x, turn: undefined })
+          state = { ...state, uiCss: '', turn: 0, trimmedAway: null, messages: state.messages.map(untag), cards: state.cards.map(untag) }
           if (ev.reason === 'button') return { ...state, messages: [] }
           if (ev.reason === 'provider')
             return {
@@ -688,11 +733,13 @@ function baseReducer(state: ChatState, action: Action): ChatState {
         }
         case 'conversation.loaded': {
           // The chat's canvas replaces the current one.
-          const cards = ev.cards.map(({ id, kind, title, data }) => ({ id, kind, title, data }))
+          const cards = ev.cards.map(({ id, kind, title, data, turn }) => ({ id, kind, title, data, turn }))
           return {
             ...state,
             messages: ev.messages.map((m) => ({ ...m, id: nextLocalId(), done: true, model: m.model || undefined })),
             cards,
+            turn: Math.max(0, ...ev.messages.map((m) => m.turn ?? 0)),
+            trimmedAway: null,
             selectedImage: null,
             uiCss: '',
             stageTab: cards.some((c) => c.kind !== 'model3d') ? 'cards' : 'core',
@@ -732,7 +779,7 @@ function baseReducer(state: ChatState, action: Action): ChatState {
           return { ...state, cards: [], selectedImage: null, stageTab: onTerminal ? state.stageTab : 'core' }
         }
         case 'canvas.card': {
-          const card: CanvasCard = { id: ev.id, kind: ev.kind, title: ev.title, data: ev.data }
+          const card: CanvasCard = { id: ev.id, kind: ev.kind, title: ev.title, data: ev.data, turn: state.turn || undefined }
           const i = state.cards.findIndex((c) => c.id === ev.id)
           const cards = i === -1 ? [...state.cards, card] : state.cards.map((c, j) => (j === i ? card : c))
           // A selected image got a new version: keep "this one" pointing at the latest.
@@ -801,6 +848,8 @@ const initialState: ChatState = {
   retry: null,
   modelOverride: null,
   cards: [],
+  turn: 0,
+  trimmedAway: null,
   stageTab: 'core',
   uiCss: '',
   terminals: [],
@@ -961,6 +1010,11 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
     socketRef.current?.send({ type: 'user.ui_reset' })
   }, [])
 
+  // Same event the open_terminal tool sends: a fresh shell in a new stage tab.
+  const openTerminal = useCallback(() => {
+    dispatch({ kind: 'server', ev: { type: 'terminal.open', claude: false } })
+  }, [])
+
   const newChat = useCallback(() => {
     socketRef.current?.send({ type: 'user.new_chat' })
   }, [])
@@ -1022,5 +1076,5 @@ export function useUltron(heard?: { current: (text: string, woke?: boolean) => v
   const setStageTab = useCallback((tab: string) => dispatch({ kind: 'tab', tab }), [])
   const closeTerminal = useCallback((id: string) => dispatch({ kind: 'closeTerminal', id }), [])
 
-  return { ...state, resetUi, sendText, fallback, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, memoryActions, updateJob, setProvider, setGatewayModel, setOllamaModel, setGroups, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
+  return { ...state, resetUi, openTerminal, sendText, fallback, voiceMode, greet, sendAudio, stop, newChat, saveChat, loadChat, deleteChat, saveMemory, deleteMemory, wipeMemory, memoryActions, updateJob, setProvider, setGatewayModel, setOllamaModel, setGroups, setModelOverride, answerConfirm, closeCard, selectImage, setStageTab, closeTerminal }
 }

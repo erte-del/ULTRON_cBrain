@@ -414,6 +414,20 @@ hosted embedding service.
 `ollama pull nomic-embed-text`; the `.env` lines are in `.env.example` (`JARVIS_MEMORY_*`, `JARVIS_EMBED_MODEL`).
 All file access is UTF-8 and path-neutral.
 - **Saved chats**: up to 5, with their canvas cards.
+- **Trim chat.** When the topic changes, say it your own way ("clear out everything before this, we moved
+  on", "forget the earlier stuff about school, keep the Spotify part", "let's drop the old topic but keep
+  this one going") and Ultron drops the older part of the chat and carries on with the recent topic, in the
+  same chat. There are no trigger words: Ultron works out that you mean it, like for any tool (`trim_chat`),
+  and a plain "new chat" still starts a new chat. Every message he gets is tagged `[Turn N]`; he picks the
+  turn where the topic you keep begins (if he can't tell, he asks one short question) and says in a sentence
+  what he cleared. The earlier messages leave the chat window and Claude's memory of the conversation (Claude
+  Code can't edit a session, so it starts a fresh one that is told the kept turns word for word, replies
+  longer than 6,000 characters cut and the oldest kept turns dropped past 40,000 characters in all). The kept
+  messages, the canvas cards the kept part still uses, the model and tool groups stay; cards only the cleared
+  part used go. The cleared part is written to its Obsidian conversation note straight away, so nothing is
+  lost, and "undo that" / "bring it back" restores it (the last trim only; the note stays). A saved chat
+  stores the trimmed messages and cards; save it after your next message (the new session has no id until
+  then). Chats saved before this feature have no turn tags: Ultron can't see their old turns, so ask for a new chat there.
 - **Obsidian notes**: searches and reads your vault, writes new notes, and deletes a note or folder on request (always asks first; it goes to the vault's `.trash`, so Obsidian can restore it). `#private` notes are never read or deleted.
 - **Important things**: mark a file, folder or note important and Ultron asks before touching it.
 
@@ -617,7 +631,7 @@ All file access is UTF-8 and path-neutral.
   `user.ui_reset`, `settings.update`, plus voice audio (`user.text` also carries the window size).
 - Server → page: `assistant.text_delta`, `assistant.done`, `status`, `tool.started`,
   `tool.finished`, `canvas.card`, `confirm.request`, `confirm.resolved`, `conversation.new`,
-  `conversation.loaded`, `ui.layout`, `chats.list`, `memory.list`, `jobs.list`, `notification`,
+  `conversation.turn`, `conversation.trimmed`, `conversation.restored`, `conversation.loaded`, `ui.layout`, `chats.list`, `memory.list`, `jobs.list`, `notification`,
   `usage.update`, `settings.state`, `terminal.open`, `notice`, `error`.
 
 ### How devices connect
@@ -639,7 +653,11 @@ All file access is UTF-8 and path-neutral.
   connectors, web search and `ask_expert` are off, so your emails never reach other providers.
 - **Ollama (optional).** Install from ollama.com, then `ollama pull qwen3:14b && python
   scripts/make_ollama_model.py` (32k window, and no "thinking" before replies: that took ~20 s each).
-  Set `JARVIS_OLLAMA_MODEL=ultron-qwen3-14b` and **every scheduled job that only looks things up runs on it** (a job with
+  We also tried `qwen3.5:9b` (2x faster, 8 GB) and `qwen3:30b-a3b-instruct-2507` (22 GB at 32k, spills onto the CPU) and
+  stayed on the 14B: in 5 runs of the benchmark below it passed 136/140, the 9B 129/140 (it said "Starting a new chat"
+  without calling `new_chat` every time) and the 30B 134/140 (it claimed actions it had no tool for). The 9B can be
+  made with `python scripts/make_ollama_model.py qwen3.5:9b ultron-qwen3.5-9b`; it keeps thinking before replies.
+  Set `JARVIS_OLLAMA_MODEL=ultron-qwen3-14b` (or `ultron-qwen3.5-9b`) and **every scheduled job that only looks things up runs on it** (a job with
   `"brain": "claude"`, or one allowed to change things, stays on Claude unless `JARVIS_OLLAMA_CHANGES=all`); pick **Ollama** under the gear icon to chat with it when you
   don't want to spend your Pro limit. It starts each chat or job with a few basic tools and **no
   connectors**: tools, connectors and prompt sections switch on when the message (or the job's text)

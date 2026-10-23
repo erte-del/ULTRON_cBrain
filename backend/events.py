@@ -50,6 +50,13 @@ Server -> client:
     confirm.resolved     {id, status}     status = approved | denied | expired
     conversation.new     {reason: "button" | "idle" | "provider"}   Ultron forgot the conversation
     conversation.loaded  {messages, cards}   a saved chat was loaded: show these messages and cards
+                         (each of your messages and each card may carry its turn number)
+    conversation.turn    {turn}           a new message of yours starts turn N (the page tags the message, and the
+                         canvas cards that follow, with it)
+    conversation.trimmed {keep_from, dropped}   trim_chat: turns before keep_from are gone from the chat and from
+                         Claude's memory; the page drops those messages and the cards only they used (and keeps them
+                         for conversation.restored)
+    conversation.restored {}              the last trim was undone: the page puts back what it dropped
     chats.list           {chats: [{id, title, provider, saved_at}], max}   saved chats, newest first
     memory.list          {memories: [{id, category, text, source, created, updated, + v2 fields: confidence, pinned,
                           expires_at, entities, topics, sensitive, use_count, last_used_at, history}], categories,
@@ -175,6 +182,18 @@ def conversation_new(reason: str) -> Event:
 
 def conversation_loaded(messages: list[dict], cards: list[Event]) -> Event:
     return {"type": "conversation.loaded", "messages": messages, "cards": cards}
+
+
+def conversation_turn(turn: int) -> Event:
+    return {"type": "conversation.turn", "turn": turn}
+
+
+def conversation_trimmed(keep_from: int, dropped: int) -> Event:
+    return {"type": "conversation.trimmed", "keep_from": keep_from, "dropped": dropped}
+
+
+def conversation_restored() -> Event:
+    return {"type": "conversation.restored"}
 
 
 def chats_list(chats: list[dict], max_chats: int) -> Event:

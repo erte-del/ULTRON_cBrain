@@ -23,7 +23,7 @@ from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 
 from config import STORAGE_DIR
 from storage import memory_store, upload_store
-from tools import connectors, registry, web
+from tools import chat as chat_tool, connectors, registry, web
 
 from . import confirm
 from .base import Brain, Done, Error, ModelAlias, TextDelta, ToolResult, ToolStart
@@ -39,6 +39,10 @@ def now_note() -> str:
 
 # How much of a finished conversation the note-writer reads (its end, if longer).
 TRANSCRIPT_CHARS = 40_000
+# After "trim chat" the kept turns go into the fresh session word for word, within these limits
+# (a reply longer than TURN_CHARS is cut; if the whole is longer than SEED_CHARS the oldest turns go first).
+TURN_CHARS = 6_000
+SEED_CHARS = 40_000
 NOTE_TIMEOUT_S = 60
 
 NOTE_PROMPT = """\
@@ -76,22 +80,61 @@ async def write_note(transcript: str) -> str:
     return note
 
 
+def seed_text(turns: list[dict], cleared: str = "", first: int | None = None) -> str:
+    """What a fresh Claude Code session is told first, after the chat was trimmed (or the trim undone):
+    the turns that are kept, as they were said, each under its [Turn N] tag."""
+    blocks = [f"[Turn {t['n']}]\nUser: {t['text']}\nUltron: {t['reply'][:TURN_CHARS]}" for t in turns]
+    while len(blocks) > 1 and sum(map(len, blocks)) > SEED_CHARS:
+        blocks.pop(0)
+    head = "[This chat continues from earlier. "
+    if first:
+        head += f"Everything before turn {first} was cleared at the user's request{f' (it was about: {cleared})' if cleared else ''}; "
+    head += "the turns that are kept follow, word for word. They are context, not a new request."
+    return head + "]\n" + "\n\n".join(blocks) + "\n[End of the earlier turns. The user's new message follows.]\n"
+
+
 class Ultron:
     def __init__(self, brain: Brain) -> None:
         self.brain = brain
-        self.transcript: list[str] = []  # this conversation, for its note in the vault
+        # This conversation, turn by turn: {n, text, reply, noted}. n counts up from 1 and is shown to
+        # the model as [Turn n], which is how it names the first turn to keep when it trims the chat.
+        # noted = already written to the vault (or loaded from a saved chat), so it isn't written again.
+        self.turns: list[dict] = []
+        self.turn = 0  # the number of the latest turn
         self.started = 0.0
+        self.seed = ""  # sent in front of the next message: the kept turns, in a fresh Claude Code session
+        self.trimmed: list[dict] | None = None  # the turns the last trim removed, for "bring it back"
         self.woke = False  # has this conversation had its memory prefix yet?
         self.shown_insights: set[str] = set()  # insights already offered in this conversation
         self.notes: set[asyncio.Task] = set()  # old conversations' notes still being written
+        self._share_turns()
+
+    def _share_turns(self) -> None:
+        """Tell the trim_chat tool which turns it may cut at."""
+        chat_tool.state.update(oldest=self.turns[0]["n"] if self.turns else 0, current=self.turn,
+                               can_undo=self.trimmed is not None)
 
     def usage_event(self) -> events.Event:
         return events.usage_update(usage.snapshot(self.brain.provider, self.brain.context_tokens))
 
-    async def wrap_up(self) -> None:
-        """Write the finished conversation's note in the vault (Ultron/memory/Conversations)."""
-        transcript, started = "\n\n".join(self.transcript)[-TRANSCRIPT_CHARS:], self.started
-        self.transcript = []
+    def _take_transcript(self, turns: list[dict]) -> tuple[str, float]:
+        """The turns not yet in the vault, as text for the note-writer; they count as noted from now on."""
+        fresh = [t for t in turns if not t["noted"] and t["reply"]]
+        for t in turns:
+            t["noted"] = True
+        text = "\n\n".join(f"User: {t['text']}\n\nUltron: {t['reply']}" for t in fresh)
+        return text[-TRANSCRIPT_CHARS:], self.started
+
+    def _note_in_background(self, turns: list[dict]) -> None:
+        note = asyncio.create_task(self.wrap_up(*self._take_transcript(turns)))
+        self.notes.add(note)
+        note.add_done_callback(self.notes.discard)
+
+    async def wrap_up(self, transcript: str | None = None, started: float | None = None) -> None:
+        """Write a finished conversation's note in the vault (Ultron/memory/Conversations).
+        With no arguments: the whole conversation so far."""
+        if transcript is None:
+            transcript, started = self._take_transcript(self.turns)
         if not transcript:
             return
         try:
@@ -112,17 +155,60 @@ class Ultron:
         so the new chat is ready straight away."""
         if ui_state.reset():  # every chat starts with the standard look
             await hub.emit(events.ui_layout(""))
-        note = asyncio.create_task(self.wrap_up())  # takes the transcript before anything new arrives
+        self._note_in_background(self.turns)  # takes the transcript before anything new arrives
+        self.turns, self.turn, self.seed, self.trimmed = [], 0, "", None
+        self._share_turns()
         self.woke = bool(resume)  # a loaded chat already has its context
         self.shown_insights = set()
-        self.notes.add(note)
-        note.add_done_callback(self.notes.discard)
         if resume:
             await self.brain.new_conversation(resume=resume)
         elif provider:
             await self.brain.new_conversation(provider)
         else:
             await self.brain.new_conversation()
+
+    def adopt(self, messages: list[dict]) -> list[dict]:
+        """A saved chat was loaded: its turns carry on from where they stood (a chat that was trimmed
+        keeps its numbers). Returns the messages with each of yours tagged with its turn number."""
+        self.turns, self.turn, tagged = [], 0, []
+        for m in messages:
+            if m["role"] == "user":
+                n = m["turn"] if isinstance(m.get("turn"), int) else self.turn + 1
+                self.turn = n
+                self.turns.append({"n": n, "text": m["text"], "reply": "", "noted": True})
+                m = {**m, "turn": n}
+            elif m["role"] == "assistant" and self.turns:
+                self.turns[-1]["reply"] += ("\n\n" if self.turns[-1]["reply"] else "") + m["text"]
+            tagged.append(m)
+        self._share_turns()
+        return tagged
+
+    async def trim(self, first: int, cleared: str = "") -> int:
+        """Drop every turn before `first` from this chat and from what Claude remembers of it; the
+        dropped part gets its note in the vault now. Returns how many turns went (0 = nothing changed)."""
+        dropped = [t for t in self.turns if t["n"] < first]
+        kept = [t for t in self.turns if t["n"] >= first]
+        if not dropped or not kept:
+            return 0
+        self._note_in_background(dropped)
+        self.trimmed, self.turns = dropped, kept
+        await self._restart(seed_text(kept, cleared, first))
+        return len(dropped)
+
+    async def untrim(self) -> int:
+        """Bring back what the last trim removed (one level). Returns how many turns came back."""
+        if not self.trimmed:
+            return 0
+        back, self.trimmed = self.trimmed, None
+        self.turns = back + self.turns
+        await self._restart(seed_text(self.turns))
+        return len(back)
+
+    async def _restart(self, seed: str) -> None:
+        """Same chat, same model, same tool groups, but a fresh Claude Code session that starts from `seed`."""
+        self.seed = seed
+        await self.brain.restart_session()
+        self._share_turns()
 
     def _idle_too_long(self) -> bool:
         """A big conversation left alone for over an hour: Claude's cached copy has
@@ -146,6 +232,13 @@ class Ultron:
         if self._idle_too_long():
             await self.new_conversation()
             await hub.emit(events.conversation_new("idle"))
+        self.turn += 1
+        if not self.turns:
+            self.started = time.time()
+        turn = {"n": self.turn, "text": text, "reply": "", "noted": False}
+        self.turns.append(turn)
+        self._share_turns()
+        yield events.conversation_turn(self.turn)  # the page tags your message (and later canvas cards) with it
         if self.brain.provider == "omniroute":
             # The gateway model you picked in the app (no automatic routing).
             r = Route(self.brain.gateway_model, "OmniRoute")
@@ -180,7 +273,8 @@ class Ultron:
             skip = {m["id"] for m in memory_store.prompt_selection()[0]}
             related = await asyncio.to_thread(memory_search.wake_context, text, skip)
         related += memory_surface.related_hint(text, voice, self.shown_insights)  # at most one "Related:" idea, never in voice
-        prompt = f"[Now: {now_note()}]\n{related}{prompt}"
+        prompt = f"{self.seed}[Now: {now_note()}] [Turn {self.turn}]\n{related}{prompt}"
+        self.seed = ""
         if voice:  # said out loud: the reply is read out (see the system prompt)
             prompt = f"[Spoken]\n{prompt}"
         if device:  # Mac tools act on the Mac, wherever the user is talking from
@@ -197,6 +291,7 @@ class Ultron:
                 match ev:
                     case TextDelta():
                         reply_text += ev.text
+                        turn["reply"] = reply_text
                         yield events.from_brain(ev, reply_id)
 
                     case ToolStart():
@@ -221,9 +316,7 @@ class Ultron:
 
                     case Done():
                         confirm.take_outcomes()  # the reply ran to the end: Claude saw how its cards went
-                        if not self.transcript:
-                            self.started = time.time()
-                        self.transcript += [f"User: {text}", f"Ultron: {reply_text}"]
+                        turn["reply"] = reply_text
                         sources = web.pick_sources(reply_text, looked_at)
                         yield events.done(
                             reply_id, ev.model, r.model, r.reason, consulted_expert, sources

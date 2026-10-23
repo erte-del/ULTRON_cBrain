@@ -181,6 +181,7 @@ export default function App() {
       <TopBar
         customised={ultron.uiCss !== ''}
         onResetUi={ultron.resetUi}
+        onOpenTerminal={ultron.openTerminal}
         connection={ultron.connection}
         busy={ultron.busy}
         settings={ultron.settings}

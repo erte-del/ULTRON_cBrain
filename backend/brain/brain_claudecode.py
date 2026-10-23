@@ -491,6 +491,15 @@ class ClaudeCodeBrain:
             self.last_active = 0.0
         log.info("Started a %s conversation (provider=%s)", "saved" if resume else "new", self.provider)
 
+    async def restart_session(self) -> None:
+        """Same chat, but a fresh Claude Code session that remembers nothing of it (trim chat: the caller
+        puts the turns it keeps into the next message). The model and the Ollama tool groups stay."""
+        async with self._lock:  # after the reply in progress
+            await self.close()
+            self._session_id = None
+            self.context_tokens = 0
+        log.info("Restarted the conversation's session (provider=%s, model=%s)", self.provider, self._model)
+
     async def close(self) -> None:
         if self._client is not None:
             try:

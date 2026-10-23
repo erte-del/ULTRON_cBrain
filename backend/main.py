@@ -403,11 +403,14 @@ async def run_turn(
             await mouth  # the last sentence is on its way before "idle"
         if chat_tool.take():  # Ultron called new_chat during this reply
             await start_new_chat(send if voice else None, by_ultron=True)
+        elif request := chat_tool.take_trim():  # or trim_chat
+            await apply_trim(request)
     finally:
         if mouth:
             hub.disconnect(ask_aloud)
             mouth.cancel()  # stopped: say no more
         chat_tool.take()  # stopped before it could restart: forget the request
+        chat_tool.take_trim()
         mac.phone_here = mac.phone_status = None
         try:
             await send(events.status("idle"))
@@ -575,6 +578,23 @@ async def start_new_chat(say_to: hub.Sender | None = None, by_ultron: bool = Fal
     await brain.start()  # ready before your next message
 
 
+async def apply_trim(request: dict) -> None:
+    """trim_chat (or its undo), after the reply that asked for it. Ultron has already said what it did."""
+    if request.get("undo"):
+        if await ultron.untrim():
+            await hub.emit(events.conversation_restored())
+        else:
+            await hub.emit(events.notice("There was nothing to bring back."))
+        return
+    first = request["first_turn"]
+    dropped = await ultron.trim(first, request.get("cleared", ""))
+    if not dropped:
+        await hub.emit(events.notice("Nothing to clear: the chat already starts there."))
+        return
+    await hub.emit(events.conversation_trimmed(first, dropped))
+    await brain.start()  # ready before your next message
+
+
 def chats_event() -> events.Event:
     return events.chats_list(chat_store.summaries(), chat_store.MAX_CHATS)
 
@@ -657,10 +677,15 @@ async def load_chat(chat_id: str) -> None:
         # Claude Code can only continue it on the brain it was saved on.
         await hub.emit(events.error(f"That chat was saved on {chat['provider']}. Switch the brain in settings first."))
         return
-    cards = [c for c in map(restore_card, chat.get("cards", [])) if c]
+    cards = []
+    for saved in chat.get("cards", []):
+        if card := restore_card(saved):
+            if isinstance(saved.get("turn"), int):
+                card["turn"] = saved["turn"]
+            cards.append(card)
     canvas.restored([c["id"] for c in cards])
     await ultron.new_conversation(resume=chat_id)
-    await hub.emit(events.conversation_loaded(chat["messages"], cards))
+    await hub.emit(events.conversation_loaded(ultron.adopt(chat["messages"]), cards))
     await hub.emit(ultron.usage_event())
     await brain.start()
 

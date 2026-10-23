@@ -20,7 +20,7 @@ _lock = threading.Lock()
 
 def _read() -> dict[str, dict]:
     try:
-        return json.loads(CHATS_FILE.read_text())
+        return json.loads(CHATS_FILE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
 
@@ -32,6 +32,7 @@ def _clean(messages: list) -> list[dict]:
         if isinstance(m, dict) and m.get("role") in ("user", "assistant") and isinstance(m.get("text"), str):
             files = m.get("files")
             keep.append({
+                **({"turn": m["turn"]} if m["role"] == "user" and isinstance(m.get("turn"), int) else {}),
                 "role": m["role"],
                 "text": m["text"],
                 "files": [f for f in files if isinstance(f, str)] if isinstance(files, list) else [],
@@ -49,6 +50,8 @@ def _clean_cards(cards: list) -> list[dict]:
         if not (isinstance(c, dict) and all(isinstance(c.get(k), str) for k in ("id", "kind", "title"))):
             continue
         card = {"id": c["id"], "kind": c["kind"], "title": c["title"]}
+        if isinstance(c.get("turn"), int):  # the turn that last touched it, so a trim knows what it belonged to
+            card["turn"] = c["turn"]
         if c["kind"] not in FILE_CARDS:
             card["data"] = c["data"] if isinstance(c.get("data"), dict) else {}
         keep.append(card)
@@ -79,7 +82,7 @@ def save(session_id: str, provider: str, messages: list, cards: list) -> None:
             "cards": _clean_cards(cards),
         }
         STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        CHATS_FILE.write_text(json.dumps(chats))
+        CHATS_FILE.write_text(json.dumps(chats), encoding="utf-8")
 
 
 def load(chat_id: str) -> dict:
@@ -91,4 +94,4 @@ def delete(chat_id: str) -> None:
     with _lock:
         chats = _read()
         if chats.pop(chat_id, None) is not None:
-            CHATS_FILE.write_text(json.dumps(chats))
+            CHATS_FILE.write_text(json.dumps(chats), encoding="utf-8")

@@ -25,7 +25,7 @@ from storage import job_store, memory_store
 
 from . import connectors, important, lenient, mac, web
 from .amazon import amazon_change, amazon_read
-from .chat import new_chat
+from .chat import new_chat, trim_chat
 from .ui import change_ui
 from .capture import capture
 from .canvas import clear_canvas, open_terminal, read_terminal, show_on_canvas
@@ -89,6 +89,8 @@ TOOLS: list[UltronTool] = [
     # Only opens the tab: what runs in the shell is up to you, typing in it.
     # Restarts the chat after the reply, like the button: nothing outside Ultron changes.
     UltronTool(new_chat, "act"),
+    # Drops the older part of this chat after the reply: only touches your own chat window and Claude's memory of it.
+    UltronTool(trim_chat, "act"),
     UltronTool(open_terminal, "read"),
     # Only reads the screen text the page sent; never types in the shell.
     UltronTool(read_terminal, "read"),
@@ -242,6 +244,7 @@ ASSETS_READ_TOOLS = ["search_assets", "search_packs", "get_pack", "get_asset", "
 # Friendlier titles for confirmation cards.
 TITLES = {
     "export_3d": "Build the final 3D file",
+    "trim_chat": "Clear the earlier part of this chat",
     "generate_video": "Make a video (takes a few minutes)",
     "whatsapp_send": "Send a WhatsApp message",
     "instagram_post": "Post this Reel to Instagram",

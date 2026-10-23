@@ -82,6 +82,11 @@ class Brain(Protocol):
         or continue the saved conversation `resume`."""
         ...
 
+    async def restart_session(self) -> None:
+        """Start a fresh session for the same chat (same model, same tool groups); the caller
+        tells it what the chat was about in the next message."""
+        ...
+
     async def close(self) -> None:
         """Release resources (e.g. stop the Claude Code process)."""
         ...

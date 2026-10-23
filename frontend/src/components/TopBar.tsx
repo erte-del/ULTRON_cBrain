@@ -35,6 +35,7 @@ interface TopBarProps {
   onTyping?: () => void // set in voice mode: back to typing
   customised: boolean // Ultron changed the look for this chat
   onResetUi: () => void // back to the standard look
+  onOpenTerminal: () => void // a fresh shell in a new canvas tab
 }
 
 /** A menu under a top-bar button that closes on a click outside or Esc. */
@@ -554,7 +555,7 @@ function Settings({ settings, onProvider }: Pick<TopBarProps, 'settings' | 'onPr
 
 export default function TopBar({
   connection, busy, settings, canStartNewChat, onNewChat, onProvider,
-  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, memoryExtras, memoryActions, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, onTyping, customised, onResetUi, ...chats
+  memories, memoryCategories, onSaveMemory, onDeleteMemory, onWipeMemory, memoryExtras, memoryActions, jobs, jobRuns, onJob, screenSupported, screenOpen, onScreen, onTyping, customised, onResetUi, onOpenTerminal, ...chats
 }: TopBarProps) {
   const now = useNow()
   const status =
@@ -618,6 +619,18 @@ export default function TopBar({
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path d="M4 5h16v14H4zM4 10h16M10 10v9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
             <path d="M14 14.5a2.5 2.5 0 1 1 .8 1.8M14 12.5v2h2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={onOpenTerminal}
+          aria-label="New terminal"
+          title="New terminal: a fresh shell on this computer, in a new canvas tab"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M7 9l3 3-3 3M12 15h5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         {screenSupported && (

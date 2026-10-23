@@ -111,7 +111,7 @@ Agent SDK aliases `haiku`, `sonnet`, `opus`.
 3. **Small talk stays on the current model.** Each model keeps its own cached copy of the conversation, so switching for a short reply costs more than it saves. Short voice messages → Haiku.
 4. **Everything else → Sonnet**, which can call **`ask_expert`** to run one task on Opus. Long expert answers go straight to the canvas.
 5. **Sticky routing:** past ~20K tokens, automatic picks never move a conversation to a cheaper model.
-6. **New chat:** a button, the `new_chat` tool, and automatically when a big conversation sits idle longer than the cache lifetime (`JARVIS_NEW_CHAT_AFTER_IDLE_MIN`, default 60).
+6. **New chat:** a button, the `new_chat` tool, and automatically when a big conversation sits idle longer than the cache lifetime (`JARVIS_NEW_CHAT_AFTER_IDLE_MIN`, default 60). **Trim chat** (`trim_chat`) keeps the chat but drops its older part: every message carries a `[Turn N]` tag, Ultron names the first turn to keep, and a fresh Claude Code session is seeded with the kept turns (`Ultron.trim` / `untrim` in `agent.py`, applied by `main.apply_trim` after the reply).
 
 Every reply shows a **badge with the model and why it was picked**.
 
@@ -141,7 +141,7 @@ Every tool is labelled **read** (runs freely, also in scheduled jobs) or **act**
 | Area | Tools | Label |
 |---|---|---|
 | Thinking | `ask_expert` (→ Opus) | read |
-| Canvas & chat | `show_on_canvas` (text, table, email_list, events, tasks, youtube, map), `clear_canvas`, `open_terminal`, `read_terminal`, `new_chat` | read / act (`new_chat`) |
+| Canvas & chat | `show_on_canvas` (text, table, email_list, events, tasks, youtube, map), `clear_canvas`, `open_terminal`, `read_terminal`, `new_chat`, `trim_chat` (drops the older part of this chat from the window and from Claude's memory; `undo` brings back the last trim) | read / act (`new_chat`, `trim_chat`) |
 | Images | `image_search` (Pexels), `image_edit` (Pillow), `image_undo`, `image_versions` | read |
 | AI images | `generate_image`, `image_ai_edit` (FLUX.2 Klein on this Mac, `scripts/setup_images.sh`) | read |
 | Video | `generate_video` (Wan on this Mac, background, ~minutes) | act |
@@ -304,7 +304,7 @@ ULTRON_cBrain/
 
 **WebSocket protocol (`events.py` ↔ `ws.ts`):**
 - Client → server: `user.text`, `user.stop`, `user.confirm {id, approved}`, `user.select_image {id}`, `user.new_chat`, `user.save_chat`, `user.load_chat`, `user.delete_chat`, `user.memory_*`, `user.job_update`, `user.voice {mode}`, `user.greet`, `user.groups {on}` (Ollama tool groups), `user.fallback {action, text, files, history}` (after an Ollama error: try again, or continue on Claude), `settings.update`, plus binary mic audio.
-- Server → client: `assistant.text_delta`, `assistant.done {model}`, `status`, `tool.started`, `tool.finished`, `canvas.card`, `confirm.request`, `confirm.resolved`, `conversation.new`, `conversation.loaded`, `chats.list`, `memory.list`, `jobs.list`, `notification`, `usage.update`, `settings.state`, `ollama.groups`, `terminal.open`, `voice.speech`, `voice.transcript`, `voice.wake`, `voice.audio`, `notice`, `error`.
+- Server → client: `assistant.text_delta`, `assistant.done {model}`, `status`, `tool.started`, `tool.finished`, `canvas.card`, `confirm.request`, `confirm.resolved`, `conversation.new`, `conversation.loaded`, `conversation.turn {turn}`, `conversation.trimmed {keep_from, dropped}`, `conversation.restored`, `chats.list`, `memory.list`, `jobs.list`, `notification`, `usage.update`, `settings.state`, `ollama.groups`, `terminal.open`, `voice.speech`, `voice.transcript`, `voice.wake`, `voice.audio`, `notice`, `error`.
 
 ---
 

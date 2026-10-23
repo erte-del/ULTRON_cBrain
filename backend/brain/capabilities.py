@@ -33,7 +33,7 @@ class Group:
 
 CORE_TOOLS = (
     "recall", "remember", "forget", "clear_canvas", "list_jobs", "schedule_job",
-    "change_job", "text_me", "new_chat", "read_upload",
+    "change_job", "text_me", "new_chat", "trim_chat", "read_upload",
 )
 CORE_PROMPT = (
     "You are Ultron.", "About memory", "About confirmations", "About devices",
